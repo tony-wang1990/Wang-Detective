@@ -1,0 +1,60 @@
+﻿server:
+  port: 9527
+  # 支持 IPv6 和 IPv4 双栈
+  address: '::'  # 监听所有 IPv6 地址（也兼容 IPv4）
+  # address: 0.0.0.0  # 如果只需要 IPv4，使用这个
+
+# --------------------------------------- 用户自定义修改项 ------------------------------------
+# ⚠️ 请使用环境变量配置敏感信息，不要在此处硬编码！
+# web登录管理员账号密码（从环境变量读取）
+web:
+  account: ${ADMIN_USERNAME:admin}
+  password: ${ADMIN_PASSWORD:admin123456}
+
+# Telegram Bot 配置（必须使用环境变量）
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN}
+    username: ${TELEGRAM_BOT_USERNAME:king_detective_bot}
+# --------------------------------------- 用户自定义修改项 ------------------------------------
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:/app/king-detective/data/king-detective.db
+  sql:
+    init:
+      mode: always
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-xxx}
+      base-url: https://api.siliconflow.cn
+      chat:
+        options:
+#          model: deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+          model: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+
+mybatis-plus:
+  mapper-locations: classpath*:com/tony/kingdetective/mapper/xml/*.xml
+
+logging:
+  pattern:
+    # console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %msg%n"
+  level:
+    com.oracle.bmc: error
+    c.o.b.h.c.j: error
+
+# 密钥文件存放目录（如果是docker部署则不用修改）
+oci-cfg:
+  boot-broadcast-url: https://backend.king-detective.de5.net/api/boot
+  key-dir-path: /app/king-detective/keys
+#  key-dir-path: C:\\Users\\yatao\\Desktop
+
+# 实例创建配置
+instance-creation:
+  # 抢机重试间隔（秒）- 可自定义，例如改成30秒、60秒等
+  retry-interval-seconds: 80

@@ -1,0 +1,10 @@
+﻿        <dependency>
+            <groupId>com.oracle.oci.sdk</groupId>
+            <artifactId>oci-java-sdk-limits</artifactId>
+            <version>${oci-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.oci.sdk</groupId>
+            <artifactId>oci-java-sdk-usageapi</artifactId>
+            <version>${oci-version}</version>
+        </dependency>

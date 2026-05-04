@@ -1,0 +1,200 @@
+# 数据库配置优化
+spring:
+  datasource:
+    url: jdbc:sqlite:${user.dir}/king-detective.db
+    driver-class-name: org.sqlite.JDBC
+    
+    # HikariCP 连接池优化配置
+    hikari:
+      # 连接池最大连接数
+      maximum-pool-size: 20
+      # 最小空闲连接数
+      minimum-idle: 5
+      # 连接超时(毫秒)
+      connection-timeout: 30000
+      # 空闲超时(毫秒) - 10分钟
+      idle-timeout: 600000
+      # 最大生命周期(毫秒) - 30分钟
+      max-lifetime: 1800000
+      # 连接测试查询
+      connection-test-query: SELECT 1
+      # 自动提交
+      auto-commit: true
+      # 连接池名称
+      pool-name: KingDetectiveHikariPool
+      
+  # MyBatis Plus 配置
+  mybatis-plus:
+    configuration:
+      # 日志输出
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+      # 驼峰命名转换
+      map-underscore-to-camel-case: true
+    global-config:
+      db-config:
+        # 主键类型
+        id-type: assign_id
+        # 逻辑删除
+        logic-delete-field: deleted
+        logic-delete-value: 1
+        logic-not-delete-value: 0
+
+# OCI 配置
+oci:
+  api:
+    # 重试配置
+    retry:
+      max-attempts: 10
+      delay-ms: 30000
+      # 可重试的异常类型
+      retryable-exceptions:
+        - com.oracle.bmc.model.BmcException
+    
+    # 速率限制配置
+    rate-limit:
+      quota-query: 2    # 次/秒
+      cost-query: 1     # 次/秒
+      instance-create: 0.5  # 次/秒(2秒1次)
+      instance-action: 2    # 次/秒
+      network-config: 1     # 次/秒
+      default: 5           # 次/秒
+      user-limit: 10       # 每用户次/秒
+      
+  # 网络配置
+  network:
+    default-cidr: "10.0.0.0/16"
+    default-subnet-cidr: "10.0.0.0/24"
+    
+  # 实例配置
+  instance:
+    create-timeout-minutes: 30
+    default-shape: "VM.Standard.A1.Flex"
+    default-ocpu: 4
+    default-memory-gb: 24
+    default-boot-volume-gb: 50
+    
+  # NLB 配置
+  nlb:
+    bandwidth-mbps: 500
+    name-prefix: "king-detective-nlb-"
+    
+# Telegram Bot 配置
+telegram:
+  bot:
+    # 消息配置
+    max-message-length: 4096
+    max-button-text-length: 64
+    
+    # 速率限制
+    rate-limit:
+      messages-per-second: 30
+      
+    # 分页配置
+    pagination:
+      page-size: 10
+      max-pages: 100
+
+# 缓存配置
+cache:
+  # Guava 缓存配置
+  guava:
+    user-config:
+      expire-minutes: 10
+      maximum-size: 1000
+    region-list:
+      expire-minutes: 60
+      maximum-size: 100
+    quota-info:
+      expire-minutes: 5
+      maximum-size: 500
+    instance-list:
+      expire-minutes: 2
+      maximum-size: 1000
+      
+# 安全配置
+security:
+  # 加密配置
+  encryption:
+    algorithm: AES
+    key-size: 256
+    # 密钥应该从环境变量 KING_DETECTIVE_SECRET_KEY 读取
+    
+  # 密码策略
+  password:
+    min-length: 8
+    require-uppercase: false
+    require-lowercase: false
+    require-digit: false
+    require-special-char: false
+    
+  # 用户名策略
+  username:
+    min-length: 3
+    max-length: 32
+    allowed-pattern: "^[a-zA-Z0-9_-]+$"
+
+# 文件配置
+file:
+  # 备份配置
+  backup:
+    directory: ${user.dir}/backups
+    auto-cleanup: true
+    retention-days: 30
+    
+  # 日志配置
+  log:
+    directory: ${user.dir}/logs
+    
+  # 临时文件配置
+  temp:
+    directory: ${user.dir}/temp
+    auto-cleanup: true
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      simple:
+        enabled: true
+
+# 审计日志配置
+audit:
+  enabled: true
+  # 审计的操作类型
+  operations:
+    - CREATE_INSTANCE
+    - DELETE_INSTANCE
+    - CREATE_CONFIG
+    - DELETE_CONFIG
+    - MODIFY_SECURITY_RULES
+    - MFA_MANAGEMENT
+    - BACKUP_RESTORE
+    
+# 定时任务配置
+scheduling:
+  # 每日报告
+  daily-report:
+    cron: "0 0 9 * * ?"  # 每天上午9点
+    enabled: true
+    
+  # 实例监控
+  instance-monitoring:
+    cron: "0 */5 * * * ?"  # 每5分钟
+    enabled: true
+    
+  # 自动重启检查
+  auto-restart:
+    cron: "0 */10 * * * ?"  # 每10分钟
+    enabled: true
+    
+  # 区域拓展检查
+  region-expansion:
+    cron: "0 0 */6 * * ?"  # 每6小时
+    enabled: true

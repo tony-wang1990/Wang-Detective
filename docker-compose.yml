@@ -1,0 +1,44 @@
+version: '3.3'
+
+services:
+  watcher:
+    image: alpine:latest
+    container_name: king-detective-watcher
+    restart: always
+    command: sh /scripts/watcher.sh
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app/king-detective
+      - ./scripts/watcher.sh:/scripts/watcher.sh:ro
+    environment:
+      - TZ=Asia/Shanghai
+
+
+  king-detective:
+    image: ghcr.io/tony-wang1990/king-detective:main
+    container_name: king-detective
+    restart: always
+    ports:
+      - "9527:9527"
+    volumes:
+      - ./application.yml:/app/king-detective/application.yml
+      - ./king-detective.db:/app/king-detective/king-detective.db
+      - ./keys:/app/king-detective/keys
+      - ./:/app/king-detective
+    networks:
+      - app-network
+
+  websockify:
+    image: ghcr.io/tony-wang1990/king-detective-websockify:main
+    container_name: websockify
+    restart: always
+    ports:
+      - "127.0.0.1:6080:6080"
+    depends_on:
+      - king-detective
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

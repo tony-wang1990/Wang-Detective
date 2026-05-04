@@ -1,0 +1,95 @@
+# ==========================
+# Sensitive Files
+# ==========================
+.env
+.env.local
+.env.*.local
+*.secret
+*.key
+*.pem
+.secret_key
+my-update.sh
+
+# ==========================
+# Application Configuration
+# ==========================
+# Uncomment if contains secrets
+# application-*.yml
+# application-*.yaml
+# application-*.properties
+
+# ==========================
+# Database
+# ==========================
+*.db
+*.sqlite
+*.sqlite3
+king-detective.db
+
+# ==========================
+# IDE
+# ==========================
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+*.swp
+*.swo
+*~
+
+# ==========================
+# Build Output
+# ==========================
+target/
+build/
+out/
+*.jar
+*.war
+*.ear
+*.class
+
+# ==========================
+# Logs
+# ==========================
+logs/
+*.log
+*.log.*
+
+# ==========================
+# Backup & Temp
+# ==========================
+backup/
+*.bak
+*.tmp
+*.temp
+
+# ==========================
+# OCI Keys & Certificates
+# ==========================
+keys/
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.jks
+
+# ==========================
+# Docker
+# ==========================
+.dockerignore
+
+# ==========================
+# OS Files
+# ==========================
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ==========================
+# Node (if using frontend)
+# ==========================
+node_modules/
+package-lock.json
