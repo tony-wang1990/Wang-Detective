@@ -250,6 +250,17 @@ Content-Type: application/json
 
 ## 常见错误码
 
+## 运维审计
+
+```http
+GET /api/ops/audit/recent?limit=100
+Authorization: Bearer <token>
+```
+
+返回最近的运维审计记录。当前会记录 SSH 主机保存/更新/删除、Web SSH 会话创建、SSH 单命令、批量命令、SFTP 上传/下载/写入/删除/重命名等操作，不记录密码和私钥明文。
+
+## 常见错误码
+
 | Code | 含义 |
 | --- | --- |
 | 200 | 成功 |

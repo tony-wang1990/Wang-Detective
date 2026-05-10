@@ -43,6 +43,8 @@
 - SFTP 文件下载：`POST /api/ops/sftp/download`。
 - SFTP 文件上传：`POST /api/ops/sftp/upload`，当前基于保存主机 `hostId`。
 - SFTP 创建目录、删除、重命名：`/api/ops/sftp/mkdir`、`/api/ops/sftp/delete`、`/api/ops/sftp/rename`。
+- 运维操作审计：SSH 主机变更、终端会话、命令执行、批量命令和 SFTP 写入/上传/下载/删除会写入 `audit_log`。
+- 最近审计记录查询：`GET /api/ops/audit/recent`。
 
 ## 建议下一阶段
 

@@ -13,6 +13,7 @@ import com.tony.kingdetective.bean.response.ops.SshCommandRsp;
 import com.tony.kingdetective.bean.response.ops.SshHostRsp;
 import com.tony.kingdetective.bean.response.ops.SshSessionRsp;
 import com.tony.kingdetective.exception.OciException;
+import com.tony.kingdetective.service.IAuditLogService;
 import com.tony.kingdetective.service.ops.SshHostService;
 import com.tony.kingdetective.service.ops.WebSshService;
 import com.tony.kingdetective.service.ops.WebSshSessionRegistry;
@@ -42,11 +43,16 @@ public class OpsSshController {
     private final WebSshService webSshService;
     private final WebSshSessionRegistry sessionRegistry;
     private final SshHostService sshHostService;
+    private final IAuditLogService auditLogService;
 
-    public OpsSshController(WebSshService webSshService, WebSshSessionRegistry sessionRegistry, SshHostService sshHostService) {
+    public OpsSshController(WebSshService webSshService,
+                            WebSshSessionRegistry sessionRegistry,
+                            SshHostService sshHostService,
+                            IAuditLogService auditLogService) {
         this.webSshService = webSshService;
         this.sessionRegistry = sessionRegistry;
         this.sshHostService = sshHostService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping("/ssh/hosts")
@@ -61,17 +67,22 @@ public class OpsSshController {
 
     @PostMapping("/ssh/hosts")
     public ResponseData<SshHostRsp> createHost(@Valid @RequestBody SshHostSaveParams params) {
-        return ResponseData.successData(sshHostService.create(params));
+        SshHostRsp host = sshHostService.create(params);
+        auditSuccess("OPS_SSH_HOST_CREATE", host.getId(), host.getName() + "@" + host.getHost());
+        return ResponseData.successData(host);
     }
 
     @PutMapping("/ssh/hosts/{id}")
     public ResponseData<SshHostRsp> updateHost(@PathVariable("id") String id, @Valid @RequestBody SshHostSaveParams params) {
-        return ResponseData.successData(sshHostService.update(id, params));
+        SshHostRsp host = sshHostService.update(id, params);
+        auditSuccess("OPS_SSH_HOST_UPDATE", id, host.getName() + "@" + host.getHost());
+        return ResponseData.successData(host);
     }
 
     @DeleteMapping("/ssh/hosts/{id}")
     public ResponseData<Void> deleteHost(@PathVariable("id") String id) {
         sshHostService.delete(id);
+        auditSuccess("OPS_SSH_HOST_DELETE", id, null);
         return ResponseData.successData("Host deleted");
     }
 
@@ -88,6 +99,7 @@ public class OpsSshController {
         SshCredentialParams credential = sshHostService.resolveCredential(params.getCredential());
         int ttlMinutes = params.getTtlMinutes() == null ? 15 : params.getTtlMinutes();
         WebSshSessionRegistry.Entry entry = sessionRegistry.create(credential, ttlMinutes);
+        auditSuccess("OPS_SSH_SESSION_CREATE", target(credential), "ttlMinutes=" + ttlMinutes);
         return ResponseData.successData(SshSessionRsp.builder()
                 .sessionId(entry.sessionId())
                 .expiresAt(entry.expiresAt())
@@ -106,7 +118,9 @@ public class OpsSshController {
     @PostMapping("/ssh/exec")
     public ResponseData<SshCommandRsp> execute(@Valid @RequestBody SshCommandParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
-        return ResponseData.successData(webSshService.execute(params));
+        SshCommandRsp rsp = webSshService.execute(params);
+        auditSuccess("OPS_SSH_EXEC", target(params.getCredential()), detail("command", params.getCommand()));
+        return ResponseData.successData(rsp);
     }
 
     @PostMapping("/ssh/batch")
@@ -125,6 +139,7 @@ public class OpsSshController {
                     return rsp;
                 })
                 .toList();
+        auditSuccess("OPS_SSH_BATCH", "targets=" + params.getTargets().size(), detail("command", params.getCommand()));
         return ResponseData.successData(results);
     }
 
@@ -144,6 +159,7 @@ public class OpsSshController {
     public ResponseEntity<byte[]> download(@RequestBody SftpParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
         byte[] bytes = webSshService.download(params);
+        auditSuccess("OPS_SFTP_DOWNLOAD", target(params.getCredential()), params.getPath());
         String filename = filename(params.getPath());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
@@ -166,6 +182,7 @@ public class OpsSshController {
         try (InputStream input = file.getInputStream()) {
             webSshService.upload(params, input);
         }
+        auditSuccess("OPS_SFTP_UPLOAD", hostId, params.getPath() + " size=" + file.getSize());
         return ResponseData.successData("File uploaded");
     }
 
@@ -173,6 +190,7 @@ public class OpsSshController {
     public ResponseData<Void> write(@RequestBody SftpParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
         webSshService.writeText(params);
+        auditSuccess("OPS_SFTP_WRITE", target(params.getCredential()), params.getPath());
         return ResponseData.successData("File saved");
     }
 
@@ -180,6 +198,7 @@ public class OpsSshController {
     public ResponseData<Void> mkdir(@RequestBody SftpParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
         webSshService.mkdir(params);
+        auditSuccess("OPS_SFTP_MKDIR", target(params.getCredential()), params.getPath());
         return ResponseData.successData("Directory created");
     }
 
@@ -187,6 +206,7 @@ public class OpsSshController {
     public ResponseData<Void> delete(@RequestBody SftpParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
         webSshService.delete(params);
+        auditSuccess("OPS_SFTP_DELETE", target(params.getCredential()), params.getPath());
         return ResponseData.successData("Path deleted");
     }
 
@@ -194,7 +214,33 @@ public class OpsSshController {
     public ResponseData<Void> rename(@RequestBody SftpParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
         webSshService.rename(params);
+        auditSuccess("OPS_SFTP_RENAME", target(params.getCredential()), params.getPath() + " -> " + params.getTargetPath());
         return ResponseData.successData("Path renamed");
+    }
+
+    private void auditSuccess(String operation, String target, String details) {
+        auditLogService.logSuccess(null, operation, target, trim(details));
+    }
+
+    private String target(SshCredentialParams credential) {
+        if (credential == null) {
+            return "unknown";
+        }
+        if (credential.getHostId() != null && !credential.getHostId().isBlank()) {
+            return credential.getHostId();
+        }
+        return credential.getUsername() + "@" + credential.getHost() + ":" + credential.getPort();
+    }
+
+    private String detail(String key, String value) {
+        return key + "=" + trim(value);
+    }
+
+    private String trim(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= 240 ? value : value.substring(0, 240) + "...";
     }
 
     private String uploadPath(String path, String filename) {

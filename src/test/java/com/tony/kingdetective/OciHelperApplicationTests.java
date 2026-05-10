@@ -3,6 +3,7 @@ package com.tony.kingdetective;
 import com.tony.kingdetective.bean.params.ops.SshCredentialParams;
 import com.tony.kingdetective.bean.params.ops.SshHostSaveParams;
 import com.tony.kingdetective.bean.response.ops.SshHostRsp;
+import com.tony.kingdetective.service.IAuditLogService;
 import com.tony.kingdetective.service.IOciKvService;
 import com.tony.kingdetective.service.ops.SshHostService;
 import com.tony.kingdetective.service.ops.WebSshSessionRegistry;
@@ -36,6 +37,9 @@ class OciHelperApplicationTests {
 
     @Resource
     private SshHostService sshHostService;
+
+    @Resource
+    private IAuditLogService auditLogService;
 
     @Test
     void contextLoadsWithLocalTestDatabase() {
@@ -89,5 +93,17 @@ class OciHelperApplicationTests {
         } finally {
             sshHostService.delete(saved.getId());
         }
+    }
+
+    @Test
+    void auditLogServiceWritesRecentRecords() {
+        auditLogService.logSuccess("test-user", "OPS_TEST_AUDIT", "target-1", "details");
+
+        assertThat(auditLogService.recent(20))
+                .anySatisfy(item -> {
+                    assertThat(item.getOperation()).isEqualTo("OPS_TEST_AUDIT");
+                    assertThat(item.getTarget()).isEqualTo("target-1");
+                    assertThat(item.getSuccess()).isTrue();
+                });
     }
 }

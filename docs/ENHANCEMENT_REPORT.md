@@ -61,6 +61,7 @@
 - `WebSshSessionRegistry`：短时保存 Web SSH 会话凭据，过期自动清理。
 - `SshTerminalWebSocketHandler`：提供交互式 SSH Shell WebSocket。
 - `SshHostService`：提供 SSH 主机资产库、AES-GCM 凭据加密和 `hostId` 凭据复用。
+- `AuditLogServiceImpl`：补齐审计日志写入能力，运维入口的高风险操作会写入 `audit_log`。
 
 ### 已提供能力
 
@@ -71,6 +72,7 @@
 - SFTP 目录列表、读取 1MB 以内文本、写入文本、上传文件、下载文件、创建目录、删除、递归删除、重命名。
 - 保存常用 SSH 主机，前端可直接选择主机执行终端、命令和 SFTP 操作。
 - 新增 `ops_ssh_host` 表和 `db/migration_v4_1_ops.sql`，已有部署会自动补齐主机资产表。
+- 新增 `GET /api/ops/audit/recent`，用于查看最近运维操作审计记录。
 
 ## 下一阶段建议
 

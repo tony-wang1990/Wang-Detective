@@ -2,6 +2,8 @@ package com.tony.kingdetective.service;
 
 import com.tony.kingdetective.bean.entity.AuditLog;
 
+import java.util.List;
+
 /**
  * 审计日志服务接口
  * 
@@ -35,4 +37,6 @@ public interface IAuditLogService {
      * @param error 错误消息
      */
     void logFailure(String userId, String operation, String target, String error);
+
+    List<AuditLog> recent(int limit);
 }
