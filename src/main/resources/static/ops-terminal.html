@@ -388,6 +388,7 @@
       <div class="tabs">
         <button id="tabSftp" class="tab active" onclick="showTab('sftp')">SFTP</button>
         <button id="tabEditor" class="tab" onclick="showTab('editor')">文本编辑</button>
+        <button id="tabAudit" class="tab" onclick="showTab('audit')">操作审计</button>
       </div>
       <div id="sftpBody" class="tab-body active">
         <div class="row">
@@ -428,6 +429,17 @@
           <button onclick="readFile()">读取</button>
           <button class="secondary" onclick="writeFile()">保存</button>
         </div>
+      </div>
+      <div id="auditBody" class="tab-body">
+        <div class="actions">
+          <button onclick="loadAuditLogs()">刷新审计</button>
+        </div>
+        <table class="file-list">
+          <thead>
+          <tr><th>时间</th><th>操作</th><th>目标</th><th>结果</th><th>详情</th></tr>
+          </thead>
+          <tbody id="auditRows"></tbody>
+        </table>
       </div>
     </section>
   </section>
@@ -878,11 +890,41 @@
     listSftp();
   }
 
+  async function loadAuditLogs() {
+    try {
+      const rows = document.getElementById('auditRows');
+      rows.innerHTML = '<tr><td colspan="5">加载中...</td></tr>';
+      const logs = await api('/audit/recent?limit=100', null, 'GET');
+      rows.innerHTML = '';
+      for (const item of logs || []) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(item.createTime || '')}</td>
+          <td>${escapeHtml(item.operation || '')}</td>
+          <td>${escapeHtml(item.target || '')}</td>
+          <td>${item.success ? '成功' : '失败'}</td>
+          <td>${escapeHtml(item.details || item.errorMessage || '')}</td>
+        `;
+        rows.appendChild(tr);
+      }
+      if (!rows.children.length) {
+        rows.innerHTML = '<tr><td colspan="5">暂无审计记录</td></tr>';
+      }
+    } catch (e) {
+      document.getElementById('auditRows').innerHTML = `<tr><td colspan="5">${escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+
   function showTab(name) {
     document.getElementById('tabSftp').classList.toggle('active', name === 'sftp');
     document.getElementById('tabEditor').classList.toggle('active', name === 'editor');
+    document.getElementById('tabAudit').classList.toggle('active', name === 'audit');
     document.getElementById('sftpBody').classList.toggle('active', name === 'sftp');
     document.getElementById('editorBody').classList.toggle('active', name === 'editor');
+    document.getElementById('auditBody').classList.toggle('active', name === 'audit');
+    if (name === 'audit') {
+      loadAuditLogs();
+    }
   }
 
   function formatBytes(bytes) {
