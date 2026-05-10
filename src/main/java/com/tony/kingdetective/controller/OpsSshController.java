@@ -19,6 +19,10 @@ import com.tony.kingdetective.service.ops.WebSshSessionRegistry;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -26,7 +30,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -133,6 +140,35 @@ public class OpsSshController {
         return ResponseData.successData(webSshService.readText(params));
     }
 
+    @PostMapping("/sftp/download")
+    public ResponseEntity<byte[]> download(@RequestBody SftpParams params) {
+        params.setCredential(sshHostService.resolveCredential(params.getCredential()));
+        byte[] bytes = webSshService.download(params);
+        String filename = filename(params.getPath());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(filename, StandardCharsets.UTF_8)
+                        .build()
+                        .toString())
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(bytes);
+    }
+
+    @PostMapping(value = "/sftp/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseData<Void> upload(@RequestParam("hostId") String hostId,
+                                     @RequestParam("path") String path,
+                                     @RequestParam("file") MultipartFile file) throws Exception {
+        SftpParams params = new SftpParams();
+        SshCredentialParams credential = new SshCredentialParams();
+        credential.setHostId(hostId);
+        params.setCredential(sshHostService.resolveCredential(credential));
+        params.setPath(uploadPath(path, file.getOriginalFilename()));
+        try (InputStream input = file.getInputStream()) {
+            webSshService.upload(params, input);
+        }
+        return ResponseData.successData("File uploaded");
+    }
+
     @PostMapping("/sftp/write")
     public ResponseData<Void> write(@RequestBody SftpParams params) {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
@@ -159,5 +195,24 @@ public class OpsSshController {
         params.setCredential(sshHostService.resolveCredential(params.getCredential()));
         webSshService.rename(params);
         return ResponseData.successData("Path renamed");
+    }
+
+    private String uploadPath(String path, String filename) {
+        String safeFilename = filename(filename);
+        String value = path == null || path.isBlank() ? safeFilename : path.trim();
+        if (value.endsWith("/") || value.endsWith("\\")) {
+            return value + safeFilename;
+        }
+        return value;
+    }
+
+    private String filename(String path) {
+        if (path == null || path.isBlank()) {
+            return "download.bin";
+        }
+        String normalized = path.replace("\\", "/");
+        int index = normalized.lastIndexOf('/');
+        String name = index >= 0 ? normalized.substring(index + 1) : normalized;
+        return name.isBlank() ? "download.bin" : name;
     }
 }

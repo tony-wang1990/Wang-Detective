@@ -231,9 +231,22 @@ Content-Type: application/json
 - `POST /api/ops/sftp/list`
 - `POST /api/ops/sftp/read`
 - `POST /api/ops/sftp/write`
+- `POST /api/ops/sftp/download`
+- `POST /api/ops/sftp/upload`，`multipart/form-data`，字段为 `hostId`、`path`、`file`
 - `POST /api/ops/sftp/mkdir`
 - `POST /api/ops/sftp/delete`
 - `POST /api/ops/sftp/rename`
+
+文件下载使用 JSON 请求体，响应为二进制文件：
+
+```json
+{
+  "credential": {
+    "hostId": "saved-host-id"
+  },
+  "path": "/home/opc/app.log"
+}
+```
 
 ## 常见错误码
 

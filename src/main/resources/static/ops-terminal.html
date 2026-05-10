@@ -403,6 +403,14 @@
           <button class="secondary" onclick="mkdirSftp()">新建目录</button>
           <button class="secondary" onclick="renameSftp()">重命名</button>
           <button class="danger" onclick="deleteSftp()">删除</button>
+          <button class="secondary" onclick="downloadFile()">下载文件</button>
+        </div>
+        <label for="uploadFile">上传文件</label>
+        <input id="uploadFile" type="file">
+        <label for="uploadPath">上传目标路径</label>
+        <input id="uploadPath" placeholder="例如 /home/opc/file.txt，目录请以 / 结尾">
+        <div class="actions">
+          <button class="secondary" onclick="uploadFile()">上传到保存主机</button>
         </div>
         <table class="file-list">
           <thead>
@@ -783,6 +791,70 @@
     }
   }
 
+  async function downloadFile() {
+    const suggestedPath = document.getElementById('editPath').value || document.getElementById('sftpPath').value;
+    const path = prompt('下载文件路径', suggestedPath);
+    if (!path) return;
+    try {
+      const res = await fetch('/api/ops/sftp/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token()
+        },
+        body: JSON.stringify({ credential: credential(), path })
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      const blob = await res.blob();
+      const name = downloadName(path, res.headers.get('Content-Disposition'));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function uploadFile() {
+    const hostId = document.getElementById('savedHost').value;
+    if (!hostId) {
+      alert('上传文件需要先选择保存的主机');
+      return;
+    }
+    const input = document.getElementById('uploadFile');
+    const file = input.files && input.files[0];
+    if (!file) {
+      alert('请选择要上传的文件');
+      return;
+    }
+    const path = document.getElementById('uploadPath').value.trim()
+      || joinRemotePath(document.getElementById('sftpPath').value || '.', file.name);
+    const form = new FormData();
+    form.append('hostId', hostId);
+    form.append('path', path);
+    form.append('file', file);
+    try {
+      const res = await fetch('/api/ops/sftp/upload', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token() },
+        body: form
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.msg || ('HTTP ' + res.status));
+      }
+      alert('上传完成');
+      listSftp();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
   async function mkdirSftp() {
     const path = prompt('目录路径', document.getElementById('sftpPath').value + '/new-dir');
     if (!path) return;
@@ -822,6 +894,23 @@
       index++;
     }
     return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+  }
+
+  function joinRemotePath(parent, child) {
+    if (!parent || parent === '.') {
+      return child;
+    }
+    return parent.endsWith('/') ? parent + child : parent + '/' + child;
+  }
+
+  function downloadName(path, disposition) {
+    const match = disposition && /filename\\*=UTF-8''([^;]+)/i.exec(disposition);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+    const normalized = String(path || 'download.bin').replaceAll('\\\\', '/');
+    const name = normalized.substring(normalized.lastIndexOf('/') + 1);
+    return name || 'download.bin';
   }
 
   function escapeHtml(value) {

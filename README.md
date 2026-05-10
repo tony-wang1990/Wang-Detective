@@ -52,7 +52,7 @@ docker compose up -d --force-recreate
 - 强化日志 WebSocket token 校验、非法连接关闭、历史日志推送和日志文件初始化。
 - 增强 `/actuator/health`，返回版本、运行时长、数据库和 JVM 内存状态。
 - 新增 `/api/v1/system/diagnostics`，检查数据库、数据目录、密钥目录、日志、默认密码、Bot Token、OpenAI Key、磁盘和内存。
-- 新增一期运维入口：Web SSH 终端、SSH 单命令、批量命令、SFTP 列表/读取/写入/重命名/删除。
+- 新增一期运维入口：Web SSH 终端、SSH 单命令、批量命令、SFTP 列表/读取/写入/上传/下载/重命名/删除。
 - 新增 SSH 主机资产库：保存常用主机、AES-GCM 加密保存密码/私钥、通过 `hostId` 复用凭据。
 
 ## 运维终端
@@ -70,9 +70,9 @@ http://your-server-ip:9527/ops-terminal.html
 - 打开交互式 Web SSH 终端。
 - 执行单台机器命令并返回 stdout/stderr/exit status。
 - 批量对多台机器执行同一条命令。
-- SFTP 浏览目录、读取小文本文件、写入文件、创建目录、重命名和删除。
+- SFTP 浏览目录、读取小文本文件、写入文件、上传/下载文件、创建目录、重命名和删除。
 
-安全提醒：保存的 SSH 密码/私钥会使用 AES-GCM 加密后写入数据库。建议生产环境显式配置稳定的 `OPS_SSH_SECRET_KEY`，否则默认会从 Web 管理密码派生密钥；如果后续修改管理密码，旧的保存主机可能无法解密。Web SSH 会话凭据仍仅短时保存在服务端内存中。后续会继续补充操作审计、权限控制、端口转发和 SFTP 上传下载。
+安全提醒：保存的 SSH 密码/私钥会使用 AES-GCM 加密后写入数据库。建议生产环境显式配置稳定的 `OPS_SSH_SECRET_KEY`，否则默认会从 Web 管理密码派生密钥；如果后续修改管理密码，旧的保存主机可能无法解密。Web SSH 会话凭据仍仅短时保存在服务端内存中。后续会继续补充操作审计、权限控制、端口转发和大文件传输进度。
 
 ## 常用命令
 
@@ -106,7 +106,7 @@ mvn package
 
 对比 R-Bot / java_oci_manage 等同类 OCI 运维工具后，下一阶段建议按这个顺序继续：
 
-1. 运维入口二期：操作审计、权限控制、端口转发、SFTP 上传下载。
+1. 运维入口二期：操作审计、权限控制、端口转发、大文件传输进度和断点续传。
 2. OCI Object Storage：Bucket/Object 管理、数据库备份归档、日志归档、临时下载链接。
 3. OCI Email Delivery：DKIM/SPF 指引、SMTP 凭据检查、测试发信。
 4. 成本、配额、Always Free 用量和超额风险看板。

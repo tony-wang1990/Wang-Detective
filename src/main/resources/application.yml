@@ -31,6 +31,10 @@ spring:
   datasource:
     driver-class-name: org.sqlite.JDBC
     url: ${DB_URL:jdbc:sqlite:/app/king-detective/data/king-detective.db}
+  servlet:
+    multipart:
+      max-file-size: ${SFTP_UPLOAD_MAX_FILE_SIZE:50MB}
+      max-request-size: ${SFTP_UPLOAD_MAX_REQUEST_SIZE:50MB}
   sql:
     init:
       mode: always

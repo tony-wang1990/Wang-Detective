@@ -40,12 +40,14 @@
 - SFTP 目录列表：`POST /api/ops/sftp/list`。
 - SFTP 小文本读取：`POST /api/ops/sftp/read`。
 - SFTP 文本写入：`POST /api/ops/sftp/write`。
+- SFTP 文件下载：`POST /api/ops/sftp/download`。
+- SFTP 文件上传：`POST /api/ops/sftp/upload`，当前基于保存主机 `hostId`。
 - SFTP 创建目录、删除、重命名：`/api/ops/sftp/mkdir`、`/api/ops/sftp/delete`、`/api/ops/sftp/rename`。
 
 ## 建议下一阶段
 
 - 权限控制、操作审计和敏感操作二次确认。
-- 端口转发、SFTP 上传下载、大文件传输进度。
+- 端口转发、大文件传输进度和断点续传。
 - OCI Object Storage 管理。
 - OCI Email Delivery 自动化。
 - 成本、配额与 Always Free 风险看板。

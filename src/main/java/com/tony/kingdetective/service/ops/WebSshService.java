@@ -29,6 +29,7 @@ import java.util.Vector;
 public class WebSshService {
     private static final int DEFAULT_PORT = 22;
     private static final int MAX_TEXT_FILE_BYTES = 1024 * 1024;
+    private static final int MAX_TRANSFER_BYTES = 50 * 1024 * 1024;
 
     public Session openSession(SshCredentialParams credential) {
         validateCredential(credential);
@@ -152,12 +153,38 @@ public class WebSshService {
         return withSftp(params, channel -> {
             String path = normalizePath(params.getPath());
             SftpATTRS attrs = channel.stat(path);
+            if (attrs.isDir()) {
+                throw new OciException(-1, "Cannot read a directory");
+            }
             if (attrs.getSize() > MAX_TEXT_FILE_BYTES) {
                 throw new OciException(-1, "File is larger than 1MB, text preview is blocked");
             }
             try (InputStream input = channel.get(path)) {
                 return new String(input.readAllBytes(), StandardCharsets.UTF_8);
             }
+        });
+    }
+
+    public byte[] download(SftpParams params) {
+        return withSftp(params, channel -> {
+            String path = normalizePath(params.getPath());
+            SftpATTRS attrs = channel.stat(path);
+            if (attrs.isDir()) {
+                throw new OciException(-1, "Cannot download a directory");
+            }
+            if (attrs.getSize() > MAX_TRANSFER_BYTES) {
+                throw new OciException(-1, "File is larger than 50MB, download is blocked");
+            }
+            try (InputStream input = channel.get(path)) {
+                return input.readAllBytes();
+            }
+        });
+    }
+
+    public void upload(SftpParams params, InputStream input) {
+        withSftp(params, channel -> {
+            channel.put(input, normalizePath(params.getPath()));
+            return null;
         });
     }
 
