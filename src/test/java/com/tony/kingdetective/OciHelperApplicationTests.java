@@ -1,6 +1,8 @@
 package com.tony.kingdetective;
 
+import com.tony.kingdetective.bean.params.ops.SshCredentialParams;
 import com.tony.kingdetective.service.IOciKvService;
+import com.tony.kingdetective.service.ops.WebSshSessionRegistry;
 import com.tony.kingdetective.utils.CustomExpiryGuavaCache;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,9 @@ class OciHelperApplicationTests {
     @Resource
     private CustomExpiryGuavaCache<String, Object> customCache;
 
+    @Resource
+    private WebSshSessionRegistry webSshSessionRegistry;
+
     @Test
     void contextLoadsWithLocalTestDatabase() {
         assertThat(applicationContext).isNotNull();
@@ -39,5 +44,19 @@ class OciHelperApplicationTests {
         assertThat(customCache.get("cache-test-key")).isEqualTo("value");
         Thread.sleep(80);
         assertThat(customCache.get("cache-test-key")).isNull();
+    }
+
+    @Test
+    void webSshSessionRegistryStoresAndRemovesCredential() {
+        SshCredentialParams credential = new SshCredentialParams();
+        credential.setHost("127.0.0.1");
+        credential.setUsername("opc");
+
+        WebSshSessionRegistry.Entry entry = webSshSessionRegistry.create(credential, 1);
+
+        assertThat(webSshSessionRegistry.getCredential(entry.sessionId())).isSameAs(credential);
+
+        webSshSessionRegistry.remove(entry.sessionId());
+        assertThat(webSshSessionRegistry.getCredential(entry.sessionId())).isNull();
     }
 }

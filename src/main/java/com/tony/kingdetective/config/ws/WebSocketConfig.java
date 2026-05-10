@@ -19,14 +19,19 @@ import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
     private final LogWebSocketHandler logWebSocketHandler;
+    private final SshTerminalWebSocketHandler sshTerminalWebSocketHandler;
 
-    public WebSocketConfig(LogWebSocketHandler logWebSocketHandler) {
+    public WebSocketConfig(LogWebSocketHandler logWebSocketHandler,
+                           SshTerminalWebSocketHandler sshTerminalWebSocketHandler) {
         this.logWebSocketHandler = logWebSocketHandler;
+        this.sshTerminalWebSocketHandler = sshTerminalWebSocketHandler;
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(logWebSocketHandler, "/logs")
+                .setAllowedOriginPatterns("*");
+        registry.addHandler(sshTerminalWebSocketHandler, "/ops/ssh/terminal/{sessionId}")
                 .setAllowedOriginPatterns("*");
     }
 

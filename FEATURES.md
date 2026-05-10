@@ -1,25 +1,25 @@
-# King-Detective Enhanced 功能清单
+# Wang-Detective 功能清单
 
 ## 已有核心能力
 
 - OCI API 配置管理、上传、分页和详情查看。
 - 自动开机任务、批量开机任务、停止任务和失败计数。
 - 实例启动、停止、重启、终止、改名、改 Shape、改 CPU/内存/引导卷。
-- 公网 IP 更换、IPv6 附加、500Mbps 网络负载均衡辅助。
-- VNC/串行控制台、自动救援流程。
+- 公网 IP 更换、IPv6 附加、网络负载均衡辅助。
+- VNC/串行控制台和自动救援流程。
 - VCN、安全列表入站/出站规则管理。
 - 引导卷列表、扩容、VPU 调整和删除。
 - Cloudflare DNS 配置与记录增删改查。
 - IP 数据、地图视图和流量统计。
-- Telegram Bot 操作、通知、备份恢复、MFA、SSH 快捷命令。
+- Telegram Bot 操作、通知、备份恢复、MFA 和 SSH 快捷命令。
 - Web 面板、实时日志 WebSocket、系统指标 WebSocket。
 - Google 一键登录、MFA、登录失败黑名单、防御模式。
 
-## Enhanced 新增/修复能力
+## Enhanced 修复能力
 
-- 部署预检: `GET /api/v1/system/diagnostics`。
-- 增强健康检查: `/actuator/health` 返回版本、运行时长、数据库和 JVM 内存状态。
-- Docker 数据持久化目录统一为 `data/`、`keys/`、`logs/`。
+- 部署预检：`GET /api/v1/system/diagnostics`。
+- 增强健康检查：`/actuator/health` 返回版本、运行时长、数据库和 JVM 内存状态。
+- Docker 数据持久化目录统一为 `data/`、`keys/`、`logs/`、`runtime/`。
 - watcher 自动更新兼容任意触发内容，并修复数据库版本号写入。
 - 数据库迁移脚本真正执行注释后的 SQL，并移除无效索引。
 - WebSocket 使用 Spring Bean 注入，修复 token 校验、非法连接关闭和历史日志推送。
@@ -29,9 +29,21 @@
 - CORS 来源可通过 `CORS_ALLOWED_ORIGINS` 配置。
 - Maven 构建配置去重，项目描述乱码修复。
 
+## 新增一期运维入口
+
+- Web SSH 交互式终端：`/ops-terminal.html`。
+- SSH 连接测试：`POST /api/ops/ssh/test`。
+- SSH 单命令执行：`POST /api/ops/ssh/exec`。
+- SSH 批量命令执行：`POST /api/ops/ssh/batch`。
+- SFTP 目录列表：`POST /api/ops/sftp/list`。
+- SFTP 小文本读取：`POST /api/ops/sftp/read`。
+- SFTP 文本写入：`POST /api/ops/sftp/write`。
+- SFTP 创建目录、删除、重命名：`/api/ops/sftp/mkdir`、`/api/ops/sftp/delete`、`/api/ops/sftp/rename`。
+
 ## 建议下一阶段
 
-- Web SSH/SFTP/端口转发。
+- 主机资产库、SSH 密钥加密保存、权限控制和操作审计。
+- 端口转发、SFTP 上传下载、大文件传输进度。
 - OCI Object Storage 管理。
 - OCI Email Delivery 自动化。
 - 成本、配额与 Always Free 风险看板。

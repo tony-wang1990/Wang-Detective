@@ -1,22 +1,21 @@
-# King-Detective Enhanced
+# Wang-Detective
 
-King-Detective 是一个面向 Oracle Cloud Infrastructure (OCI) 的管理面板和 Telegram Bot，支持 OCI 配置管理、开机任务、实例管理、IP/IPv6、VNC/救援、引导卷、安全规则、Cloudflare DNS、流量统计、备份恢复、MFA 与基础 AI 助手。
-
-本增强版重点修复部署、迁移、WebSocket、健康检查和安全预检问题，并新增系统诊断接口，方便在 VPS 上快速定位常见故障。
+Wang-Detective 是基于 King-Detective 增强的 Oracle Cloud Infrastructure (OCI) 管理面板和 Telegram Bot。它保留原有的 OCI 配置管理、开机任务、实例管理、IP/IPv6、VNC/救援、引导卷、安全规则、Cloudflare DNS、流量统计、备份恢复、MFA 和基础 AI 助手，并补上部署稳定性、诊断能力和运维入口。
 
 ## 快速部署
 
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/<your-name>/King-Detective-Enhanced/main/scripts/install.sh)
+bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/scripts/install.sh)
 ```
 
 部署完成后访问：
 
-- Web 面板: `http://your-server-ip:9527`
-- 健康检查: `http://your-server-ip:9527/actuator/health`
-- 系统诊断: `GET /api/v1/system/diagnostics`，需要登录 token
+- Web 面板：`http://your-server-ip:9527`
+- 运维终端：`http://your-server-ip:9527/ops-terminal.html`
+- 健康检查：`http://your-server-ip:9527/actuator/health`
+- 系统诊断：`GET /api/v1/system/diagnostics`，需要登录 token
 
-默认账号密码仍兼容旧版本：`admin / admin123456`。生产环境请立即在 `/app/king-detective/.env` 中修改：
+默认账号密码兼容旧版本：`admin / admin123456`。生产环境请立即在 `/app/king-detective/.env` 中修改：
 
 ```env
 ADMIN_USERNAME=admin
@@ -35,25 +34,43 @@ docker compose up -d --force-recreate
 
 增强版统一使用可持久化目录，避免更新镜像时丢数据：
 
-- 数据库: `/app/king-detective/data/king-detective.db`
-- OCI 私钥: `/app/king-detective/keys/`
-- 应用日志: `/app/king-detective/logs/king-detective.log`
-- 更新触发器: `/app/king-detective/runtime/update_version_trigger.flag`
-- 环境变量: `/app/king-detective/.env`
+- 数据库：`/app/king-detective/data/king-detective.db`
+- OCI 私钥：`/app/king-detective/keys/`
+- 应用日志：`/app/king-detective/logs/king-detective.log`
+- 更新触发器：`/app/king-detective/runtime/update_version_trigger.flag`
+- 环境变量：`/app/king-detective/.env`
 
 ## 本版增强
 
 - 修复 Docker Compose 挂载整个工作目录导致镜像内 JAR 被隐藏的问题。
-- 修复一键更新触发器与 watcher 判断逻辑不一致的问题。
-- 修复 watcher 更新版本号时数据库路径和 `oci_kv.id` 缺失问题。
-- 修复数据库迁移脚本被注释行跳过、以及不存在的 `oci_create_task.status` 索引问题。
-- 启用 MyBatis Plus SQLite 分页拦截器。
-- 修复更换 IP 任务前缀与开机任务前缀冲突的问题。
-- 修复 VCN、引导卷分页 total 返回当前页数量的问题。
-- 强化 WebSocket token 校验、非法连接关闭、历史日志推送和日志文件初始化。
-- 增强 `/actuator/health`，返回版本、运行时长和 JVM 内存信息。
+- 统一 `data/`、`keys/`、`logs/`、`runtime/` 持久化目录。
+- 修复 watcher 更新触发、数据库版本写入和 `oci_kv.id` 缺失问题。
+- 修复数据库迁移 SQL 被注释跳过和无效索引问题。
+- 启用 MyBatis Plus SQLite 分页插件。
+- 修复 VCN、引导卷分页 total 只返回当前页数量的问题。
+- 隔离开机任务和换 IP 任务的内存键前缀，避免互相覆盖。
+- 强化日志 WebSocket token 校验、非法连接关闭、历史日志推送和日志文件初始化。
+- 增强 `/actuator/health`，返回版本、运行时长、数据库和 JVM 内存状态。
 - 新增 `/api/v1/system/diagnostics`，检查数据库、数据目录、密钥目录、日志、默认密码、Bot Token、OpenAI Key、磁盘和内存。
-- 清理 POM 重复编译插件，修复项目描述乱码。
+- 新增一期运维入口：Web SSH 终端、SSH 单命令、批量命令、SFTP 列表/读取/写入/重命名/删除。
+
+## 运维终端
+
+登录 Web 面板后，可以直接打开：
+
+```text
+http://your-server-ip:9527/ops-terminal.html
+```
+
+页面会自动读取浏览器 `sessionStorage` 中的登录 token，也可以手动粘贴 token。当前一期能力包括：
+
+- 测试 SSH 连接。
+- 打开交互式 Web SSH 终端。
+- 执行单台机器命令并返回 stdout/stderr/exit status。
+- 批量对多台机器执行同一条命令。
+- SFTP 浏览目录、读取小文本文件、写入文件、创建目录、重命名和删除。
+
+安全提醒：当前一期为了便于快速运维，SSH 凭据只在请求中使用，Web SSH 会话凭据仅短时保存在服务端内存中。后续会继续补充主机资产库、密钥加密保存、审计日志、权限控制和端口转发。
 
 ## 常用命令
 
@@ -73,14 +90,24 @@ docker compose restart king-detective
 TELEGRAM_BOT_TOKEN="xxx" ADMIN_USERNAME="admin" ADMIN_PASSWORD="strong_password" bash update.sh
 ```
 
+## 本地验证
+
+本项目按 Java 21 构建：
+
+```bash
+mvn -DskipTests compile
+mvn test
+mvn package
+```
+
 ## 后续路线
 
-对比同类 R-Bot/OCI 管理工具后，后续最值得继续补齐的能力是：
+对比 R-Bot / java_oci_manage 等同类 OCI 运维工具后，下一阶段建议按这个顺序继续：
 
-- Web SSH/SFTP、批量命令与端口转发。
-- OCI Object Storage Bucket/Object 管理，用于备份、文件投递和日志归档。
-- OCI Email Delivery 自动化配置，包括 DKIM、SPF、SMTP 凭据与测试发信。
-- 成本、配额、Always Free 用量和超额风险看板。
-- 多云只读资产发现，优先支持 AWS/GCP/Azure/DO 的实例同步。
+1. 运维入口二期：主机资产库、SSH 密钥加密保存、操作审计、端口转发、SFTP 上传下载。
+2. OCI Object Storage：Bucket/Object 管理、数据库备份归档、日志归档、临时下载链接。
+3. OCI Email Delivery：DKIM/SPF 指引、SMTP 凭据检查、测试发信。
+4. 成本、配额、Always Free 用量和超额风险看板。
+5. 多云只读资产发现，优先支持 AWS/GCP/Azure/DO 的实例同步。
 
 详细改造记录见 [docs/ENHANCEMENT_REPORT.md](docs/ENHANCEMENT_REPORT.md)。
