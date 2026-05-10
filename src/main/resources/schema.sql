@@ -116,3 +116,24 @@ CREATE INDEX if not exists idx_audit_log_user_id ON audit_log(user_id);
 CREATE INDEX if not exists idx_audit_log_operation ON audit_log(operation);
 CREATE INDEX if not exists idx_audit_log_create_time ON audit_log(create_time);
 CREATE INDEX if not exists idx_audit_log_success ON audit_log(success);
+
+-- Ops SSH 主机资产表
+CREATE TABLE IF NOT EXISTS `ops_ssh_host` (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    host TEXT NOT NULL,
+    port INTEGER DEFAULT 22,
+    username TEXT NOT NULL,
+    auth_type TEXT NOT NULL DEFAULT 'password',
+    password_cipher TEXT,
+    private_key_cipher TEXT,
+    passphrase_cipher TEXT,
+    tags TEXT,
+    description TEXT,
+    last_used_at DATETIME,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX if not exists idx_ops_ssh_host_name ON ops_ssh_host(name);
+CREATE INDEX if not exists idx_ops_ssh_host_host ON ops_ssh_host(host);
+CREATE INDEX if not exists idx_ops_ssh_host_update_time ON ops_ssh_host(update_time);

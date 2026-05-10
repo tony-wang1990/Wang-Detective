@@ -33,7 +33,7 @@ public class CrossDomainFilter implements WebMvcConfigurer {
                         .map(String::trim)
                         .filter(origin -> !origin.isEmpty())
                         .toArray(String[]::new))
-                .allowedMethods("GET", "POST", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(false)
                 .maxAge(3600)
@@ -43,6 +43,6 @@ public class CrossDomainFilter implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/dist/");
+                .addResourceLocations("classpath:/static/", "classpath:/dist/");
     }
 }

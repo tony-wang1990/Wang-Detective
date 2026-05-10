@@ -41,12 +41,18 @@ public class DatabaseMigrationRunner implements ApplicationRunner {
                 !tableExists(conn, "ip_blacklist") || 
                 !tableExists(conn, "login_attempts")) {
                 log.info("检测到数据库结构缺失，开始执行 v4.0 全量迁移...");
-                executeMigrationScript(stmt);
+                executeMigrationScript(stmt, "db/migration_v4_0.sql");
                 log.info("✅ 数据库迁移完成！");
             } else {
                 log.info("✅ 数据库已是最新版本，无需迁移");
             }
             
+            if (!tableExists(conn, "ops_ssh_host")) {
+                log.info("检测到运维 SSH 主机资产表缺失，开始执行 v4.1 迁移...");
+                executeMigrationScript(stmt, "db/migration_v4_1_ops.sql");
+                log.info("运维 SSH 主机资产表迁移完成");
+            }
+
         } catch (Exception e) {
             log.error("❌ 数据库迁移失败", e);
             // 不抛出异常，允许应用继续启动
@@ -70,9 +76,9 @@ public class DatabaseMigrationRunner implements ApplicationRunner {
     /**
      * 执行迁移脚本
      */
-    private void executeMigrationScript(Statement stmt) throws Exception {
+    private void executeMigrationScript(Statement stmt, String path) throws Exception {
         // 读取 SQL 脚本
-        ClassPathResource resource = new ClassPathResource("db/migration_v4_0.sql");
+        ClassPathResource resource = new ClassPathResource(path);
         
         String sql;
         try (BufferedReader reader = new BufferedReader(

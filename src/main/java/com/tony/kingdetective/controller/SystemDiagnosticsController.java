@@ -44,6 +44,9 @@ public class SystemDiagnosticsController {
     @Value("${spring.ai.openai.api-key:}")
     private String openAiApiKey;
 
+    @Value("${ops.ssh.secret-key:}")
+    private String opsSshSecretKey;
+
     public SystemDiagnosticsController(DataSource dataSource) {
         this.dataSource = dataSource;
     }
@@ -69,6 +72,7 @@ public class SystemDiagnosticsController {
         checks.add(checkWritable("data-directory", root.toPath()));
         checks.add(checkDefaultPassword());
         checks.add(checkPresent("telegram-bot-token", telegramToken, "Telegram Bot Token"));
+        checks.add(checkOpsSshSecretKey());
         checks.add(checkOpenAiKey());
 
         long usedMemory = runtime.totalMemory() - runtime.freeMemory();
@@ -143,6 +147,16 @@ public class SystemDiagnosticsController {
             return item("openai-api-key", "WARN", "AI 聊天未配置可用 API Key");
         }
         return item("openai-api-key", "OK", "AI 聊天 API Key 已配置");
+    }
+
+    private SystemDiagnostics.CheckItem checkOpsSshSecretKey() {
+        if (opsSshSecretKey == null || opsSshSecretKey.isBlank()) {
+            return item("ops-ssh-secret-key", "WARN", "OPS_SSH_SECRET_KEY is not configured; saved SSH secrets may not be stable");
+        }
+        if ("admin123456".equals(opsSshSecretKey)) {
+            return item("ops-ssh-secret-key", "WARN", "OPS_SSH_SECRET_KEY is using the default password value");
+        }
+        return item("ops-ssh-secret-key", "OK", "OPS_SSH_SECRET_KEY is configured");
     }
 
     private SystemDiagnostics.CheckItem item(String name, String status, String message) {

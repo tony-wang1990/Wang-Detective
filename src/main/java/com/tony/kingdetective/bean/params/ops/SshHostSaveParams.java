@@ -4,16 +4,27 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class SshCredentialParams {
-    private String hostId;
+public class SshHostSaveParams {
+    @NotBlank(message = "Host name cannot be blank")
+    private String name;
 
     @NotBlank(message = "SSH host cannot be blank")
     private String host;
+
     private Integer port = 22;
+
     @NotBlank(message = "SSH username cannot be blank")
     private String username;
+
+    private String authType = "password";
+
     private String password;
+
     private String privateKey;
+
     private String passphrase;
-    private Integer connectTimeoutSeconds = 10;
+
+    private String tags;
+
+    private String description;
 }

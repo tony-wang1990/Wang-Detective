@@ -59,6 +59,54 @@ GET /ops-terminal.html
 
 ## SSH/SFTP API
 
+### 主机资产库
+
+保存主机时，密码、私钥和私钥口令会加密写入数据库。接口返回值只包含脱敏状态，例如 `hasPassword`、`hasPrivateKey`。
+
+```http
+GET /api/ops/ssh/hosts
+Authorization: Bearer <token>
+```
+
+```http
+POST /api/ops/ssh/hosts
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "tokyo-a1",
+  "host": "1.2.3.4",
+  "port": 22,
+  "username": "opc",
+  "authType": "password",
+  "password": "your_password",
+  "tags": "oci,prod,tokyo",
+  "description": "optional"
+}
+```
+
+更新和删除：
+
+```http
+PUT /api/ops/ssh/hosts/{id}
+DELETE /api/ops/ssh/hosts/{id}
+POST /api/ops/ssh/hosts/{id}/test
+Authorization: Bearer <token>
+```
+
+保存主机后，SSH/SFTP 请求可直接使用：
+
+```json
+{
+  "credential": {
+    "hostId": "saved-host-id"
+  },
+  "command": "uptime"
+}
+```
+
 ### 创建 Web SSH 会话
 
 ```http

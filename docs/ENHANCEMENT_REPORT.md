@@ -60,6 +60,7 @@
 - `WebSshService`：封装 JSch SSH exec、SFTP list/read/write/mkdir/delete/rename。
 - `WebSshSessionRegistry`：短时保存 Web SSH 会话凭据，过期自动清理。
 - `SshTerminalWebSocketHandler`：提供交互式 SSH Shell WebSocket。
+- `SshHostService`：提供 SSH 主机资产库、AES-GCM 凭据加密和 `hostId` 凭据复用。
 
 ### 已提供能力
 
@@ -68,10 +69,12 @@
 - SSH 单命令执行，返回 stdout、stderr、退出码、耗时、是否超时。
 - 多主机批量执行同一命令。
 - SFTP 目录列表、读取 1MB 以内文本、写入文本、创建目录、删除、递归删除、重命名。
+- 保存常用 SSH 主机，前端可直接选择主机执行终端、命令和 SFTP 操作。
+- 新增 `ops_ssh_host` 表和 `db/migration_v4_1_ops.sql`，已有部署会自动补齐主机资产表。
 
 ## 下一阶段建议
 
-1. 运维入口二期：主机资产库、SSH 密钥加密保存、权限控制、操作审计、端口转发、SFTP 上传下载。
+1. 运维入口二期：权限控制、操作审计、端口转发、SFTP 上传下载。
 2. OCI Object Storage：Bucket/Object 管理、数据库备份归档、日志归档、临时下载链接。
 3. OCI Email Delivery：自动生成 DKIM/SPF 指引、SMTP 凭据检查和测试发信。
 4. Always Free 风险看板：汇总 A1 OCPU/内存、块存储、实例数、流量和可能计费项。

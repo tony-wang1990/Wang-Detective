@@ -1,7 +1,10 @@
 package com.tony.kingdetective;
 
 import com.tony.kingdetective.bean.params.ops.SshCredentialParams;
+import com.tony.kingdetective.bean.params.ops.SshHostSaveParams;
+import com.tony.kingdetective.bean.response.ops.SshHostRsp;
 import com.tony.kingdetective.service.IOciKvService;
+import com.tony.kingdetective.service.ops.SshHostService;
 import com.tony.kingdetective.service.ops.WebSshSessionRegistry;
 import com.tony.kingdetective.utils.CustomExpiryGuavaCache;
 import jakarta.annotation.Resource;
@@ -31,6 +34,9 @@ class OciHelperApplicationTests {
     @Resource
     private WebSshSessionRegistry webSshSessionRegistry;
 
+    @Resource
+    private SshHostService sshHostService;
+
     @Test
     void contextLoadsWithLocalTestDatabase() {
         assertThat(applicationContext).isNotNull();
@@ -58,5 +64,30 @@ class OciHelperApplicationTests {
 
         webSshSessionRegistry.remove(entry.sessionId());
         assertThat(webSshSessionRegistry.getCredential(entry.sessionId())).isNull();
+    }
+
+    @Test
+    void sshHostServiceStoresSecretsEncryptedAndResolvesCredential() {
+        SshHostSaveParams params = new SshHostSaveParams();
+        params.setName("test-localhost");
+        params.setHost("127.0.0.1");
+        params.setPort(22);
+        params.setUsername("opc");
+        params.setPassword("secret-password");
+        params.setTags("test");
+
+        SshHostRsp saved = sshHostService.create(params);
+
+        try {
+            assertThat(saved.getHasPassword()).isTrue();
+            assertThat(saved.getHasPrivateKey()).isFalse();
+
+            SshCredentialParams credential = sshHostService.credentialForHost(saved.getId());
+            assertThat(credential.getHost()).isEqualTo("127.0.0.1");
+            assertThat(credential.getUsername()).isEqualTo("opc");
+            assertThat(credential.getPassword()).isEqualTo("secret-password");
+        } finally {
+            sshHostService.delete(saved.getId());
+        }
     }
 }

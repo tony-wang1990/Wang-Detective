@@ -13,6 +13,10 @@ web:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
+ops:
+  ssh:
+    secret-key: ${OPS_SSH_SECRET_KEY:${ADMIN_PASSWORD:${WEB_PASSWORD:admin123456}}}
+
 # Telegram Bot 配置（必须使用环境变量）
 telegram:
   bot:

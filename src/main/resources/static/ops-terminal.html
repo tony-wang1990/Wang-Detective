@@ -148,6 +148,12 @@
       background: var(--danger);
     }
 
+    button.small {
+      min-height: 30px;
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+
     button:disabled {
       opacity: .55;
       cursor: not-allowed;
@@ -269,6 +275,13 @@
       font-family: Consolas, "Courier New", monospace;
     }
 
+    .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 980px) {
       main {
         grid-template-columns: 1fr;
@@ -292,6 +305,19 @@
       <h2>连接</h2>
       <label for="token">登录 Token</label>
       <input id="token" autocomplete="off" placeholder="自动读取 sessionStorage token">
+      <label for="savedHost">保存的主机</label>
+      <select id="savedHost" onchange="selectSavedHost()">
+        <option value="">手动输入/临时主机</option>
+      </select>
+      <div class="actions">
+        <button class="secondary small" onclick="loadHosts()">刷新主机</button>
+        <button class="secondary small" onclick="saveCurrentHost()">保存/更新</button>
+        <button class="danger small" onclick="deleteSavedHost()">删除</button>
+      </div>
+      <label for="hostName">主机名称</label>
+      <input id="hostName" placeholder="例如 tokyo-a1">
+      <label for="hostTags">标签</label>
+      <input id="hostTags" placeholder="例如 oci,prod,tokyo">
       <div class="row">
         <div>
           <label for="host">主机</label>
@@ -337,7 +363,9 @@
       <textarea id="batchTargets" spellcheck="false" placeholder="name,host,port,username,password"></textarea>
       <div class="actions">
         <button class="secondary" onclick="runBatch()">批量执行</button>
+        <button class="secondary" onclick="runBatchSaved()">全部保存主机执行</button>
       </div>
+      <div class="hint">保存主机使用加密字段存储密码/私钥；批量目标仍支持临时明文输入，适合一次性操作。</div>
       <div id="commandOutput" class="output"></div>
     </div>
   </section>
@@ -399,11 +427,13 @@
 
 <script>
   let ws = null;
+  let savedHosts = [];
 
   window.addEventListener('DOMContentLoaded', () => {
     const savedToken = sessionStorage.getItem('token') || '';
     document.getElementById('token').value = savedToken;
     toggleAuthMode();
+    loadHosts().catch(() => {});
   });
 
   function token() {
@@ -411,6 +441,10 @@
   }
 
   function credential() {
+    const hostId = document.getElementById('savedHost').value;
+    if (hostId) {
+      return { hostId };
+    }
     const authMode = document.getElementById('authMode').value;
     const data = {
       host: document.getElementById('host').value.trim(),
@@ -427,20 +461,114 @@
     return data;
   }
 
-  async function api(path, body) {
-    const res = await fetch('/api/ops' + path, {
-      method: 'POST',
+  async function api(path, body, method) {
+    const options = {
+      method: method || 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token()
-      },
-      body: JSON.stringify(body || {})
+      }
+    };
+    if (body !== undefined && body !== null && options.method !== 'GET') {
+      options.body = JSON.stringify(body || {});
+    }
+    const res = await fetch('/api/ops' + path, {
+      ...options
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
       throw new Error(json.msg || ('HTTP ' + res.status));
     }
     return json.data;
+  }
+
+  async function loadHosts(keepId) {
+    const currentId = keepId !== undefined ? keepId : document.getElementById('savedHost').value;
+    savedHosts = await api('/ssh/hosts', null, 'GET');
+    const select = document.getElementById('savedHost');
+    select.innerHTML = '<option value="">手动输入/临时主机</option>';
+    for (const host of savedHosts) {
+      const option = document.createElement('option');
+      option.value = host.id;
+      option.textContent = `${host.name} (${host.username}@${host.host}:${host.port || 22})`;
+      select.appendChild(option);
+    }
+    if (currentId && savedHosts.some(host => host.id === currentId)) {
+      select.value = currentId;
+    }
+  }
+
+  function selectSavedHost() {
+    const hostId = document.getElementById('savedHost').value;
+    const host = savedHosts.find(item => item.id === hostId);
+    if (!host) {
+      document.getElementById('password').value = '';
+      document.getElementById('privateKey').value = '';
+      document.getElementById('passphrase').value = '';
+      return;
+    }
+    document.getElementById('hostName').value = host.name || '';
+    document.getElementById('hostTags').value = host.tags || '';
+    document.getElementById('host').value = host.host || '';
+    document.getElementById('port').value = host.port || 22;
+    document.getElementById('username').value = host.username || '';
+    document.getElementById('authMode').value = host.authType === 'privateKey' ? 'privateKey' : 'password';
+    document.getElementById('password').value = '';
+    document.getElementById('privateKey').value = '';
+    document.getElementById('passphrase').value = '';
+    toggleAuthMode();
+  }
+
+  function hostPayload() {
+    const authMode = document.getElementById('authMode').value;
+    const payload = {
+      name: document.getElementById('hostName').value.trim() || document.getElementById('host').value.trim(),
+      host: document.getElementById('host').value.trim(),
+      port: Number(document.getElementById('port').value || 22),
+      username: document.getElementById('username').value.trim(),
+      authType: authMode,
+      tags: document.getElementById('hostTags').value.trim()
+    };
+    if (authMode === 'privateKey') {
+      payload.privateKey = document.getElementById('privateKey').value;
+      payload.passphrase = document.getElementById('passphrase').value;
+    } else {
+      payload.password = document.getElementById('password').value;
+    }
+    return payload;
+  }
+
+  async function saveCurrentHost() {
+    const hostId = document.getElementById('savedHost').value;
+    try {
+      const saved = hostId
+        ? await api('/ssh/hosts/' + encodeURIComponent(hostId), hostPayload(), 'PUT')
+        : await api('/ssh/hosts', hostPayload(), 'POST');
+      await loadHosts(saved.id);
+      document.getElementById('savedHost').value = saved.id;
+      selectSavedHost();
+      setStatus('主机已保存', 'ok');
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function deleteSavedHost() {
+    const hostId = document.getElementById('savedHost').value;
+    if (!hostId) {
+      alert('请先选择保存的主机');
+      return;
+    }
+    if (!confirm('确认删除这个保存主机？')) {
+      return;
+    }
+    try {
+      await api('/ssh/hosts/' + encodeURIComponent(hostId), null, 'DELETE');
+      await loadHosts('');
+      setStatus('主机已删除', '');
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   function toggleAuthMode() {
@@ -552,6 +680,31 @@
     try {
       const results = await api('/ssh/batch', {
         targets,
+        command: document.getElementById('command').value,
+        timeoutSeconds: 60
+      });
+      output.textContent = results.map(formatCommandResult).join('\n\n');
+    } catch (e) {
+      output.textContent = e.message;
+    }
+  }
+
+  async function runBatchSaved() {
+    if (!savedHosts.length) {
+      await loadHosts();
+    }
+    if (!savedHosts.length) {
+      alert('还没有保存的主机');
+      return;
+    }
+    const output = document.getElementById('commandOutput');
+    output.textContent = '保存主机批量执行中...';
+    try {
+      const results = await api('/ssh/batch', {
+        targets: savedHosts.map(host => ({
+          name: host.name,
+          credential: { hostId: host.id }
+        })),
         command: document.getElementById('command').value,
         timeoutSeconds: 60
       });

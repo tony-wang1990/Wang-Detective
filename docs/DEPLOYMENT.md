@@ -66,6 +66,7 @@ TELEGRAM_BOT_USERNAME=你的Bot Username
 # Web Admin
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=强密码请改掉
+OPS_SSH_SECRET_KEY=请设置为稳定随机密钥
 
 # OpenAI (可选)
 OPENAI_API_KEY=

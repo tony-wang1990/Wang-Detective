@@ -79,14 +79,14 @@ echo "步骤 3: 下载配置文件..."
 
 # 只在文件不存在时才下载，避免覆盖用户配置
 if [ ! -f "docker-compose.yml" ]; then
-    wget -q https://raw.githubusercontent.com/tony-wang1990/King-Detective/main/docker-compose.yml || { echo "错误: 下载 docker-compose.yml 失败"; exit 1; }
+    wget -q https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/docker-compose.yml || { echo "错误: 下载 docker-compose.yml 失败"; exit 1; }
     echo "  - docker-compose.yml 下载成功"
 else
     echo "  - docker-compose.yml 已存在，跳过下载"
 fi
 
 if [ ! -f "application.yml" ]; then
-    wget -q https://raw.githubusercontent.com/tony-wang1990/King-Detective/main/src/main/resources/application.yml || { echo "错误: 下载 application.yml 失败"; exit 1; }
+    wget -q https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/src/main/resources/application.yml || { echo "错误: 下载 application.yml 失败"; exit 1; }
     echo "  - application.yml 下载成功"
 else
     echo "  - application.yml 已存在，保留现有配置"
@@ -95,10 +95,12 @@ fi
 if [ ! -f ".env" ]; then
     ADMIN_USERNAME="${ADMIN_USERNAME:-${WEB_ACCOUNT:-admin}}"
     ADMIN_PASSWORD="${ADMIN_PASSWORD:-${WEB_PASSWORD:-admin123456}}"
+    OPS_SSH_SECRET_KEY="${OPS_SSH_SECRET_KEY:-$ADMIN_PASSWORD}"
     TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-${BOT_TOKEN:-}}"
     cat > .env <<EOF
 ADMIN_USERNAME=${ADMIN_USERNAME}
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
+OPS_SSH_SECRET_KEY=${OPS_SSH_SECRET_KEY}
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
 TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-king_detective_bot}
 OPENAI_API_KEY=${OPENAI_API_KEY:-}

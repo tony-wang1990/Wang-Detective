@@ -32,6 +32,8 @@
 ## 新增一期运维入口
 
 - Web SSH 交互式终端：`/ops-terminal.html`。
+- SSH 主机资产库：保存、更新、删除常用主机。
+- SSH 凭据加密保存：密码、私钥和私钥口令使用 AES-GCM 加密后写入数据库。
 - SSH 连接测试：`POST /api/ops/ssh/test`。
 - SSH 单命令执行：`POST /api/ops/ssh/exec`。
 - SSH 批量命令执行：`POST /api/ops/ssh/batch`。
@@ -42,7 +44,7 @@
 
 ## 建议下一阶段
 
-- 主机资产库、SSH 密钥加密保存、权限控制和操作审计。
+- 权限控制、操作审计和敏感操作二次确认。
 - 端口转发、SFTP 上传下载、大文件传输进度。
 - OCI Object Storage 管理。
 - OCI Email Delivery 自动化。
