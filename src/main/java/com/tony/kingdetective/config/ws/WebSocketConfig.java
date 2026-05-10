@@ -2,6 +2,7 @@ package com.tony.kingdetective.config.ws;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
@@ -30,6 +31,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     }
 
     @Bean
+    @ConditionalOnProperty(prefix = "king-detective.websocket", name = "server-endpoint-exporter-enabled", havingValue = "true", matchIfMissing = true)
     public ServerEndpointExporter serverEndpointExporter() {
         return new ServerEndpointExporter();
     }

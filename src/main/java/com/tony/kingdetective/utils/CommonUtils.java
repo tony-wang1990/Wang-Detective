@@ -42,6 +42,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -63,6 +64,10 @@ public class CommonUtils {
     public static final String TERMINATE_INSTANCE_PREFIX = "TERMINATE_INSTANCE_PREFIX_";
     public static final String LOG_FILE_PATH = "/var/log/king-detective.log";
     public static final String MFA_QR_PNG_PATH = System.getProperty("user.dir") + File.separator + "mfa.png";
+    private static final String DEFAULT_GITHUB_REPOSITORY = "tony-wang1990/King-Detective";
+    private static final long GITHUB_RELEASE_CACHE_MILLIS = TimeUnit.MINUTES.toMillis(15);
+    private static volatile JSONObject latestReleaseCache;
+    private static volatile long latestReleaseCacheExpiresAt;
     private static final String CIDR_REGEX =
             "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$";
     private static final Pattern CIDR_PATTERN = Pattern.compile(CIDR_REGEX);
@@ -610,11 +615,87 @@ public class CommonUtils {
     }
 
     public static String getLatestVersion() {
-        return getGithubRepositoryInfo("tag_name");
+        return getGithubRepositoryInfoCached("tag_name");
     }
 
     public static String getLatestVersionBody() {
-        return getGithubRepositoryInfo("body");
+        return getGithubRepositoryInfoCached("body");
+    }
+
+    private static String getGithubRepositoryInfoCached(String item) {
+        JSONObject latestRelease = getLatestGithubRelease();
+        return latestRelease == null ? null : latestRelease.getStr(item);
+    }
+
+    private static JSONObject getLatestGithubRelease() {
+        long now = System.currentTimeMillis();
+        JSONObject cached = latestReleaseCache;
+        if (cached != null && now < latestReleaseCacheExpiresAt) {
+            return cached;
+        }
+
+        synchronized (CommonUtils.class) {
+            now = System.currentTimeMillis();
+            if (latestReleaseCache != null && now < latestReleaseCacheExpiresAt) {
+                return latestReleaseCache;
+            }
+            latestReleaseCache = fetchLatestGithubRelease();
+            latestReleaseCacheExpiresAt = now + GITHUB_RELEASE_CACHE_MILLIS;
+            return latestReleaseCache;
+        }
+    }
+
+    private static JSONObject fetchLatestGithubRelease() {
+        String repository = getGithubRepository();
+        String apiUrl = "https://api.github.com/repos/" + repository + "/releases/latest";
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(apiUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
+            connection.setRequestProperty("User-Agent", "King-Detective");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    return new JSONObject(response.toString());
+                }
+            } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                log.warn("No GitHub release found for repository {}, skipping update notice.", repository);
+            } else {
+                log.warn("Failed to fetch the latest release for repository {}. HTTP response code: {}", repository, responseCode);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch the latest release for repository {}: {}", repository, e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        return new JSONObject();
+    }
+
+    private static String getGithubRepository() {
+        String repository = System.getenv("KING_DETECTIVE_GITHUB_REPOSITORY");
+        if (StrUtil.isBlank(repository)) {
+            repository = System.getenv("GITHUB_REPOSITORY");
+        }
+        if (StrUtil.isBlank(repository)) {
+            return DEFAULT_GITHUB_REPOSITORY;
+        }
+        return repository
+                .replace("https://github.com/", "")
+                .replace("http://github.com/", "")
+                .replace(".git", "")
+                .trim();
     }
 
     private static String getGithubRepositoryInfo(String item) {

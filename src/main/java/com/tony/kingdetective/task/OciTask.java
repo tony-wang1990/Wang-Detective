@@ -27,6 +27,7 @@ import com.tony.kingdetective.telegram.TgBot;
 import com.tony.kingdetective.utils.CommonUtils;
 import com.tony.kingdetective.utils.SQLiteHelper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -57,6 +58,7 @@ import static com.tony.kingdetective.service.impl.OciServiceImpl.*;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "king-detective.startup", name = "tasks-enabled", havingValue = "true", matchIfMissing = true)
 public class OciTask implements ApplicationRunner {
 
     @Resource
