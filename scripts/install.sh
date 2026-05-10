@@ -72,7 +72,7 @@ else
 fi
 
 echo "步骤 2: 创建目录..."
-mkdir -p /app/king-detective/keys || { echo "错误: 无法创建目录"; exit 1; }
+mkdir -p /app/king-detective/data /app/king-detective/keys /app/king-detective/logs /app/king-detective/runtime || { echo "错误: 无法创建目录"; exit 1; }
 cd /app/king-detective || { echo "错误: 无法进入目录"; exit 1; }
 
 echo "步骤 3: 下载配置文件..."
@@ -92,11 +92,26 @@ else
     echo "  - application.yml 已存在，保留现有配置"
 fi
 
-if [ ! -f "king-detective.db" ]; then
-    wget -q https://raw.githubusercontent.com/tony-wang1990/King-Detective/main/src/main/resources/king-detective.db || { echo "错误: 下载 king-detective.db 失败"; exit 1; }
-    echo "  - king-detective.db 下载成功"
+if [ ! -f ".env" ]; then
+    ADMIN_USERNAME="${ADMIN_USERNAME:-${WEB_ACCOUNT:-admin}}"
+    ADMIN_PASSWORD="${ADMIN_PASSWORD:-${WEB_PASSWORD:-admin123456}}"
+    TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-${BOT_TOKEN:-}}"
+    cat > .env <<EOF
+ADMIN_USERNAME=${ADMIN_USERNAME}
+ADMIN_PASSWORD=${ADMIN_PASSWORD}
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-king_detective_bot}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.siliconflow.cn}
+CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+EOF
+    chmod 600 .env
+    echo "  - .env 已生成"
+    if [ "$ADMIN_PASSWORD" = "admin123456" ]; then
+        echo "  - 警告: 当前仍使用默认密码，建议尽快修改 ADMIN_PASSWORD"
+    fi
 else
-    echo "  - king-detective.db 已存在，保留现有数据"
+    echo "  - .env 已存在，保留现有环境配置"
 fi
 
 echo "步骤 4: 拉取最新镜像..."
@@ -108,4 +123,5 @@ docker-compose up -d --force-recreate || { echo "错误: 启动服务失败"; ex
 echo ""
 echo "=== 安装完成！ ==="
 echo "访问地址: http://$(curl -s ifconfig.me):9527"
-echo "默认账号: admin / admin123456"
+echo "账号信息: 请查看 /app/king-detective/.env 中的 ADMIN_USERNAME / ADMIN_PASSWORD"
+echo "健康检查: http://127.0.0.1:9527/actuator/health"

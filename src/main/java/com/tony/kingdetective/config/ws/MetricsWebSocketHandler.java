@@ -21,9 +21,11 @@ import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
@@ -41,6 +43,7 @@ public class MetricsWebSocketHandler {
     private static final ConcurrentHashMap<String, Session> SESSION_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Boolean> IS_OPEN_MAP = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Future<?>> FUTURE_MAP = new ConcurrentHashMap<>();
+    private static final ExecutorService METRICS_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
     Map<String, Object> metrics = new HashMap<>();
     List<String> timestamps = new LinkedList<>();
     List<Double> inRates = new LinkedList<>();
@@ -49,7 +52,12 @@ public class MetricsWebSocketHandler {
     int size = 15;
 
     private boolean validateToken(String token) {
-        return !CommonUtils.isTokenExpired(token) && JWTUtil.verify(token, ((String) TEMP_MAP.get("password")).getBytes());
+        Object password = TEMP_MAP.get("password");
+        return token != null
+                && password instanceof String passwordText
+                && StrUtil.isNotBlank(passwordText)
+                && !CommonUtils.isTokenExpired(token)
+                && JWTUtil.verify(token, passwordText.getBytes(StandardCharsets.UTF_8));
     }
 
     @OnOpen
@@ -156,7 +164,7 @@ public class MetricsWebSocketHandler {
     }
 
     private void execGenTrafficData(String token) {
-        Future<?> future = Executors.newSingleThreadExecutor().submit(() -> {
+        Future<?> future = METRICS_EXECUTOR.submit(() -> {
             SystemInfo systemInfo = new SystemInfo();
             List<NetworkIF> networkIFs = systemInfo.getHardware().getNetworkIFs();
 
@@ -189,7 +197,8 @@ public class MetricsWebSocketHandler {
                     try {
                         Thread.sleep(interval * 1000L); // 每秒更新一次
                     } catch (InterruptedException e) {
-
+                        Thread.currentThread().interrupt();
+                        break;
                     }
                     networkIF.updateAttributes();
 

@@ -91,7 +91,7 @@ public class BootVolumeServiceImpl implements IBootVolumeService {
                 .sorted(Comparator.comparing(BootVolumeListPage.BootVolumeInfo::getDisplayName)).collect(Collectors.toList());
 
         List<BootVolumeListPage.BootVolumeInfo> pageList = CommonUtils.getPage(resList, params.getCurrentPage(), params.getPageSize());
-        return BootVolumeListPage.buildPage(pageList, params.getPageSize(), params.getCurrentPage(), pageList.size());
+        return BootVolumeListPage.buildPage(pageList, params.getPageSize(), params.getCurrentPage(), resList.size());
     }
 
     @Override

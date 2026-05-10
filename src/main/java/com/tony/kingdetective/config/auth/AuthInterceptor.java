@@ -16,6 +16,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -105,7 +106,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean validateToken(String token) {
-        return !CommonUtils.isTokenExpired(token) && JWTUtil.verify(token, password.getBytes());
+        return !CommonUtils.isTokenExpired(token) && JWTUtil.verify(token, password.getBytes(StandardCharsets.UTF_8));
     }
     
     /**

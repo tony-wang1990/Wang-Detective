@@ -17,10 +17,16 @@ import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 @Configuration
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
+    private final LogWebSocketHandler logWebSocketHandler;
+
+    public WebSocketConfig(LogWebSocketHandler logWebSocketHandler) {
+        this.logWebSocketHandler = logWebSocketHandler;
+    }
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new LogWebSocketHandler(), "/logs")
-                .setAllowedOrigins("*");
+        registry.addHandler(logWebSocketHandler, "/logs")
+                .setAllowedOriginPatterns("*");
     }
 
     @Bean

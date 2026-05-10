@@ -25,7 +25,8 @@ RUN apt update && \
 
 FROM base-with-tools
 
-ENV KING_DETECTIVE_VERSION=3.0.1
+ARG APP_VERSION=4.1.1
+ENV KING_DETECTIVE_VERSION=${APP_VERSION}
 
 WORKDIR /app/king-detective
 
@@ -35,6 +36,9 @@ COPY --from=builder /app/king-detective.jar .
 VOLUME ["/app/king-detective/data", "/app/king-detective/keys"]
 
 EXPOSE 9527
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:9527/actuator/health | grep -q '"status":"UP"' || exit 1
 
 CMD exec java \
     --add-opens java.base/java.net=ALL-UNNAMED \

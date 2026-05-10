@@ -102,16 +102,4 @@ public class IcmpUtils {
 
         return false;
     }
-
-    // 示例调用
-    public static void main(String[] args) {
-        String result = ping("s14.serv00.com", 4, 3000);
-        System.out.println(result);
-
-        if (isPacketLoss100(result)) {
-            System.out.println("⚠️ 网络不可达，100% 丢包");
-        } else {
-            System.out.println("✅ 网络可达，部分或无丢包");
-        }
-    }
 }

@@ -20,8 +20,8 @@
 ### ☐ 2. 创建环境变量文件
 - [ ] 创建 `.env` 文件（项目根目录）
 - [ ] 添加 `TELEGRAM_BOT_TOKEN=新Token`
-- [ ] 添加 `WEB_ACCOUNT=your_account`
-- [ ] 添加 `WEB_PASSWORD=strong_password`
+- [ ] 添加 `ADMIN_USERNAME=your_account`
+- [ ] 添加 `ADMIN_PASSWORD=strong_password`
 - [ ] **确认 `.env` 不会被提交到Git**
 
 **完成时间**:_______
@@ -126,8 +126,8 @@ docker exec king-detective env | grep TELEGRAM
 ```
 
 - [ ] TELEGRAM_BOT_TOKEN 已设置
-- [ ] WEB_ACCOUNT 已设置
-- [ ] WEB_PASSWORD 已设置
+- [ ] ADMIN_USERNAME 已设置
+- [ ] ADMIN_PASSWORD 已设置
 
 ### Git仓库检查
 ```bash

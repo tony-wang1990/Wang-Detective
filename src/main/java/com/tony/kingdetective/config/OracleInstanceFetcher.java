@@ -827,8 +827,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
                 .forRouteTable(getRouteTableRequest, RouteTable.LifecycleState.Available)
                 .execute();
         if (log.isDebugEnabled()) {
-            System.out.println("Cleared route rules from route table:" + vcn.getDefaultRouteTableId());
-            System.out.println();
+            log.debug("Cleared route rules from route table: {}", vcn.getDefaultRouteTableId());
         }
 
     }
@@ -945,9 +944,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
                 getNetworkSecurityGroupResponse.getNetworkSecurityGroup();
 
         if (log.isDebugEnabled()) {
-            System.out.println("Created Network Security Group:" + networkSecurityGroup.getId());
-            System.out.println(networkSecurityGroup);
-            System.out.println();
+            log.debug("Created Network Security Group: {}, details: {}", networkSecurityGroup.getId(), networkSecurityGroup);
         }
 
         return networkSecurityGroup;
@@ -974,8 +971,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
                 .execute();
 
         if (log.isDebugEnabled()) {
-            System.out.println("Deleted Network Security Group:" + networkSecurityGroup.getId());
-            System.out.println();
+            log.debug("Deleted Network Security Group: {}", networkSecurityGroup.getId());
         }
 
     }
@@ -1008,10 +1004,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
         List<SecurityRule> securityRules = listNetworkSecurityGroupSecurityRulesResponse.getItems();
 
         if (log.isDebugEnabled()) {
-            System.out.println("Current Security Rules in Network Security Group");
-            System.out.println("================================================");
-            securityRules.forEach(System.out::println);
-            System.out.println();
+            log.debug("Current Security Rules in Network Security Group: {}", securityRules);
         }
 
         AddSecurityRuleDetails addSecurityRuleDetails =
@@ -1046,10 +1039,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
         securityRules = listNetworkSecurityGroupSecurityRulesResponse.getItems();
 
         if (log.isDebugEnabled()) {
-            System.out.println("Updated Security Rules in Network Security Group");
-            System.out.println("================================================");
-            securityRules.forEach(System.out::println);
-            System.out.println();
+            log.debug("Updated Security Rules in Network Security Group: {}", securityRules);
         }
 
     }
@@ -1083,10 +1073,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
         virtualNetworkClient.removeNetworkSecurityGroupSecurityRules(
                 removeNetworkSecurityGroupSecurityRulesRequest);
 
-        System.out.println(
-                "Removed all Security Rules in Network Security Group:"
-                        + networkSecurityGroup.getId());
-        System.out.println();
+        log.debug("Removed all Security Rules in Network Security Group: {}", networkSecurityGroup.getId());
     }
 
     synchronized private Instance createInstance(ComputeWaiters computeWaiters, LaunchInstanceDetails launchInstanceDetails)

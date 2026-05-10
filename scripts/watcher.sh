@@ -3,12 +3,12 @@ set -e
 
 # 安装必要工具
 echo "📦 安装必要工具 (docker-cli, curl, sqlite)..."
-if ! command -v docker &> /dev/null; then
+if ! command -v docker >/dev/null 2>&1; then
     # Docker CLI 未安装，一起安装所有工具
-    apk add --no-cache docker-cli curl sqlite
+    apk add --no-cache docker-cli docker-cli-compose curl sqlite
 else
     # Docker CLI 已安装，只安装其他工具
-    apk add --no-cache curl sqlite 2>/dev/null || true
+    apk add --no-cache docker-cli-compose curl sqlite 2>/dev/null || true
 fi
 echo "✅ 工具安装完成"
 
@@ -22,13 +22,13 @@ echo "⏰ 检测间隔: 2秒"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-TRIGGER_FILE="/app/king-detective/update_version_trigger.flag"
+TRIGGER_FILE="/app/king-detective/runtime/update_version_trigger.flag"
 
 while true; do
   if [ -f "$TRIGGER_FILE" ]; then
     content=$(cat "$TRIGGER_FILE" 2>/dev/null | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
     
-    if [ "$content" = "trigger" ]; then
+    if [ -n "$content" ]; then
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "✅ [$(date '+%Y-%m-%d %H:%M:%S')] 检测到更新触发器！"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -44,7 +44,7 @@ while true; do
       }
       
       echo "🧹 [2/5] 清理旧镜像..."
-      OLD_IMAGE=$(docker images | grep "king-detective" | grep -v "watcher" | awk 'NR==1{print $3}')
+      OLD_IMAGE=$(docker images --format '{{.Repository}} {{.ID}}' | awk '$1=="ghcr.io/tony-wang1990/king-detective"{print $2; exit}')
       if [ -n "$OLD_IMAGE" ]; then
         docker rmi -f "$OLD_IMAGE" 2>/dev/null || echo "  ↳ 旧镜像使用中，跳过删除"
       else
@@ -81,7 +81,7 @@ while true; do
         echo "  ↳ GitHub最新版本: $LATEST_TAG"
         
         # 更新数据库版本号
-        DB_FILE="/app/king-detective/king-detective.db"
+        DB_FILE="/app/king-detective/data/king-detective.db"
         if [ -f "$DB_FILE" ]; then
           RECORD_EXISTS=$(sqlite3 "$DB_FILE" "SELECT COUNT(*) FROM oci_kv WHERE code = 'Y106' AND type = 'Y003';" 2>/dev/null || echo "0")
           
@@ -90,7 +90,8 @@ while true; do
             echo "  ↳ ✅ 数据库版本号已更新为: $LATEST_TAG"
           else
             # 插入新记录
-            sqlite3 "$DB_FILE" "INSERT INTO oci_kv (code, type, value) VALUES ('Y106', 'Y003', '$LATEST_TAG');" 2>/dev/null && \
+            KV_ID="$(date +%s%N)"
+            sqlite3 "$DB_FILE" "INSERT INTO oci_kv (id, code, type, value) VALUES ('$KV_ID', 'Y106', 'Y003', '$LATEST_TAG');" 2>/dev/null && \
               echo "  ↳ ✅ 已插入版本号记录" || \
               echo "  ↳ ⚠️ 版本号记录操作失败"
           fi

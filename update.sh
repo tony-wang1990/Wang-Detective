@@ -13,16 +13,20 @@ echo ""
 # 配置变量
 CONTAINER_NAME="king-detective"
 IMAGE_NAME="ghcr.io/tony-wang1990/king-detective:main"
-DATA_DIR="/root/king-detective/data"
-KEYS_DIR="/root/king-detective/keys"
+BASE_DIR="${KING_DETECTIVE_HOME:-/app/king-detective}"
+DATA_DIR="$BASE_DIR/data"
+KEYS_DIR="$BASE_DIR/keys"
+LOGS_DIR="$BASE_DIR/logs"
 
 # 从环境变量读取敏感配置（请在服务器上设置这些环境变量）
 # 示例：export BOT_TOKEN="你的token"
 #      export ADMIN_USERNAME="你的用户名"
 #      export ADMIN_PASSWORD="你的密码"
 
-if [ -z "$BOT_TOKEN" ]; then
-    echo "❌ 错误: 未设置环境变量 BOT_TOKEN"
+TELEGRAM_TOKEN="${TELEGRAM_BOT_TOKEN:-${BOT_TOKEN:-}}"
+
+if [ -z "$TELEGRAM_TOKEN" ]; then
+    echo "❌ 错误: 未设置环境变量 TELEGRAM_BOT_TOKEN 或 BOT_TOKEN"
     echo ""
     echo "请先设置环境变量："
     echo "  export BOT_TOKEN=\"你的Telegram Bot Token\""
@@ -53,6 +57,11 @@ fi
 if [ ! -d "$KEYS_DIR" ]; then
     echo "⚠️  私钥目录不存在，创建: $KEYS_DIR"
     mkdir -p "$KEYS_DIR"
+fi
+
+if [ ! -d "$LOGS_DIR" ]; then
+    echo "⚠️  日志目录不存在，创建: $LOGS_DIR"
+    mkdir -p "$LOGS_DIR"
 fi
 
 # 检查数据库文件
@@ -87,9 +96,12 @@ docker run -d \
   -p 9527:9527 \
   -e ADMIN_USERNAME="$ADMIN_USERNAME" \
   -e ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-  -e TELEGRAM_BOT_TOKEN="$BOT_TOKEN" \
+  -e TELEGRAM_BOT_TOKEN="$TELEGRAM_TOKEN" \
+  -e OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}" \
+  -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-https://api.siliconflow.cn}" \
   -v "$DATA_DIR:/app/king-detective/data" \
   -v "$KEYS_DIR:/app/king-detective/keys" \
+  -v "$LOGS_DIR:/var/log" \
   --restart unless-stopped \
   "$IMAGE_NAME"
 

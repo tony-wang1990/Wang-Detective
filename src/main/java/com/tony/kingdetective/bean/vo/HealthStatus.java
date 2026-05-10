@@ -19,6 +19,18 @@ public class HealthStatus {
     
     /** 内存状态 */
     private Boolean memoryStatus;
+
+    /** JVM 已用内存（字节） */
+    private Long usedMemoryBytes;
+
+    /** JVM 最大内存（字节） */
+    private Long maxMemoryBytes;
+
+    /** 应用运行时长（秒） */
+    private Long uptimeSeconds;
+
+    /** 当前版本 */
+    private String version;
     
     /** 时间戳 */
     private Long timestamp;

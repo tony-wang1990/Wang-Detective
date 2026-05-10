@@ -95,7 +95,7 @@ public class ApiRateLimiter {
         
         if (!userLimiter.tryAcquire(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             log.warn("用户 {} 请求过于频繁，已触发限流", userId);
-            throw new OciException(-429, "请求过于频繁，请稍后再试");
+            throw new OciException(429, "请求过于频繁，请稍后再试");
         }
         
         // 2. 检查API级别限制
@@ -106,7 +106,7 @@ public class ApiRateLimiter {
         
         if (!apiLimiter.tryAcquire(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             log.warn("API {} 调用过于频繁，用户: {}", apiName, userId);
-            throw new OciException(-429, String.format("【%s】调用过于频繁，请稍后再试", apiName));
+            throw new OciException(429, String.format("【%s】调用过于频繁，请稍后再试", apiName));
         }
         
         log.debug("API {} 速率限制检查通过，用户: {}", apiName, userId);

@@ -74,7 +74,7 @@ check_deployment_type() {
 # 拉取最新镜像
 pull_latest_image() {
     log_info "正在拉取最新Docker镜像..."
-    docker pull tonywang1990/king-detective:latest
+    docker pull ghcr.io/tony-wang1990/king-detective:main
     log_success "镜像拉取完成"
 }
 
@@ -101,7 +101,7 @@ wait_for_service() {
     
     # 检查健康状态（最多等待60秒）
     for i in {1..12}; do
-        if curl -s http://localhost:8080/actuator/health | grep -q "UP"; then
+        if curl -s http://localhost:9527/actuator/health | grep -q "UP"; then
             log_success "服务已就绪"
             return 0
         fi
@@ -158,8 +158,8 @@ show_deployment_info() {
     log_success "King-Detective已成功部署！"
     echo ""
     echo "📊 服务信息："
-    echo "   - 应用地址: http://localhost:8080"
-    echo "   - 健康检查: http://localhost:8080/actuator/health"
+    echo "   - 应用地址: http://localhost:9527"
+    echo "   - 健康检查: http://localhost:9527/actuator/health"
     echo ""
     echo "🔧 管理命令："
     echo "   - 查看日志: docker logs -f king-detective"

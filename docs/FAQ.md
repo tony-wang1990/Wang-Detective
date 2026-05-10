@@ -282,7 +282,7 @@ docker-compose down && docker-compose up -d
 **A**:
 ```bash
 # 健康检查
-curl http://localhost:9527/api/health
+curl http://localhost:9527/actuator/health
 
 # 查看日志
 docker logs -f king-detective

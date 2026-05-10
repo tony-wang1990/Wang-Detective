@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.sql.DataSource;
+import java.lang.management.ManagementFactory;
 import java.sql.Connection;
 
 /**
@@ -34,7 +35,10 @@ public class HealthCheckController {
         log.debug("执行健康检查");
         
         boolean databaseOk = checkDatabase();
-        boolean memoryOk = checkMemory();
+        Runtime runtime = Runtime.getRuntime();
+        long maxMemory = runtime.maxMemory();
+        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+        boolean memoryOk = checkMemory(usedMemory, maxMemory);
         
         String status = (databaseOk && memoryOk) ? "UP" : "DOWN";
         
@@ -42,6 +46,10 @@ public class HealthCheckController {
                 .status(status)
                 .databaseConnectivity(databaseOk)
                 .memoryStatus(memoryOk)
+                .usedMemoryBytes(usedMemory)
+                .maxMemoryBytes(maxMemory)
+                .uptimeSeconds(ManagementFactory.getRuntimeMXBean().getUptime() / 1000)
+                .version(getVersion())
                 .timestamp(System.currentTimeMillis())
                 .build();
     }
@@ -61,11 +69,8 @@ public class HealthCheckController {
     /**
      * 检查内存状态
      */
-    private boolean checkMemory() {
+    private boolean checkMemory(long usedMemory, long maxMemory) {
         try {
-            Runtime runtime = Runtime.getRuntime();
-            long maxMemory = runtime.maxMemory();
-            long usedMemory = runtime.totalMemory() - runtime.freeMemory();
             double usagePercent = (double) usedMemory / maxMemory * 100;
             
             log.debug("内存使用率: {:.2f}%", usagePercent);
@@ -76,5 +81,16 @@ public class HealthCheckController {
             log.error("内存检查失败", e);
             return false;
         }
+    }
+
+    private String getVersion() {
+        String version = System.getenv("KING_DETECTIVE_VERSION");
+        if (version == null || version.isBlank()) {
+            version = System.getenv("APP_VERSION");
+        }
+        if (version == null || version.isBlank()) {
+            version = getClass().getPackage().getImplementationVersion();
+        }
+        return version == null || version.isBlank() ? "dev" : version;
     }
 }

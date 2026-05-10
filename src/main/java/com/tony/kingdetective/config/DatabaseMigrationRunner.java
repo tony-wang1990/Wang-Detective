@@ -77,14 +77,17 @@ public class DatabaseMigrationRunner implements ApplicationRunner {
         String sql;
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
-            sql = reader.lines().collect(Collectors.joining("\n"));
+            sql = reader.lines()
+                    .map(line -> line.replaceFirst("--.*$", "").trim())
+                    .filter(line -> !line.isEmpty())
+                    .collect(Collectors.joining("\n"));
         }
         
         // 分割并执行每条 SQL 语句
         String[] statements = sql.split(";");
         for (String statement : statements) {
             String trimmed = statement.trim();
-            if (!trimmed.isEmpty() && !trimmed.startsWith("--")) {
+            if (!trimmed.isEmpty()) {
                 try {
                     log.debug("执行 SQL: {}", trimmed.substring(0, Math.min(50, trimmed.length())) + "...");
                     stmt.execute(trimmed);

@@ -1,8 +1,11 @@
 package com.tony.kingdetective.config.auth;
 
 import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.*;
+
+import java.util.Arrays;
 
 /**
  * @author: Tony Wang
@@ -14,6 +17,9 @@ public class CrossDomainFilter implements WebMvcConfigurer {
     @Resource
     private AuthInterceptor authInterceptor;
 
+    @Value("${web.cors.allowed-origins:*}")
+    private String allowedOrigins;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
@@ -23,7 +29,10 @@ public class CrossDomainFilter implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")
+                .allowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(origin -> !origin.isEmpty())
+                        .toArray(String[]::new))
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(false)

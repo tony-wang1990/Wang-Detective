@@ -1,8 +1,6 @@
-version: '3.3'
-
 services:
   watcher:
-    image: alpine:latest
+    image: docker:27-cli
     container_name: king-detective-watcher
     restart: always
     command: sh /scripts/watcher.sh
@@ -13,20 +11,35 @@ services:
     environment:
       - TZ=Asia/Shanghai
 
-
   king-detective:
     image: ghcr.io/tony-wang1990/king-detective:main
     container_name: king-detective
     restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123456}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-king_detective_bot}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.siliconflow.cn}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
     ports:
       - "9527:9527"
     volumes:
-      - ./application.yml:/app/king-detective/application.yml
-      - ./king-detective.db:/app/king-detective/king-detective.db
+      - ./application.yml:/app/king-detective/application.yml:ro
+      - ./data:/app/king-detective/data
       - ./keys:/app/king-detective/keys
-      - ./:/app/king-detective
+      - ./logs:/var/log
+      - ./runtime:/app/king-detective/runtime
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9527/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
 
   websockify:
     image: ghcr.io/tony-wang1990/king-detective-websockify:main

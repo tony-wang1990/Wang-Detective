@@ -333,7 +333,7 @@ public class SysServiceImpl implements ISysService {
                     .collect(Collectors.toMap(Map.Entry::getKey, (x) -> x.getValue().list()));
             String jsonStr = JSONUtil.toJsonStr(listMap);
             dataFile = FileUtil.touch(basicDirPath + "data.json");
-            FileUtil.writeString(jsonStr, dataFile, Charset.defaultCharset());
+            FileUtil.writeString(jsonStr, dataFile, CharsetUtil.UTF_8);
             FileUtil.copy(dataFile, tempDir, true);
 
             outEncZip = FileUtil.touch(tempDir.getAbsolutePath() + ".zip");
@@ -382,7 +382,7 @@ public class SysServiceImpl implements ISysService {
                     .collect(Collectors.toMap(Map.Entry::getKey, (x) -> x.getValue().list()));
             String jsonStr = JSONUtil.toJsonStr(listMap);
             dataFile = FileUtil.touch(basicDirPath + "data.json");
-            FileUtil.writeString(jsonStr, dataFile, Charset.defaultCharset());
+            FileUtil.writeString(jsonStr, dataFile, CharsetUtil.UTF_8);
             FileUtil.copy(dataFile, tempDir, true);
 
             outEncZip = FileUtil.touch(tempDir.getAbsolutePath() + ".zip");
@@ -478,7 +478,6 @@ public class SysServiceImpl implements ISysService {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
             log.error("恢复数据失败：{}", e.getLocalizedMessage());
             throw new OciException(-1, "恢复数据失败");
         } finally {
@@ -579,7 +578,6 @@ public class SysServiceImpl implements ISysService {
 
             log.info("数据恢复成功");
         } catch (Exception e) {
-            e.printStackTrace();
             log.error("恢复数据失败：{}", e.getLocalizedMessage());
             throw new OciException(-1, "恢复数据失败");
         } finally {

@@ -1,6 +1,7 @@
 package com.tony.kingdetective.aspect;
 
 import com.oracle.bmc.model.BmcException;
+import com.tony.kingdetective.annotation.RetryableOciApi;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -27,16 +28,17 @@ public class ApiRetryAspect {
     /**
      * 自动重试 OCI API 调用
      */
-    @Around("@annotation(com.tony.kingdetective.annotation.RetryableOciApi)")
-    public Object retryOciApiCall(ProceedingJoinPoint joinPoint) throws Throwable {
+    @Around("@annotation(retryableOciApi)")
+    public Object retryOciApiCall(ProceedingJoinPoint joinPoint, RetryableOciApi retryableOciApi) throws Throwable {
         String methodName = joinPoint.getSignature().toShortString();
         int attempt = 0;
-        long backoffMs = INITIAL_BACKOFF_MS;
+        int maxAttempts = retryableOciApi.maxAttempts() > 0 ? retryableOciApi.maxAttempts() : MAX_RETRY_ATTEMPTS;
+        long backoffMs = retryableOciApi.delayMs() > 0 ? retryableOciApi.delayMs() : INITIAL_BACKOFF_MS;
         
         while (true) {
             attempt++;
             try {
-                log.debug("执行 API 调用: {} (尝试 {}/{})", methodName, attempt, MAX_RETRY_ATTEMPTS);
+                log.debug("执行 API 调用: {} (尝试 {}/{})", methodName, attempt, maxAttempts);
                 Object result = joinPoint.proceed();
                 
                 if (attempt > 1) {
@@ -46,11 +48,11 @@ public class ApiRetryAspect {
                 return result;
                 
             } catch (BmcException e) {
-                boolean shouldRetry = shouldRetry(e, attempt);
+                boolean shouldRetry = shouldRetry(e, attempt, maxAttempts);
                 
                 if (shouldRetry) {
                     log.warn("API 调用失败: {}, 错误码: {}, 将在 {}ms 后重试 ({}/{})",
-                            methodName, e.getStatusCode(), backoffMs, attempt, MAX_RETRY_ATTEMPTS);
+                            methodName, e.getStatusCode(), backoffMs, attempt, maxAttempts);
                     
                     try {
                         TimeUnit.MILLISECONDS.sleep(backoffMs);
@@ -82,9 +84,9 @@ public class ApiRetryAspect {
      * @param attempt 当前尝试次数
      * @return true 如果应该重试
      */
-    private boolean shouldRetry(BmcException e, int attempt) {
+    private boolean shouldRetry(BmcException e, int attempt, int maxAttempts) {
         // 已达最大重试次数
-        if (attempt >= MAX_RETRY_ATTEMPTS) {
+        if (attempt >= maxAttempts) {
             return false;
         }
         

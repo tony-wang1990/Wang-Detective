@@ -41,8 +41,9 @@ public class GlobalExceptionHandler {
                 .timestamp(System.currentTimeMillis())
                 .build();
         
+        HttpStatus status = HttpStatus.resolve(e.getCode());
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(status == null ? HttpStatus.BAD_REQUEST : status)
                 .body(response);
     }
     
@@ -64,10 +65,10 @@ public class GlobalExceptionHandler {
                 .timestamp(System.currentTimeMillis())
                 .build();
         
-        HttpStatus status = HttpStatus.valueOf(e.getStatusCode());
+        HttpStatus status = HttpStatus.resolve(e.getStatusCode());
         
         return ResponseEntity
-                .status(status)
+                .status(status == null ? HttpStatus.BAD_GATEWAY : status)
                 .body(response);
     }
     

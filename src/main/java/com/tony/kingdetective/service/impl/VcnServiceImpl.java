@@ -44,7 +44,7 @@ public class VcnServiceImpl implements IVcnService {
             customCache.remove(CacheConstant.PREFIX_VCN_PAGE + params.getOciCfgId());
         }
 
-        @SuppressWarnings("unch ecked")
+        @SuppressWarnings("unchecked")
         List<VcnPageRsp.VcnInfo> vcnList = (List<VcnPageRsp.VcnInfo>) customCache.get(CacheConstant.PREFIX_VCN_PAGE + params.getOciCfgId());
         SysUserDTO sysUserDTO = sysService.getOciUser(params.getOciCfgId());
         if (ObjUtil.isEmpty(vcnList)) {
@@ -69,7 +69,7 @@ public class VcnServiceImpl implements IVcnService {
                 .filter(x -> CommonUtils.contains(x.getDisplayName(), params.getKeyword(), true))
                 .collect(Collectors.toList());
         List<VcnPageRsp.VcnInfo> vcnInfoList = CommonUtils.getPage(resList, params.getCurrentPage(), params.getPageSize());
-        return VcnPageRsp.buildPage(vcnInfoList, params.getPageSize(), params.getCurrentPage(), vcnInfoList.size());
+        return VcnPageRsp.buildPage(vcnInfoList, params.getPageSize(), params.getCurrentPage(), resList.size());
     }
 
     @Override

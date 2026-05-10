@@ -64,11 +64,11 @@ TELEGRAM_BOT_TOKEN=你的Bot Token
 TELEGRAM_BOT_USERNAME=你的Bot Username
 
 # Web Admin
-WEB_ACCOUNT=admin
-WEB_PASSWORD=强密码请改掉
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=强密码请改掉
 
 # OpenAI (可选)
-OPENAI_API_KEY=sk-xxx
+OPENAI_API_KEY=
 
 # Database
 DATABASE_PATH=/app/data/king-detective.db
@@ -92,8 +92,8 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
-      - WEB_ACCOUNT=${WEB_ACCOUNT}
-      - WEB_PASSWORD=${WEB_PASSWORD}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./data:/app/data        # 数据库
@@ -160,7 +160,7 @@ docker logs -f king-detective
 ### 3. 测试Web界面
 
 ```bash
-curl http://localhost:9527/api/health
+curl http://localhost:9527/actuator/health
 ```
 
 应该返回：

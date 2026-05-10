@@ -57,7 +57,7 @@ import java.util.regex.Pattern;
 public class CommonUtils {
 
     public static final String CREATE_TASK_PREFIX = "CREATE_TASK_PREFIX_";
-    public static final String CHANGE_IP_TASK_PREFIX = "CREATE_TASK_PREFIX_";
+    public static final String CHANGE_IP_TASK_PREFIX = "CHANGE_IP_TASK_PREFIX_";
     public static final String CREATE_COUNTS_PREFIX = "CREATE_COUNTS_PREFIX_";
     public static final String CHANGE_IP_ERROR_COUNTS_PREFIX = "CHANGE_IP_ERROR_COUNTS_PREFIX_";
     public static final String TERMINATE_INSTANCE_PREFIX = "TERMINATE_INSTANCE_PREFIX_";
@@ -355,19 +355,24 @@ public class CommonUtils {
         return JWT.create()
                 .addHeaders(null)
                 .addPayloads(payload)
-                .setKey(secretKey.getBytes())
+                .setKey(secretKey.getBytes(StandardCharsets.UTF_8))
                 .setExpiresAt(Date.from(instant))
                 .sign();
     }
 
     public static boolean isTokenExpired(String token) {
-        JWT jwt = JWTUtil.parseToken(token);
-
-        Long exp = Long.parseLong(String.valueOf(jwt.getPayload("exp")));
-        if (exp != null) {
+        try {
+            JWT jwt = JWTUtil.parseToken(token);
+            Object expPayload = jwt.getPayload("exp");
+            if (expPayload == null) {
+                return true;
+            }
+            long exp = Long.parseLong(String.valueOf(expPayload));
             return exp < System.currentTimeMillis() / 1000; // 将毫秒转换为秒
+        } catch (Exception e) {
+            log.warn("Invalid JWT token received: {}", e.getMessage());
+            return true;
         }
-        return true;
     }
 
     public static String dateFmt2String(Date date) {
@@ -445,6 +450,9 @@ public class CommonUtils {
      * @return true 如果 CIDR 是合法的，否则 false
      */
     public static boolean isValidCidr(String cidr) {
+        if (StrUtil.isBlank(cidr)) {
+            return false;
+        }
         // 先匹配基本的 CIDR 正则格式
         Matcher matcher = CIDR_PATTERN.matcher(cidr);
         if (!matcher.matches()) {
@@ -560,7 +568,7 @@ public class CommonUtils {
                 configMap.put(key, properties.getProperty(key));
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.warn("解析 OCI 配置失败: {}", e.getMessage());
         }
 
         return configMap;

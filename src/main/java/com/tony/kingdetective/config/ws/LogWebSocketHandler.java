@@ -5,6 +5,7 @@ import cn.hutool.core.io.file.Tailer;
 import cn.hutool.jwt.JWTUtil;
 import com.tony.kingdetective.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.apache.commons.io.input.TailerListener;
 import org.apache.commons.io.input.TailerListenerAdapter;
 import org.springframework.stereotype.Component;
@@ -15,13 +16,13 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.*;
-
-import static com.tony.kingdetective.service.impl.OciServiceImpl.TEMP_MAP;
 
 /**
  * @projectName: king-detective
@@ -43,23 +44,43 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
     private volatile boolean close = false;
     private volatile boolean isSenderRunning = false;
 
+    @Value("${web.password}")
+    private String password;
+
     private String getTokenFromSession(WebSocketSession session) {
         // 解析 URI 中的 token 参数
-        String query = session.getUri().getQuery();
-        if (query != null && query.contains("token=")) {
-            return query.replaceAll(".*token=([^&]*).*", "$1");
+        if (session.getUri() == null || session.getUri().getRawQuery() == null) {
+            return null;
+        }
+        String query = session.getUri().getRawQuery();
+        for (String pair : query.split("&")) {
+            int splitIndex = pair.indexOf('=');
+            if (splitIndex <= 0) {
+                continue;
+            }
+            String key = URLDecoder.decode(pair.substring(0, splitIndex), StandardCharsets.UTF_8);
+            if ("token".equals(key)) {
+                return URLDecoder.decode(pair.substring(splitIndex + 1), StandardCharsets.UTF_8);
+            }
         }
         return null;
     }
 
     private boolean validateToken(String token) {
-        return !CommonUtils.isTokenExpired(token) && JWTUtil.verify(token, ((String) TEMP_MAP.get("password")).getBytes());
+        return token != null
+                && !CommonUtils.isTokenExpired(token)
+                && JWTUtil.verify(token, password.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String token = getTokenFromSession(session);
         if (token == null || !validateToken(token)) {
+            try {
+                session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid token"));
+            } catch (IOException e) {
+                log.warn("Failed to close unauthorized log WebSocket session", e);
+            }
             return;
         }
 
@@ -93,7 +114,7 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void sendRecentLogs() {
-        if (currentSession == null || !currentSession.isOpen() || !close) {
+        if (currentSession == null || !currentSession.isOpen() || close) {
             return;
         }
 
@@ -110,9 +131,11 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
 
     private void startLogTailer(String filePath) {
         File logFile = new File(filePath);
-        if (!logFile.exists() || !logFile.isFile()) {
-            log.error("Invalid log file path: {}", filePath);
-            return;
+        if (!logFile.exists()) {
+            FileUtil.touch(logFile);
+        }
+        if (!logFile.isFile()) {
+            throw new IllegalStateException("Invalid log file path: " + filePath);
         }
 
         tailer = new Tailer(logFile, Charset.defaultCharset(), line -> {
@@ -151,6 +174,8 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
                         }
                     }
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             } catch (Exception e) {
                 log.error("Error while sending WebSocket message: {}", e.getLocalizedMessage());
             } finally {
@@ -162,17 +187,22 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         try {
-            tailer.stop();
+            close = true;
+            if (tailer != null) {
+                tailer.stop();
+            }
             if (logPushTask != null) {
-                logPushTask.cancel(false);
+                logPushTask.cancel(true);
             }
             if (session == currentSession) {
-                currentSession.close();
+                if (currentSession.isOpen()) {
+                    currentSession.close();
+                }
                 currentSession = null;
-            } else {
+            } else if (session.isOpen()) {
                 session.close();
             }
-            close = true;
+            messageQueue.clear();
         } catch (Exception e) {
             log.error("WebSocket session closed: {}", session.getId());
         }

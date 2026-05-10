@@ -47,5 +47,4 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_success ON audit_log(success);
 CREATE INDEX IF NOT EXISTS idx_oci_user_deleted ON oci_user(deleted);
 CREATE INDEX IF NOT EXISTS idx_oci_user_create_time ON oci_user(create_time);
 CREATE INDEX IF NOT EXISTS idx_oci_kv_type ON oci_kv(type);
-CREATE INDEX IF NOT EXISTS idx_oci_create_task_status ON oci_create_task(status);
 CREATE INDEX IF NOT EXISTS idx_oci_create_task_create_time ON oci_create_task(create_time);

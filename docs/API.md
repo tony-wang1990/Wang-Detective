@@ -49,6 +49,51 @@ Content-Type: application/json
 
 ## 系统配置
 
+### 系统诊断/预检
+
+```http
+GET /api/v1/system/diagnostics
+Authorization: Bearer <token>
+```
+
+用于部署后快速检查数据库、数据目录、密钥目录、日志文件、默认密码、Telegram Bot Token、OpenAI Key、磁盘和运行时信息。
+
+**响应**:
+```json
+{
+  "code": 200,
+  "data": {
+    "status": "WARN",
+    "version": "4.1.1",
+    "databasePath": "/app/king-detective/data/king-detective.db",
+    "checks": [
+      {
+        "name": "admin-password",
+        "status": "WARN",
+        "message": "仍在使用默认管理员账号密码，建议立即修改"
+      }
+    ]
+  }
+}
+```
+
+### 健康检查
+
+```http
+GET /actuator/health
+```
+
+**响应**:
+```json
+{
+  "status": "UP",
+  "databaseConnectivity": true,
+  "memoryStatus": true,
+  "uptimeSeconds": 3600,
+  "version": "4.1.1"
+}
+```
+
 ### 获取系统概览
 
 ```http
