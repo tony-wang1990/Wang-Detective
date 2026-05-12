@@ -1,0 +1,453 @@
+:root {
+  --wd-bg: #f3f6fa;
+  --wd-surface: #ffffff;
+  --wd-surface-soft: #f8fafc;
+  --wd-surface-strong: #eef4f8;
+  --wd-line: #d8e1ea;
+  --wd-text: #172033;
+  --wd-muted: #627083;
+  --wd-sidebar: #111827;
+  --wd-sidebar-2: #172235;
+  --wd-sidebar-3: #0f172a;
+  --wd-accent: #0891b2;
+  --wd-accent-2: #0f766e;
+  --wd-warn: #d97706;
+  --wd-danger: #dc2626;
+  --wd-ok: #16a34a;
+  --wd-shadow: 0 10px 24px rgba(17, 24, 39, .07);
+}
+
+html,
+body,
+#app {
+  background: var(--wd-bg) !important;
+  color: var(--wd-text);
+}
+
+.page-background,
+.gradient-orb {
+  display: none !important;
+}
+
+.dashboard-container {
+  min-height: 100vh !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 220px),
+    var(--wd-bg) !important;
+}
+
+.dashboard-container .el-aside.sidebar,
+.dashboard-container .sidebar {
+  background: linear-gradient(180deg, var(--wd-sidebar) 0%, var(--wd-sidebar-2) 52%, var(--wd-sidebar-3) 100%) !important;
+  border-right: 1px solid rgba(148, 163, 184, .18) !important;
+  box-shadow: none !important;
+}
+
+.dashboard-container .logo {
+  min-height: 74px !important;
+  padding: 24px 12px 18px !important;
+  color: #e0f2fe !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-shadow: none !important;
+  filter: none !important;
+  animation: none !important;
+  letter-spacing: 0 !important;
+}
+
+.dashboard-container .toggle-button {
+  height: 42px !important;
+  margin: 0 10px 10px !important;
+  width: auto !important;
+  border-radius: 8px !important;
+  background: rgba(8, 145, 178, .16) !important;
+  color: #bae6fd !important;
+  box-shadow: none !important;
+}
+
+.dashboard-container .toggle-button:hover {
+  background: rgba(8, 145, 178, .28) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.dashboard-container .toggle-button::before,
+.dashboard-container .sidebar-menu .el-menu-item::before {
+  display: none !important;
+}
+
+.dashboard-container .sidebar-menu {
+  padding: 4px 10px 12px !important;
+  background: transparent !important;
+  border-right: 0 !important;
+}
+
+.dashboard-container .sidebar-menu .el-menu-item,
+.dashboard-container .wang-extra-menu-item {
+  height: 44px !important;
+  line-height: 44px !important;
+  margin: 4px 0 !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  color: #cbd5e1 !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.dashboard-container .sidebar-menu .el-menu-item:hover,
+.dashboard-container .wang-extra-menu-item:hover {
+  color: #ffffff !important;
+  background: rgba(8, 145, 178, .16) !important;
+  transform: none !important;
+}
+
+.dashboard-container .sidebar-menu .el-menu-item.is-active,
+.dashboard-container .wang-extra-menu-item.is-active {
+  color: #ffffff !important;
+  background: rgba(8, 145, 178, .26) !important;
+  box-shadow: inset 3px 0 0 var(--wd-accent) !important;
+}
+
+.dashboard-container .sidebar-menu .el-menu-item .el-icon,
+.dashboard-container .sidebar-menu .el-menu-item .menu-icon,
+.dashboard-container .wang-extra-icon {
+  color: #67e8f9 !important;
+  transform: none !important;
+}
+
+.dashboard-container .header {
+  height: 64px !important;
+  padding: 0 22px !important;
+  color: var(--wd-text) !important;
+  background: rgba(255, 255, 255, .92) !important;
+  border-bottom: 1px solid var(--wd-line) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+}
+
+.dashboard-container .right-buttons {
+  gap: 10px !important;
+}
+
+.dashboard-container .right-buttons .el-button,
+.dashboard-container .theme-button,
+.dashboard-container .logout-button {
+  min-height: 36px !important;
+  border-radius: 6px !important;
+  padding: 8px 14px !important;
+  font-weight: 700 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.dashboard-container .right-buttons .el-button {
+  color: #fff !important;
+  background: var(--wd-warn) !important;
+  border: 1px solid rgba(217, 119, 6, .55) !important;
+}
+
+.dashboard-container .theme-button {
+  color: #7c4a03 !important;
+  background: #fff7ed !important;
+  border: 1px solid #fed7aa !important;
+}
+
+.dashboard-container .logout-button {
+  color: #e5e7eb !important;
+  background: #1f2937 !important;
+  border: 1px solid #334155 !important;
+}
+
+.dashboard-container .right-buttons .el-button:hover,
+.dashboard-container .theme-button:hover,
+.dashboard-container .logout-button:hover {
+  filter: brightness(.97);
+  transform: none !important;
+}
+
+.dashboard-container .el-main {
+  background: var(--wd-bg) !important;
+  padding: 18px !important;
+}
+
+.dashboard-container .el-footer,
+.dashboard-container footer {
+  color: #7a8798 !important;
+  background: transparent !important;
+}
+
+.dashboard-container .card-container {
+  margin-bottom: 18px !important;
+}
+
+.dashboard-container .data-card,
+.dashboard-container .chart,
+.dashboard-container #map,
+.dashboard-container .instance-card,
+.dashboard-container .el-card,
+.dashboard-container .demo-collapse .el-collapse-item__header {
+  background: var(--wd-surface) !important;
+  border: 1px solid var(--wd-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--wd-shadow) !important;
+  backdrop-filter: none !important;
+}
+
+.dashboard-container .data-card {
+  min-height: 96px !important;
+  padding: 18px !important;
+  gap: 16px !important;
+}
+
+.dashboard-container .data-card:hover,
+.dashboard-container .chart:hover,
+.dashboard-container .instance-card:hover {
+  transform: none !important;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, .09) !important;
+}
+
+.dashboard-container .data-card::before,
+.dashboard-container .instance-card::before {
+  display: none !important;
+}
+
+.dashboard-container .card-icon {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.dashboard-container .data-card:hover .card-icon {
+  transform: none !important;
+}
+
+.dashboard-container .card-blue .card-icon {
+  background: linear-gradient(135deg, #0891b2, #2563eb) !important;
+}
+
+.dashboard-container .card-green .card-icon {
+  background: linear-gradient(135deg, #0f766e, #14b8a6) !important;
+}
+
+.dashboard-container .card-purple .card-icon {
+  background: linear-gradient(135deg, #4f46e5, #0891b2) !important;
+}
+
+.dashboard-container .card-orange .card-icon {
+  background: linear-gradient(135deg, #d97706, #f97316) !important;
+}
+
+.dashboard-container .data-card h3 {
+  margin-bottom: 8px !important;
+  color: var(--wd-muted) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.dashboard-container .card-number,
+.dashboard-container .card-blue .card-number,
+.dashboard-container .card-green .card-number,
+.dashboard-container .card-purple .card-number,
+.dashboard-container .card-orange .card-number {
+  color: var(--wd-accent) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  font-size: 30px !important;
+}
+
+.dashboard-container #map {
+  height: 520px !important;
+  margin: 14px 0 18px !important;
+  overflow: hidden !important;
+}
+
+.dashboard-container .chart {
+  height: 430px !important;
+  margin-bottom: 16px !important;
+}
+
+.dashboard-container .instance-card {
+  padding: 18px !important;
+}
+
+.dashboard-container .instance-card .header h3 {
+  color: var(--wd-accent) !important;
+}
+
+.dashboard-container .el-button {
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+}
+
+.dashboard-container .el-button--primary {
+  background: var(--wd-accent) !important;
+  border-color: var(--wd-accent) !important;
+}
+
+.dashboard-container .el-button--success {
+  background: var(--wd-accent-2) !important;
+  border-color: var(--wd-accent-2) !important;
+}
+
+.dashboard-container .el-input__wrapper,
+.dashboard-container .el-textarea__inner,
+.dashboard-container .el-select__wrapper {
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 1px var(--wd-line) inset !important;
+}
+
+.dashboard-container .el-table,
+.dashboard-container .el-dialog,
+.dashboard-container .el-drawer {
+  border-radius: 8px !important;
+}
+
+#wang-embedded-panel {
+  background: var(--wd-bg) !important;
+  border: 1px solid var(--wd-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--wd-shadow) !important;
+}
+
+#wang-embedded-frame {
+  background: var(--wd-bg) !important;
+}
+
+html.embedded,
+html.embedded body {
+  background: var(--wd-bg) !important;
+  color: var(--wd-text) !important;
+}
+
+html.embedded main {
+  padding: 16px !important;
+}
+
+html.embedded .summary,
+html.embedded .grid,
+html.embedded .features {
+  gap: 14px !important;
+}
+
+html.embedded .metric,
+html.embedded .panel,
+html.embedded .feature,
+html.embedded section,
+html.embedded .terminal-panel {
+  background: var(--wd-surface) !important;
+  border: 1px solid var(--wd-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--wd-shadow) !important;
+}
+
+html.embedded .metric,
+html.embedded .panel,
+html.embedded .feature {
+  padding: 16px !important;
+}
+
+html.embedded .muted,
+html.embedded label,
+html.embedded .hint,
+html.embedded .status {
+  color: var(--wd-muted) !important;
+}
+
+html.embedded input,
+html.embedded textarea,
+html.embedded select {
+  border-radius: 6px !important;
+  border-color: var(--wd-line) !important;
+  background: #fff !important;
+}
+
+html.embedded input:focus,
+html.embedded textarea:focus,
+html.embedded select:focus {
+  border-color: var(--wd-accent) !important;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, .13) !important;
+}
+
+html.embedded button,
+html.embedded a.button {
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+}
+
+html.embedded button:not(.secondary):not(.danger),
+html.embedded a.primary {
+  background: var(--wd-accent) !important;
+  border-color: var(--wd-accent) !important;
+}
+
+html.embedded button.secondary,
+html.embedded a.button:not(.primary) {
+  color: var(--wd-accent) !important;
+  background: #ecfeff !important;
+  border-color: #a5f3fc !important;
+}
+
+html.embedded button.danger {
+  background: var(--wd-danger) !important;
+  border-color: var(--wd-danger) !important;
+}
+
+html.embedded .terminal,
+html.embedded .output,
+html.embedded pre {
+  border-radius: 6px !important;
+  background: #0b1220 !important;
+  color: #d1fae5 !important;
+}
+
+html.dark,
+html.dark body,
+html.dark #app {
+  background: #0f172a !important;
+}
+
+html.dark .dashboard-container {
+  background: #0f172a !important;
+}
+
+html.dark .dashboard-container .header,
+html.dark .dashboard-container .data-card,
+html.dark .dashboard-container .chart,
+html.dark .dashboard-container #map,
+html.dark .dashboard-container .instance-card,
+html.dark .dashboard-container .el-card {
+  color: #e5e7eb !important;
+  background: #111827 !important;
+  border-color: #243244 !important;
+}
+
+html.dark .dashboard-container .el-main {
+  background: #0f172a !important;
+}
+
+@media screen and (max-width: 768px) {
+  .dashboard-container .header {
+    padding: 0 12px !important;
+  }
+
+  .dashboard-container .el-main {
+    padding: 12px !important;
+  }
+
+  .dashboard-container .data-card {
+    min-height: 88px !important;
+    padding: 14px !important;
+  }
+
+  .dashboard-container #map,
+  .dashboard-container .chart {
+    height: 320px !important;
+  }
+}
