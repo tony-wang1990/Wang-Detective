@@ -451,3 +451,585 @@ html.dark .dashboard-container .el-main {
     height: 320px !important;
   }
 }
+
+/* Login redesign */
+.login-container {
+  align-items: center !important;
+  justify-content: center !important;
+  padding-left: min(42vw, 760px) !important;
+  background:
+    radial-gradient(circle at 75% 20%, rgba(8, 145, 178, .10), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #eef4f8 100%) !important;
+  animation: none !important;
+}
+
+.login-container::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: min(42vw, 760px);
+  background:
+    linear-gradient(180deg, rgba(20, 184, 166, .22), rgba(8, 145, 178, 0) 46%),
+    linear-gradient(180deg, #0b1220 0%, #111827 48%, #172235 100%);
+  z-index: 1;
+}
+
+.login-container::after {
+  content: "W\A W-探长\A OCI Operations Console";
+  white-space: pre;
+  position: absolute;
+  left: clamp(34px, 5vw, 84px);
+  top: clamp(44px, 9vh, 120px);
+  z-index: 2;
+  color: #e5f7f7;
+  font-size: 16px;
+  line-height: 1.9;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.login-container .background,
+.login-container .grid-lines,
+.login-container .stars-container,
+.login-container .scan-line,
+.login-container .glow,
+.login-container .floating-shapes,
+.login-container .code-rain {
+  display: none !important;
+}
+
+.login-card {
+  width: 430px !important;
+  max-width: min(430px, 88vw) !important;
+  padding: 42px 38px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, .96) !important;
+  border: 1px solid var(--wd-line) !important;
+  box-shadow: 0 20px 45px rgba(17, 24, 39, .12) !important;
+  animation: none !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.login-card::before {
+  display: none !important;
+}
+
+.oracle-logo {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  margin-bottom: 22px !important;
+}
+
+.oracle-logo svg {
+  display: none !important;
+}
+
+.oracle-logo::before {
+  content: "W";
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #ecfeff;
+  background: linear-gradient(135deg, #14b8a6, #0891b2);
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.oracle-logo::after {
+  content: "W-探长";
+  color: var(--wd-text);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.login-title {
+  margin-bottom: 8px !important;
+  color: var(--wd-text) !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  animation: none !important;
+}
+
+.login-subtitle {
+  color: var(--wd-muted) !important;
+  margin-bottom: 30px !important;
+  animation: none !important;
+}
+
+.login-card .el-input__wrapper,
+.login-card .el-input__wrapper:hover,
+.login-card .el-input__wrapper.is-focus {
+  min-height: 42px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 1px var(--wd-line) inset !important;
+  transform: none !important;
+}
+
+.login-card .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--wd-accent) inset, 0 0 0 3px rgba(8, 145, 178, .12) !important;
+}
+
+.login-button {
+  height: 44px !important;
+  border-radius: 6px !important;
+  background: var(--wd-accent) !important;
+  box-shadow: none !important;
+  letter-spacing: 0 !important;
+}
+
+.login-button:hover {
+  background: #0e7490 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.login-footer {
+  position: absolute !important;
+  right: 0;
+  bottom: 28px;
+  width: calc(100% - min(42vw, 760px));
+  margin-top: 0 !important;
+  color: var(--wd-muted) !important;
+}
+
+.login-footer .el-link,
+.login-footer .theme-button {
+  color: var(--wd-muted) !important;
+}
+
+/* Dashboard layout upgrade */
+.dashboard-container .el-aside.sidebar:not(.collapsed),
+.dashboard-container .sidebar:not(.collapsed) {
+  width: 224px !important;
+}
+
+.dashboard-container .sidebar.collapsed {
+  width: 72px !important;
+}
+
+.dashboard-container .logo {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  justify-content: flex-start !important;
+  padding-left: 18px !important;
+  font-size: 20px !important;
+}
+
+.dashboard-container .logo::before {
+  content: "W";
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #ecfeff;
+  background: linear-gradient(135deg, #14b8a6, #0891b2);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.dashboard-container .sidebar.collapsed .logo {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  font-size: 0 !important;
+}
+
+.dashboard-container .header {
+  gap: 16px !important;
+  border-left: 1px solid var(--wd-line) !important;
+}
+
+.wang-topbar-left {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.wang-menu-button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #334155;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.wang-search-box {
+  width: min(380px, 34vw);
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.wang-search-box input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--wd-muted);
+  font: inherit;
+}
+
+.wang-search-box kbd {
+  padding: 2px 6px;
+  border: 1px solid #dbe3ec;
+  border-radius: 5px;
+  background: #fff;
+  color: #94a3b8;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.wang-health-pill,
+.wang-version-pill {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-left: 1px solid var(--wd-line);
+  color: var(--wd-text);
+}
+
+.wang-health-pill span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--wd-ok);
+}
+
+.wang-health-pill b,
+.wang-version-pill b {
+  font-size: 13px;
+}
+
+.wang-health-pill em,
+.wang-version-pill em {
+  color: var(--wd-accent-2);
+  font-style: normal;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.wang-health-pill em.warn {
+  color: var(--wd-warn);
+}
+
+.dashboard-container .card-container {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.dashboard-container .card-container .el-col,
+.dashboard-container .card-container.el-row > .el-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: initial !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dashboard-container .data-card {
+  min-height: 124px !important;
+  align-items: center !important;
+  border-color: #dfe7ef !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(255, 255, 255, .92)),
+    var(--wd-surface) !important;
+}
+
+.dashboard-container .data-card h3 {
+  font-size: 14px !important;
+}
+
+.dashboard-container .card-number {
+  font-size: 28px !important;
+  color: #06b6d4 !important;
+}
+
+.wang-map-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.72fr) minmax(360px, .92fr);
+  gap: 16px;
+  margin: 0 0 18px;
+}
+
+.wang-map-card,
+.wang-diagnostics-card,
+.wang-chart-block {
+  min-width: 0;
+  background: var(--wd-surface);
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  box-shadow: var(--wd-shadow);
+  overflow: hidden;
+}
+
+.wang-card-head {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--wd-line);
+  background: rgba(248, 250, 252, .82);
+}
+
+.wang-card-head h2 {
+  margin: 0;
+  color: var(--wd-text);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.wang-card-head span {
+  color: var(--wd-muted);
+  font-size: 12px;
+}
+
+.wang-card-head button {
+  min-height: 30px;
+  margin-left: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--wd-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--wd-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-container .wang-map-card #map {
+  height: 388px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.wang-diagnostics-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.wang-diag-rows {
+  padding: 8px 12px 4px;
+}
+
+.wang-diag-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.wang-diag-row:last-child {
+  border-bottom: 0;
+}
+
+.wang-diag-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #dcfce7;
+  box-shadow: inset 0 0 0 1px #bbf7d0;
+}
+
+.wang-diag-row.warn .wang-diag-icon {
+  background: #ffedd5;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+.wang-diag-row.error .wang-diag-icon {
+  background: #fee2e2;
+  box-shadow: inset 0 0 0 1px #fecaca;
+}
+
+.wang-diag-row b {
+  display: block;
+  color: var(--wd-text);
+  font-size: 14px;
+}
+
+.wang-diag-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--wd-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wang-diag-row em {
+  min-width: 48px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #dcfce7;
+  color: #15803d;
+  text-align: center;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.wang-diag-row.warn em {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.wang-diag-row.error em {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.wang-diag-link {
+  margin: auto 14px 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--wd-line);
+  color: var(--wd-accent-2);
+  text-align: center;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.wang-chart-block {
+  padding-bottom: 8px;
+}
+
+.dashboard-container .wang-chart-block .chart-container {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1.32fr !important;
+  gap: 16px !important;
+  padding: 16px !important;
+}
+
+.dashboard-container .wang-chart-block .chart-container .el-col {
+  width: auto !important;
+  max-width: none !important;
+  flex: initial !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dashboard-container .wang-chart-block .chart {
+  height: 260px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.wang-sidebar-meta {
+  margin: auto 10px 16px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .46);
+  color: #cbd5e1;
+}
+
+.wang-meta-label,
+.wang-meta-row span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.wang-meta-host {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0 14px;
+  color: #f8fafc;
+  font-weight: 800;
+  word-break: break-all;
+}
+
+.wang-meta-host button {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, .3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .04);
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.wang-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.wang-meta-row b {
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.sidebar.collapsed .wang-sidebar-meta {
+  display: none;
+}
+
+@media screen and (max-width: 1180px) {
+  .wang-search-box {
+    display: none;
+  }
+
+  .wang-map-grid,
+  .dashboard-container .wang-chart-block .chart-container {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .login-container {
+    padding: 0 16px !important;
+  }
+
+  .login-container::before,
+  .login-container::after {
+    display: none !important;
+  }
+
+  .login-footer {
+    left: 0;
+    width: 100%;
+  }
+
+  .wang-health-pill,
+  .wang-version-pill {
+    display: none;
+  }
+
+  .dashboard-container .card-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
