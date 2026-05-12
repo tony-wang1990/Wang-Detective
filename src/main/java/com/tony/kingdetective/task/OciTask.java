@@ -215,10 +215,7 @@ public class OciTask implements ApplicationRunner {
 
     private void saveVersion() {
         virtualExecutor.execute(() -> {
-            String latestVersion = CommonUtils.getLatestVersion();
-            if (StrUtil.isBlank(latestVersion)) {
-                latestVersion = "v2.00"; // 默认版本，如果无法获取
-            }
+            String currentVersion = CommonUtils.getCurrentVersion();
             OciKv oldVersion = kvService.getOne(new LambdaQueryWrapper<OciKv>()
                     .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
                     .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode()));
@@ -227,14 +224,14 @@ public class OciTask implements ApplicationRunner {
                         .id(IdUtil.getSnowflake().nextIdStr())
                         .code(SysCfgEnum.SYS_INFO_VERSION.getCode())
                         .type(SysCfgTypeEnum.SYS_INFO.getCode())
-                        .value(latestVersion)
+                        .value(currentVersion)
                         .build());
-                log.info("版本信息已初始化：{}", latestVersion);
-            } else if (StrUtil.isBlank(oldVersion.getValue())) {
-                // 如果已有记录但值为空/null，更新为最新版本
-                oldVersion.setValue(latestVersion);
+                log.info("版本信息已初始化：{}", currentVersion);
+            } else if (!currentVersion.equals(oldVersion.getValue())) {
+                String previousVersion = oldVersion.getValue();
+                oldVersion.setValue(currentVersion);
                 kvService.updateById(oldVersion);
-                log.info("版本信息已更新：null -> {}", latestVersion);
+                log.info("版本信息已更新：{} -> {}", previousVersion, currentVersion);
             }
         });
 
@@ -246,6 +243,8 @@ public class OciTask implements ApplicationRunner {
                 .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
                 .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode())
                 .select(OciKv::getValue), String::valueOf);
+        nowVersion = StrUtil.blankToDefault(nowVersion, CommonUtils.getCurrentVersion());
+        latestVersion = StrUtil.blankToDefault(latestVersion, nowVersion);
         log.info(String.format("【king-detective】服务启动成功~ 当前版本：%s 最新版本：%s", nowVersion, latestVersion));
         sysService.sendMessage(String.format("【king-detective】服务启动成功🎉🎉\n\n当前版本：%s\n最新版本：%s\n发送 /start 操作机器人🤖\n放货通知频道：https://t.me/Woci_detective", nowVersion, latestVersion));
     }

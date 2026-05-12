@@ -66,9 +66,56 @@
     }
   }
 
+  function applyVersionInfo(versionInfo) {
+    const currentVersion = versionInfo.currentVersion || 'dev';
+    const latestVersion = versionInfo.latestVersion || currentVersion;
+    localStorage.setItem('currentVersion', currentVersion);
+    localStorage.setItem('latestVersion', latestVersion);
+
+    document.querySelectorAll('button').forEach(function (button) {
+      const text = button.textContent || '';
+      if (!text.includes('新版本:')) {
+        return;
+      }
+      if (currentVersion === latestVersion) {
+        button.style.display = 'none';
+      } else {
+        button.style.display = '';
+        button.textContent = '🔔 新版本:' + latestVersion;
+      }
+    });
+
+    document.querySelectorAll('footer a').forEach(function (link) {
+      if ((link.textContent || '').includes('Tony Wang')) {
+        link.textContent = '© Tony Wang All Rights Reserved ' + currentVersion;
+      }
+    });
+  }
+
+  async function refreshVersionInfo() {
+    const token = sessionStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+    try {
+      const response = await fetch('/api/v1/system/version-info', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const json = await response.json();
+      if (json && json.data) {
+        applyVersionInfo(json.data);
+      }
+    } catch (error) {
+      console.warn('Failed to refresh Wang-Detective version info:', error.message);
+    }
+  }
+
   const observer = new MutationObserver(injectFeatureEntries);
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('load', injectFeatureEntries);
+  window.addEventListener('load', refreshVersionInfo);
   document.addEventListener('DOMContentLoaded', injectFeatureEntries);
+  document.addEventListener('DOMContentLoaded', refreshVersionInfo);
   setTimeout(injectFeatureEntries, 1000);
+  setTimeout(refreshVersionInfo, 1500);
 })();

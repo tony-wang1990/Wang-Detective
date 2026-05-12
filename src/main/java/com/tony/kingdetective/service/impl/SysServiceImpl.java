@@ -162,8 +162,8 @@ public class SysServiceImpl implements ISysService {
         sendMessage(String.format("请求IP：%s 登录成功，时间：%s", clientIp, LocalDateTime.now().format(CommonUtils.DATETIME_FMT_NORM)));
         LoginRsp rsp = new LoginRsp();
         rsp.setToken(token);
-        rsp.setCurrentVersion(currentVersion);
-        rsp.setLatestVersion(latestVersion);
+        rsp.setCurrentVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));
+        rsp.setLatestVersion(StrUtil.blankToDefault(latestVersion, CommonUtils.getCurrentVersion()));
         return rsp;
     }
 
@@ -668,7 +668,7 @@ public class SysServiceImpl implements ISysService {
             rsp.setTasks(tasksFuture.get());
             rsp.setRegions(regionsFuture.get());
             rsp.setDays(daysFuture.get());
-            rsp.setCurrentVersion(currentVersionFuture.get());
+            rsp.setCurrentVersion(StrUtil.blankToDefault(currentVersionFuture.get(), CommonUtils.getCurrentVersion()));
         } catch (Exception e) {
             log.error("获取系统信息失败", e);
             throw new OciException(-1, "Error while fetching glance data");
@@ -752,6 +752,7 @@ public class SysServiceImpl implements ISysService {
                 .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
                 .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode())
                 .select(OciKv::getValue), String::valueOf);
+        currentVersion = StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion());
         if (latestVersion.equals(currentVersion)) {
             throw new OciException(-1, "当前已是最新版本，请返回主页并刷新页面查看");
         }
@@ -956,8 +957,8 @@ public class SysServiceImpl implements ISysService {
 
             LoginRsp rsp = new LoginRsp();
             rsp.setToken(token);
-            rsp.setCurrentVersion(currentVersion);
-            rsp.setLatestVersion(latestVersion);
+            rsp.setCurrentVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));
+            rsp.setLatestVersion(StrUtil.blankToDefault(latestVersion, CommonUtils.getCurrentVersion()));
             return rsp;
         } catch (Exception e) {
             log.error("请求IP：{} Google登录失败，错误信息：{}", clientIp, e.getMessage(), e);

@@ -16,6 +16,8 @@ bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/
 - 健康检查：`http://your-server-ip:9527/actuator/health`
 - 系统诊断：`GET /api/v1/system/diagnostics`，需要登录 token
 
+版本显示说明：新版 Docker 镜像会把构建提交号写入运行版本，例如 `main-b2a3717`；页面上的“最新版本”会查询 `Wang-Detective/main` 最新提交。这样每次修复 BUG 并重建镜像后，都能看到可追踪的版本号，不再显示旧项目 release 的 `null`。
+
 默认账号密码兼容旧版本：`admin / admin123456`。生产环境请立即在 `/app/king-detective/.env` 中修改：
 
 ```env

@@ -1,7 +1,9 @@
 package com.tony.kingdetective.controller;
 
 import com.tony.kingdetective.bean.ResponseData;
+import com.tony.kingdetective.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * @projectName: king-detective
@@ -48,21 +52,14 @@ public class SystemController {
      */
     @PostMapping("/version")
     public ResponseData<String> getVersion() {
-        String version = firstNonBlank(
-                System.getenv("KING_DETECTIVE_VERSION"),
-                System.getenv("APP_VERSION"),
-                getClass().getPackage().getImplementationVersion(),
-                "dev"
-        );
-        return ResponseData.successData(version);
+        return ResponseData.successData(CommonUtils.getCurrentVersion());
     }
 
-    private String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-        }
-        return "dev";
+    @GetMapping("/version-info")
+    public ResponseData<Map<String, String>> getVersionInfo() {
+        Map<String, String> versionInfo = new LinkedHashMap<>();
+        versionInfo.put("currentVersion", CommonUtils.getCurrentVersion());
+        versionInfo.put("latestVersion", CommonUtils.getLatestVersion());
+        return ResponseData.successData(versionInfo);
     }
 }

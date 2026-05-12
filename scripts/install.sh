@@ -121,6 +121,8 @@ OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.siliconflow.cn}
 CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
 SERVER_ADDRESS=${SERVER_ADDRESS:-0.0.0.0}
 SERVER_PORT=${SERVER_PORT:-9527}
+KING_DETECTIVE_GITHUB_REPOSITORY=${KING_DETECTIVE_GITHUB_REPOSITORY:-tony-wang1990/Wang-Detective}
+KING_DETECTIVE_GITHUB_BRANCH=${KING_DETECTIVE_GITHUB_BRANCH:-main}
 JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS:--Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.net.preferIPv4Stack=true}
 EOF
     chmod 600 .env
@@ -146,6 +148,8 @@ current_admin_password="${current_admin_password:-admin123456}"
 ensure_env "OPS_SSH_SECRET_KEY" "$current_admin_password"
 ensure_env "SERVER_ADDRESS" "0.0.0.0"
 ensure_env "SERVER_PORT" "9527"
+ensure_env "KING_DETECTIVE_GITHUB_REPOSITORY" "tony-wang1990/Wang-Detective"
+ensure_env "KING_DETECTIVE_GITHUB_BRANCH" "main"
 ensure_env "JAVA_TOOL_OPTIONS" "-Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.net.preferIPv4Stack=true"
 
 echo "步骤 4: 拉取最新镜像..."

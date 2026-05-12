@@ -45,6 +45,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Compute app version
+        id: app_version
+        shell: bash
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          echo "app_version=${GITHUB_REF_NAME}-${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "git_commit=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -55,3 +63,6 @@ jobs:
           file: ./Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.app_version.outputs.app_version }}
+            GIT_COMMIT=${{ steps.app_version.outputs.git_commit }}

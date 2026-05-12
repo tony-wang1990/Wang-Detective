@@ -187,13 +187,6 @@ public class SystemDiagnosticsController {
     }
 
     private String getVersion() {
-        String version = System.getenv("KING_DETECTIVE_VERSION");
-        if (version == null || version.isBlank()) {
-            version = System.getenv("APP_VERSION");
-        }
-        if (version == null || version.isBlank()) {
-            version = getClass().getPackage().getImplementationVersion();
-        }
-        return version == null || version.isBlank() ? "dev" : version;
+        return CommonUtils.getCurrentVersion();
     }
 }

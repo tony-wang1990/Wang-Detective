@@ -64,7 +64,8 @@ public class CommonUtils {
     public static final String TERMINATE_INSTANCE_PREFIX = "TERMINATE_INSTANCE_PREFIX_";
     public static final String LOG_FILE_PATH = "/var/log/king-detective.log";
     public static final String MFA_QR_PNG_PATH = System.getProperty("user.dir") + File.separator + "mfa.png";
-    private static final String DEFAULT_GITHUB_REPOSITORY = "tony-wang1990/King-Detective";
+    private static final String DEFAULT_GITHUB_REPOSITORY = "tony-wang1990/Wang-Detective";
+    private static final String DEFAULT_GITHUB_BRANCH = "main";
     private static final long GITHUB_RELEASE_CACHE_MILLIS = TimeUnit.MINUTES.toMillis(15);
     private static volatile JSONObject latestReleaseCache;
     private static volatile long latestReleaseCacheExpiresAt;
@@ -615,11 +616,21 @@ public class CommonUtils {
     }
 
     public static String getLatestVersion() {
-        return getGithubRepositoryInfoCached("tag_name");
+        String latestVersion = getGithubRepositoryInfoCached("tag_name");
+        return StrUtil.blankToDefault(latestVersion, getCurrentVersion());
     }
 
     public static String getLatestVersionBody() {
-        return getGithubRepositoryInfoCached("body");
+        return StrUtil.blankToDefault(getGithubRepositoryInfoCached("body"), "暂无更新说明");
+    }
+
+    public static String getCurrentVersion() {
+        String version = firstNonBlank(
+                System.getenv("KING_DETECTIVE_VERSION"),
+                System.getenv("APP_VERSION"),
+                CommonUtils.class.getPackage().getImplementationVersion()
+        );
+        return StrUtil.blankToDefault(version, "dev");
     }
 
     private static String getGithubRepositoryInfoCached(String item) {
@@ -647,6 +658,11 @@ public class CommonUtils {
 
     private static JSONObject fetchLatestGithubRelease() {
         String repository = getGithubRepository();
+        JSONObject commitVersion = fetchLatestMainCommitVersion(repository);
+        if (commitVersion != null) {
+            return commitVersion;
+        }
+
         String apiUrl = "https://api.github.com/repos/" + repository + "/releases/latest";
         HttpURLConnection connection = null;
         try {
@@ -683,6 +699,53 @@ public class CommonUtils {
         return new JSONObject();
     }
 
+    private static JSONObject fetchLatestMainCommitVersion(String repository) {
+        String branch = getGithubBranch();
+        String apiUrl = "https://api.github.com/repos/" + repository + "/commits/" + branch;
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(apiUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
+            connection.setRequestProperty("User-Agent", "Wang-Detective");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                log.warn("Failed to fetch latest commit for {}/{}. HTTP response code: {}", repository, branch, responseCode);
+                return null;
+            }
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                String sha = jsonResponse.getStr("sha");
+                if (StrUtil.isBlank(sha)) {
+                    return null;
+                }
+                JSONObject commit = jsonResponse.getJSONObject("commit");
+                String body = commit == null ? "" : commit.getStr("message");
+                JSONObject versionInfo = new JSONObject();
+                versionInfo.set("tag_name", branch + "-" + sha.substring(0, Math.min(7, sha.length())));
+                versionInfo.set("body", StrUtil.blankToDefault(body, "Latest commit on " + branch));
+                return versionInfo;
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch latest commit for {}/{}: {}", repository, branch, e.getMessage());
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
     private static String getGithubRepository() {
         String repository = System.getenv("KING_DETECTIVE_GITHUB_REPOSITORY");
         if (StrUtil.isBlank(repository)) {
@@ -696,6 +759,19 @@ public class CommonUtils {
                 .replace("http://github.com/", "")
                 .replace(".git", "")
                 .trim();
+    }
+
+    private static String getGithubBranch() {
+        return StrUtil.blankToDefault(System.getenv("KING_DETECTIVE_GITHUB_BRANCH"), DEFAULT_GITHUB_BRANCH).trim();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (StrUtil.isNotBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private static String getGithubRepositoryInfo(String item) {
