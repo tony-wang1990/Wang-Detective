@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>King Detective Ops Terminal</title>
+  <script>
+    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      document.documentElement.classList.add('embedded');
+    }
+  </script>
   <style>
     :root {
       --bg: #f5f7fb;
@@ -56,6 +61,15 @@
       gap: 16px;
       padding: 16px;
       min-height: calc(100vh - 56px);
+    }
+
+    html.embedded header {
+      display: none;
+    }
+
+    html.embedded main {
+      min-height: 100vh;
+      padding: 0;
     }
 
     section {

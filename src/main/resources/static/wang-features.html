@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>W-探长 新版功能</title>
+  <script>
+    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      document.documentElement.classList.add('embedded');
+    }
+  </script>
   <style>
     :root {
       --bg: #f6f8fb;
@@ -208,6 +213,15 @@
         align-items: flex-start;
         flex-direction: column;
       }
+    }
+
+    html.embedded header {
+      display: none;
+    }
+
+    html.embedded main {
+      max-width: none;
+      padding: 16px;
     }
   </style>
 </head>

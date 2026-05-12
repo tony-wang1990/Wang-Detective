@@ -4,13 +4,15 @@
       id: 'wang-feature-center-entry',
       label: '新版功能',
       icon: '◆',
-      href: '/wang-features.html'
+      href: '/wang-features.html',
+      title: '新版功能'
     },
     {
       id: 'wang-ops-terminal-entry',
       label: '运维终端',
       icon: '⌁',
-      href: '/ops-terminal.html'
+      href: '/ops-terminal.html',
+      title: '运维终端'
     }
   ];
 
@@ -36,10 +38,87 @@
       entry.label,
       '</span>'
     ].join('');
-    item.addEventListener('click', function () {
-      window.location.href = entry.href;
+    item.addEventListener('click', function (event) {
+      event.preventDefault();
+      renderEmbeddedPage(entry);
     });
     return item;
+  }
+
+  function embeddedUrl(href) {
+    return href + (href.includes('?') ? '&' : '?') + 'embedded=1';
+  }
+
+  function setMenuActive(activeId) {
+    document.querySelectorAll('.sidebar-menu .el-menu-item').forEach(function (item) {
+      item.classList.toggle('is-active', item.id === activeId);
+    });
+  }
+
+  function restoreMainContent() {
+    const main = document.querySelector('.el-main');
+    if (!main) {
+      return;
+    }
+    const panel = document.getElementById('wang-embedded-panel');
+    if (panel) {
+      panel.remove();
+    }
+    Array.from(main.children).forEach(function (child) {
+      child.style.display = '';
+    });
+  }
+
+  function renderEmbeddedPage(entry) {
+    const main = document.querySelector('.el-main');
+    if (!main) {
+      window.location.href = entry.href;
+      return;
+    }
+
+    Array.from(main.children).forEach(function (child) {
+      if (child.id !== 'wang-embedded-panel') {
+        child.style.display = 'none';
+      }
+    });
+
+    let panel = document.getElementById('wang-embedded-panel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'wang-embedded-panel';
+      main.appendChild(panel);
+    }
+
+    panel.style.cssText = [
+      'display:block',
+      'height:calc(100vh - 112px)',
+      'min-height:680px',
+      'background:#f6f8fb',
+      'border-radius:8px',
+      'overflow:hidden'
+    ].join(';');
+
+    panel.innerHTML = [
+      '<iframe id="wang-embedded-frame" title="',
+      entry.title,
+      '" src="',
+      embeddedUrl(entry.href),
+      '" style="width:100%;height:100%;border:0;display:block;background:#f6f8fb"></iframe>'
+    ].join('');
+
+    const iframe = document.getElementById('wang-embedded-frame');
+    iframe.addEventListener('load', function () {
+      try {
+        const token = sessionStorage.getItem('token');
+        if (token) {
+          iframe.contentWindow.sessionStorage.setItem('token', token);
+        }
+      } catch (error) {
+        console.warn('Failed to sync embedded session:', error.message);
+      }
+    });
+
+    setMenuActive(entry.id);
   }
 
   function injectFeatureEntries() {
@@ -60,10 +139,17 @@
         '.wang-extra-menu-item:hover{background:#315fc8!important;color:#fff!important;}',
         '.wang-extra-icon{width:18px;text-align:center;font-weight:700;color:#7dd3fc;}',
         '.sidebar.collapsed .wang-extra-menu-item{justify-content:center;padding:0!important;}',
-        '.sidebar.collapsed .wang-extra-menu-item .menu-text{display:none;}'
+        '.sidebar.collapsed .wang-extra-menu-item .menu-text{display:none;}',
+        '.wang-extra-menu-item.is-active{background:#2f69dc!important;color:#fff!important;}'
       ].join('');
       document.head.appendChild(style);
     }
+
+    menu.addEventListener('click', function (event) {
+      if (!event.target.closest('.wang-extra-menu-item')) {
+        restoreMainContent();
+      }
+    }, true);
   }
 
   function applyVersionInfo(versionInfo) {
