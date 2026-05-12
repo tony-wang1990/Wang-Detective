@@ -85,8 +85,8 @@ else
     echo "  - docker-compose.yml 已存在，跳过下载"
 fi
 
-# 兼容早期增强版部署文件：旧 compose 引用了未发布的 websockify 镜像和旧主应用镜像。
-if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main" docker-compose.yml; then
+# 兼容早期增强版部署文件：刷新旧镜像、旧健康检查或缺少低配 VPS 优化的 compose。
+if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main\\|start_period: 45s" docker-compose.yml || ! grep -q "JAVA_TOOL_OPTIONS" docker-compose.yml; then
     backup_file="docker-compose.yml.bak.$(date +%Y%m%d%H%M%S)"
     cp docker-compose.yml "$backup_file"
     wget -q -O docker-compose.yml https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/docker-compose.yml || { echo "错误: 刷新 docker-compose.yml 失败"; mv "$backup_file" docker-compose.yml; exit 1; }
@@ -98,6 +98,15 @@ if [ ! -f "application.yml" ]; then
     echo "  - application.yml 下载成功"
 else
     echo "  - application.yml 已存在，保留现有配置"
+fi
+
+# 兼容旧版 application.yml：默认 IPv6 监听在部分 VPS / Docker 环境下会导致本机健康检查失败。
+if grep -q "address: '::'\\|^  port: 9527$" application.yml; then
+    app_backup_file="application.yml.bak.$(date +%Y%m%d%H%M%S)"
+    cp application.yml "$app_backup_file"
+    sed -i "s|^  port: 9527$|  port: \${SERVER_PORT:9527}|" application.yml
+    sed -i "s|address: '::'.*|address: \${SERVER_ADDRESS:0.0.0.0}|" application.yml
+    echo "  - 已备份旧 application.yml 为 $app_backup_file，并切换为 IPv4 默认监听"
 fi
 
 if [ ! -f ".env" ]; then
@@ -114,6 +123,9 @@ TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-king_detective_bot}
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
 OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.siliconflow.cn}
 CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+SERVER_ADDRESS=${SERVER_ADDRESS:-0.0.0.0}
+SERVER_PORT=${SERVER_PORT:-9527}
+JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS:--Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.net.preferIPv4Stack=true}
 EOF
     chmod 600 .env
     echo "  - .env 已生成"
@@ -124,11 +136,29 @@ else
     echo "  - .env 已存在，保留现有环境配置"
 fi
 
+ensure_env() {
+    key="$1"
+    value="$2"
+    if ! grep -q "^${key}=" .env; then
+        printf '%s=%s\n' "$key" "$value" >> .env
+        echo "  - .env 已补充 ${key}"
+    fi
+}
+
+current_admin_password="$(grep -E '^ADMIN_PASSWORD=' .env | tail -n1 | cut -d= -f2-)"
+current_admin_password="${current_admin_password:-admin123456}"
+ensure_env "OPS_SSH_SECRET_KEY" "$current_admin_password"
+ensure_env "SERVER_ADDRESS" "0.0.0.0"
+ensure_env "SERVER_PORT" "9527"
+ensure_env "JAVA_TOOL_OPTIONS" "-Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.net.preferIPv4Stack=true"
+
 echo "步骤 4: 拉取最新镜像..."
-docker-compose pull watcher king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
+docker-compose pull king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
 
 echo "步骤 5: 启动服务..."
-docker-compose up -d --force-recreate || { echo "错误: 启动服务失败"; exit 1; }
+docker stop king-detective-watcher >/dev/null 2>&1 || true
+docker rm king-detective-watcher >/dev/null 2>&1 || true
+docker-compose up -d --force-recreate king-detective || { echo "错误: 启动服务失败"; exit 1; }
 
 echo ""
 echo "=== 安装完成！ ==="

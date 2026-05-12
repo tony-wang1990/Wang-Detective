@@ -96,6 +96,8 @@ TELEGRAM_BOT_TOKEN="xxx" ADMIN_USERNAME="admin" ADMIN_PASSWORD="strong_password"
 
 如果安装时卡在 `Pulling websockify ... error`，说明服务器上保留了早期增强版的旧 `docker-compose.yml`，其中引用了未发布的 `king-detective-websockify` 镜像。新版默认部署已移除该非必需服务，并会自动备份旧 compose 后刷新。
 
+如果 1C/1G 左右的 VPS 部署后长时间 `health: starting` 或 `unhealthy`，通常是首次 Spring 初始化太慢，不一定是程序崩溃。新版默认限制 JVM 使用 1 个 CPU、384MB 堆内存、IPv4 监听，并把健康检查启动宽限延长到 10 分钟；`watcher` 也改为可选 profile，避免低配机器默认多跑一个容器。
+
 可在服务器上执行：
 
 ```bash
@@ -103,6 +105,13 @@ cd /app/king-detective
 cp docker-compose.yml docker-compose.yml.bak.$(date +%Y%m%d%H%M%S) 2>/dev/null || true
 rm -f docker-compose.yml
 bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/scripts/install.sh)
+```
+
+需要启用自动更新 watcher 时再执行：
+
+```bash
+cd /app/king-detective
+docker compose --profile watcher up -d
 ```
 
 ## 本地验证
