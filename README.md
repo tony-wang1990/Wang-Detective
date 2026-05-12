@@ -11,6 +11,7 @@ bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/
 部署完成后访问：
 
 - Web 面板：`http://your-server-ip:9527`
+- 新版功能中心：`http://your-server-ip:9527/wang-features.html`
 - 运维终端：`http://your-server-ip:9527/ops-terminal.html`
 - 健康检查：`http://your-server-ip:9527/actuator/health`
 - 系统诊断：`GET /api/v1/system/diagnostics`，需要登录 token
