@@ -140,3 +140,5 @@ mvn package
 5. 多云只读资产发现，优先支持 AWS/GCP/Azure/DO 的实例同步。
 
 详细改造记录见 [docs/ENHANCEMENT_REPORT.md](docs/ENHANCEMENT_REPORT.md)。
+
+当前进度、UI 集成约定和后续计划见 [docs/PROJECT_STATUS_AND_UI_GUIDE.md](docs/PROJECT_STATUS_AND_UI_GUIDE.md)。
