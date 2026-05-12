@@ -85,6 +85,14 @@ else
     echo "  - docker-compose.yml 已存在，跳过下载"
 fi
 
+# 兼容早期增强版部署文件：旧 compose 引用了未发布的 websockify 镜像和旧主应用镜像。
+if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main" docker-compose.yml; then
+    backup_file="docker-compose.yml.bak.$(date +%Y%m%d%H%M%S)"
+    cp docker-compose.yml "$backup_file"
+    wget -q -O docker-compose.yml https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/docker-compose.yml || { echo "错误: 刷新 docker-compose.yml 失败"; mv "$backup_file" docker-compose.yml; exit 1; }
+    echo "  - 检测到旧版 docker-compose.yml，已备份为 $backup_file 并刷新为新版"
+fi
+
 if [ ! -f "application.yml" ]; then
     wget -q https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/src/main/resources/application.yml || { echo "错误: 下载 application.yml 失败"; exit 1; }
     echo "  - application.yml 下载成功"
@@ -117,7 +125,7 @@ else
 fi
 
 echo "步骤 4: 拉取最新镜像..."
-docker-compose pull || { echo "警告: 拉取镜像失败，将使用现有镜像"; }
+docker-compose pull watcher king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
 
 echo "步骤 5: 启动服务..."
 docker-compose up -d --force-recreate || { echo "错误: 启动服务失败"; exit 1; }

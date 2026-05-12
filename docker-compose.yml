@@ -12,7 +12,7 @@ services:
       - TZ=Asia/Shanghai
 
   king-detective:
-    image: ghcr.io/tony-wang1990/king-detective:main
+    image: ghcr.io/tony-wang1990/wang-detective:main
     container_name: king-detective
     restart: always
     environment:
@@ -41,17 +41,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 45s
-
-  websockify:
-    image: ghcr.io/tony-wang1990/king-detective-websockify:main
-    container_name: websockify
-    restart: always
-    ports:
-      - "127.0.0.1:6080:6080"
-    depends_on:
-      - king-detective
-    networks:
-      - app-network
 
 networks:
   app-network:

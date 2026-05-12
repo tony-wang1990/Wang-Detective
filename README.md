@@ -92,6 +92,19 @@ docker compose restart king-detective
 TELEGRAM_BOT_TOKEN="xxx" ADMIN_USERNAME="admin" ADMIN_PASSWORD="strong_password" bash update.sh
 ```
 
+## 部署问题处理
+
+如果安装时卡在 `Pulling websockify ... error`，说明服务器上保留了早期增强版的旧 `docker-compose.yml`，其中引用了未发布的 `king-detective-websockify` 镜像。新版默认部署已移除该非必需服务，并会自动备份旧 compose 后刷新。
+
+可在服务器上执行：
+
+```bash
+cd /app/king-detective
+cp docker-compose.yml docker-compose.yml.bak.$(date +%Y%m%d%H%M%S) 2>/dev/null || true
+rm -f docker-compose.yml
+bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/scripts/install.sh)
+```
+
 ## 本地验证
 
 本项目按 Java 21 构建：
