@@ -55,20 +55,16 @@ if ! command -v docker-compose &> /dev/null; then
     fi
 fi
 
-# 再次检查
+# 再次检查并选择 Compose 命令。优先使用 Docker Compose v2，兼容旧 docker-compose v1。
 if ! command -v docker &> /dev/null; then echo "错误: Docker 安装失败"; exit 1; fi
-if ! command -v docker-compose &> /dev/null; then 
-    # 如果没有 docker-compose 命令，但有 docker compose 插件，创建一个别名函数或者提示用户
-    if docker compose version &> /dev/null; then
-        echo "  - 检测到 Docker Compose Plugin (docker compose)"
-        # 创建一个临时的 docker-compose 别名给当前脚本使用
-        docker-compose() { docker compose "$@"; }
-        export -f docker-compose
-    else
-        echo "错误: Docker Compose 安装失败"; exit 1; 
-    fi
-else
+if docker compose version &> /dev/null; then
+    echo "  - Docker Compose Plugin 已安装"
+    compose() { docker compose "$@"; }
+elif command -v docker-compose &> /dev/null; then
     echo "  - docker-compose 已安装"
+    compose() { docker-compose "$@"; }
+else
+    echo "错误: Docker Compose 安装失败"; exit 1;
 fi
 
 echo "步骤 2: 创建目录..."
@@ -153,12 +149,15 @@ ensure_env "SERVER_PORT" "9527"
 ensure_env "JAVA_TOOL_OPTIONS" "-Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.net.preferIPv4Stack=true"
 
 echo "步骤 4: 拉取最新镜像..."
-docker-compose pull king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
+compose pull king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
 
 echo "步骤 5: 启动服务..."
 docker stop king-detective-watcher >/dev/null 2>&1 || true
-docker rm king-detective-watcher >/dev/null 2>&1 || true
-docker-compose up -d --force-recreate king-detective || { echo "错误: 启动服务失败"; exit 1; }
+docker rm -f king-detective-watcher >/dev/null 2>&1 || true
+# docker-compose v1.29 在重建新版 BuildKit/GHCR 镜像时可能触发 KeyError: ContainerConfig。
+# 先删除旧容器再创建，数据目录均为 bind mount，不会删除业务数据。
+docker rm -f king-detective >/dev/null 2>&1 || true
+compose up -d king-detective || { echo "错误: 启动服务失败"; exit 1; }
 
 echo ""
 echo "=== 安装完成！ ==="

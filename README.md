@@ -99,6 +99,8 @@ TELEGRAM_BOT_TOKEN="xxx" ADMIN_USERNAME="admin" ADMIN_PASSWORD="strong_password"
 
 如果 1C/1G 左右的 VPS 部署后长时间 `health: starting` 或 `unhealthy`，通常是首次 Spring 初始化太慢，不一定是程序崩溃。新版默认限制 JVM 使用 1 个 CPU、384MB 堆内存、IPv4 监听，并把健康检查启动宽限延长到 10 分钟；`watcher` 也改为可选 profile，避免低配机器默认多跑一个容器。
 
+如果启动时报 `KeyError: 'ContainerConfig'`，这是旧版 `docker-compose 1.29.x` 重建新版 GHCR/BuildKit 镜像时的兼容问题。新版安装脚本会优先使用 Docker Compose v2，并在启动前移除旧容器后重新创建；数据目录通过 bind mount 持久化，不会因为删除容器而丢失。
+
 可在服务器上执行：
 
 ```bash
