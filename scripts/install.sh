@@ -152,11 +152,12 @@ echo "步骤 4: 拉取最新镜像..."
 compose pull king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
 
 echo "步骤 5: 启动服务..."
-docker stop king-detective-watcher >/dev/null 2>&1 || true
-docker rm -f king-detective-watcher >/dev/null 2>&1 || true
+for container_id in $(docker ps -aq --filter "name=king-detective"); do
+    docker rm -f "$container_id" >/dev/null 2>&1 || true
+done
 # docker-compose v1.29 在重建新版 BuildKit/GHCR 镜像时可能触发 KeyError: ContainerConfig。
-# 先删除旧容器再创建，数据目录均为 bind mount，不会删除业务数据。
-docker rm -f king-detective >/dev/null 2>&1 || true
+# 先删除旧容器和失败重建留下的 hash_king-detective 残留容器再创建。
+# 数据目录均为 bind mount，不会删除业务数据。
 compose up -d king-detective || { echo "错误: 启动服务失败"; exit 1; }
 
 echo ""
