@@ -33,6 +33,27 @@ cd /app/king-detective
 docker compose up -d --force-recreate
 ```
 
+## 当前阶段状态
+
+本阶段已经完成第一轮稳定性修复、部署修复、运维入口一期、主面板新功能入口和 UI 重设计的第一阶段落地。当前仓库 `main` 是阶段性收尾版本，后续开发会继续以 UI 重建和前端原生化为一条主线推进。
+
+已完成重点：
+
+- Docker 部署链路已切到 `ghcr.io/tony-wang1990/wang-detective:main`，修复旧 compose、旧容器残留、低配 VPS 启动慢、IPv6 监听和版本 `null` 等问题。
+- 后端增强已落地：健康检查、系统诊断、数据库迁移修复、SQLite 分页、WebSocket 日志、VCN/引导卷分页 total、任务前缀隔离。
+- 运维入口一期已落地：Web SSH、SSH 主机库、批量命令、SFTP 基础文件操作、操作审计基础表和接口。
+- UI 可见性已修复：左侧菜单增加“新版功能”和“运维终端”，并以内嵌方式进入主面板内容区，不再默认跳到独立页面。
+- UI 重设计第一阶段已落地：新增现代控制台主题、重做登录页视觉、改造侧边栏/顶部栏/首页卡片，并为首页增加顶部搜索/健康/版本区、地图+系统诊断双栏、资源使用面板。
+
+当前仍未完成、后续必须重点推进：
+
+- **UI 重建和完善是下一阶段最大重点。** 当前仓库只有 Vue 打包产物，短期通过 `wang-modern-theme.css` 和 `wang-ui-upgrade.js` 做增强；后续应恢复或重建完整 Vue 前端源码，把这些能力变成真正可维护的 Vue 路由和组件。
+- “新版功能”和“运维终端”仍是 iframe/独立 HTML 过渡方案，后续要改成原生 Vue 页面。
+- 配置列表、任务列表、服务日志、系统配置、AI 聊天室、运维终端内部页面还没有完全按新版 UI 重绘。
+- 首页诊断和任务状态目前先做 UI 框架，后续应接入更完整的真实数据、筛选、刷新、空状态和错误状态。
+- 移动端/窄屏布局还需要专项优化。
+- Telegram Bot 菜单仍有扩展空间，后续建议增加系统诊断摘要、最近审计、任务状态、主机列表和安全确认后的快捷运维入口。
+
 ## 数据目录
 
 增强版统一使用可持久化目录，避免更新镜像时丢数据：
@@ -133,12 +154,16 @@ mvn package
 
 对比 R-Bot / java_oci_manage 等同类 OCI 运维工具后，下一阶段建议按这个顺序继续：
 
-1. 运维入口二期：操作审计、权限控制、端口转发、大文件传输进度和断点续传。
-2. OCI Object Storage：Bucket/Object 管理、数据库备份归档、日志归档、临时下载链接。
-3. OCI Email Delivery：DKIM/SPF 指引、SMTP 凭据检查、测试发信。
-4. 成本、配额、Always Free 用量和超额风险看板。
-5. 多云只读资产发现，优先支持 AWS/GCP/Azure/DO 的实例同步。
+1. UI 重建和完善：恢复/重建 Vue 前端源码，把“新版功能”“运维终端”做成真正 Vue 路由；全量重绘登录页、首页、配置列表、任务列表、日志、系统配置、AI 聊天室和运维页面。
+2. 运维入口二期：操作审计筛选/导出、权限控制、命令模板、端口转发、大文件传输进度和断点续传。
+3. Telegram Bot 增强：系统诊断摘要、最近审计、任务状态、主机列表、快捷命令菜单和危险操作二次确认。
+4. OCI Object Storage：Bucket/Object 管理、数据库备份归档、日志归档、临时下载链接。
+5. OCI Email Delivery：DKIM/SPF 指引、SMTP 凭据检查、测试发信。
+6. 成本、配额、Always Free 用量和超额风险看板。
+7. 多云只读资产发现，优先支持 AWS/GCP/Azure/DO 的实例同步。
 
 详细改造记录见 [docs/ENHANCEMENT_REPORT.md](docs/ENHANCEMENT_REPORT.md)。
 
 当前进度、UI 集成约定和后续计划见 [docs/PROJECT_STATUS_AND_UI_GUIDE.md](docs/PROJECT_STATUS_AND_UI_GUIDE.md)。
+
+UI 重设计路线和后续拆分见 [docs/UI_REDESIGN_ROADMAP.md](docs/UI_REDESIGN_ROADMAP.md)。
