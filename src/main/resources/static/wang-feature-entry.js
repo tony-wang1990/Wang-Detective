@@ -51,8 +51,31 @@
     return item;
   }
 
+  function currentTheme() {
+    return document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark'
+      ? 'dark'
+      : 'light';
+  }
+
   function embeddedUrl(href) {
-    return href + (href.includes('?') ? '&' : '?') + 'embedded=1';
+    const url = new URL(href, window.location.origin);
+    url.searchParams.set('embedded', '1');
+    url.searchParams.set('theme', currentTheme());
+    return url.pathname + url.search + url.hash;
+  }
+
+  function syncEmbeddedTheme(iframe) {
+    if (!iframe || !iframe.contentWindow) {
+      return;
+    }
+    const theme = currentTheme();
+    try {
+      iframe.contentWindow.localStorage.setItem('theme', theme);
+      iframe.contentWindow.document.documentElement.classList.toggle('dark', theme === 'dark');
+      iframe.contentWindow.postMessage({ type: 'wang-theme', theme }, window.location.origin);
+    } catch (error) {
+      console.warn('Failed to sync embedded theme:', error.message);
+    }
   }
 
   function setMenuActive(activeId) {
@@ -95,11 +118,12 @@
       main.appendChild(panel);
     }
 
+    const isDark = currentTheme() === 'dark';
     panel.style.cssText = [
       'display:block',
       'height:calc(100vh - 112px)',
       'min-height:680px',
-      'background:#f6f8fb',
+      'background:' + (isDark ? '#0b1220' : '#f6f8fb'),
       'border-radius:8px',
       'overflow:hidden'
     ].join(';');
@@ -109,7 +133,9 @@
       entry.title,
       '" src="',
       embeddedUrl(entry.href),
-      '" style="width:100%;height:100%;border:0;display:block;background:#f6f8fb"></iframe>'
+      '" style="width:100%;height:100%;border:0;display:block;background:',
+      isDark ? '#0b1220' : '#f6f8fb',
+      '"></iframe>'
     ].join('');
 
     const iframe = document.getElementById('wang-embedded-frame');
@@ -119,10 +145,12 @@
         if (token) {
           iframe.contentWindow.sessionStorage.setItem('token', token);
         }
+        syncEmbeddedTheme(iframe);
       } catch (error) {
         console.warn('Failed to sync embedded session:', error.message);
       }
     });
+    syncEmbeddedTheme(iframe);
 
     setMenuActive(entry.id);
   }
@@ -205,6 +233,15 @@
 
   const observer = new MutationObserver(injectFeatureEntries);
   observer.observe(document.documentElement, { childList: true, subtree: true });
+  const themeObserver = new MutationObserver(function () {
+    syncEmbeddedTheme(document.getElementById('wang-embedded-frame'));
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('storage', function (event) {
+    if (event.key === 'theme') {
+      syncEmbeddedTheme(document.getElementById('wang-embedded-frame'));
+    }
+  });
   window.addEventListener('load', injectFeatureEntries);
   window.addEventListener('load', refreshVersionInfo);
   document.addEventListener('DOMContentLoaded', injectFeatureEntries);

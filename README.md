@@ -167,3 +167,22 @@ mvn package
 当前进度、UI 集成约定和后续计划见 [docs/PROJECT_STATUS_AND_UI_GUIDE.md](docs/PROJECT_STATUS_AND_UI_GUIDE.md)。
 
 UI 重设计路线和后续拆分见 [docs/UI_REDESIGN_ROADMAP.md](docs/UI_REDESIGN_ROADMAP.md)。
+
+## 2026-05-13 UI 原生化阶段更新
+
+本次继续推进 UI 重建主线，但保持线上可部署版本稳定：
+
+- 修复 `scripts/install.sh` 被 Windows CRLF 换行污染的问题，避免 Linux 上执行 raw 脚本时报 `$'\r': command not found` 和 `syntax error near unexpected token elif`。
+- 扩展 `.gitattributes`，强制 `.sh`、前端源码、HTML/CSS/JS/JSON 等文本文件使用 LF，降低后续再次混入 CRLF 的概率。
+- 修复新增模块暗色模式：`新版功能`、`运维终端`、首页新增诊断卡片和内嵌 iframe 会跟随主系统开关灯变化，不再出现暗色外壳里一片白色的页面。
+- 新增 `frontend/` 可维护 Vue 源码目录，已落地登录页、控制台主框架、首页、基础路由、主题切换和 API 封装。
+- 新 Vue 源码当前构建到 `src/main/resources/dist-next`，暂不替换生产入口 `src/main/resources/dist`。后续等页面迁移完整后，再把 Maven/Docker 构建切到新前端产物。
+
+验证记录：
+
+```bash
+npm --prefix frontend install
+npm --prefix frontend run build
+```
+
+后续第一优先级仍然是 UI 重建和 Vue 原生化：把 `新版功能`、`运维终端` 从静态 HTML/iframe 迁成真正 Vue 路由，再逐步重做配置列表、任务列表、服务日志、系统配置和 AI 聊天室页面。

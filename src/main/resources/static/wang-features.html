@@ -5,9 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>W-探长 新版功能</title>
   <script>
-    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
-      document.documentElement.classList.add('embedded');
-    }
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get('theme') || localStorage.getItem('theme') || 'light';
+      if (params.get('embedded') === '1') {
+        document.documentElement.classList.add('embedded');
+      }
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      localStorage.setItem('theme', theme);
+      window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin || !event.data || event.data.type !== 'wang-theme') {
+          return;
+        }
+        const nextTheme = event.data.theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+        localStorage.setItem('theme', nextTheme);
+      });
+    })();
   </script>
   <style>
     :root {
@@ -224,7 +240,7 @@
       padding: 16px;
     }
   </style>
-  <link rel="stylesheet" href="/wang-modern-theme.css?v=20260513-menufix">
+  <link rel="stylesheet" href="/wang-modern-theme.css?v=20260513-themefix">
 </head>
 <body>
   <header>

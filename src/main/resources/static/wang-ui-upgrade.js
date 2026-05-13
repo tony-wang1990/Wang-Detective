@@ -26,6 +26,27 @@
     return sessionStorage.getItem('token') || '';
   }
 
+  function currentTheme() {
+    return document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark'
+      ? 'dark'
+      : 'light';
+  }
+
+  function syncEmbeddedTheme() {
+    const iframe = document.getElementById('wang-embedded-frame');
+    if (!iframe || !iframe.contentWindow) {
+      return;
+    }
+    const theme = currentTheme();
+    try {
+      iframe.contentWindow.localStorage.setItem('theme', theme);
+      iframe.contentWindow.document.documentElement.classList.toggle('dark', theme === 'dark');
+      iframe.contentWindow.postMessage({ type: 'wang-theme', theme }, window.location.origin);
+    } catch (error) {
+      console.warn('Failed to sync embedded theme:', error.message);
+    }
+  }
+
   function isDashboard() {
     return window.location.pathname.indexOf('/dashboard') === 0;
   }
@@ -324,6 +345,7 @@
     ensureTopbar();
     ensureMenuIcons();
     ensureSidebarInfo();
+    syncEmbeddedTheme();
     ensureDashboardGrid();
     ensureChartTitle();
   }
@@ -342,6 +364,13 @@
 
   const observer = new MutationObserver(scheduleApply);
   observer.observe(document.documentElement, { childList: true, subtree: true });
+  const themeObserver = new MutationObserver(scheduleApply);
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('storage', function (event) {
+    if (event.key === 'theme') {
+      scheduleApply();
+    }
+  });
   window.addEventListener('load', scheduleApply);
   document.addEventListener('DOMContentLoaded', scheduleApply);
   window.addEventListener('popstate', scheduleApply);

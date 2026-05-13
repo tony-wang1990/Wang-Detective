@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Keep this script with LF line endings. GitHub raw executes it directly on Linux.
+
 echo "=== King-Detective 安装脚本 ==="
 echo "步骤 1: 检查环境..."
 
