@@ -92,6 +92,11 @@ body,
   border-radius: 8px !important;
   color: #cbd5e1 !important;
   background: transparent !important;
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+  align-items: center !important;
+  justify-content: initial !important;
+  gap: 12px !important;
   font-weight: 600 !important;
   letter-spacing: 0 !important;
   box-shadow: none !important;
@@ -115,8 +120,42 @@ body,
 .dashboard-container .sidebar-menu .el-menu-item .el-icon,
 .dashboard-container .sidebar-menu .el-menu-item .menu-icon,
 .dashboard-container .wang-extra-icon {
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   color: #67e8f9 !important;
   transform: none !important;
+}
+
+.dashboard-container .sidebar-menu .el-menu-item .el-icon svg,
+.dashboard-container .sidebar-menu .el-menu-item .menu-icon svg,
+.dashboard-container .wang-extra-icon svg {
+  width: 19px !important;
+  height: 19px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+.dashboard-container .sidebar-menu .el-menu-item .menu-text {
+  min-width: 0 !important;
+  margin-left: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.dashboard-container .sidebar.collapsed .sidebar-menu .el-menu-item,
+.dashboard-container .sidebar.collapsed .wang-extra-menu-item,
+.dashboard-container .sidebar-menu .el-menu-item.menu-item-collapsed {
+  grid-template-columns: 1fr !important;
+  justify-items: center !important;
+  padding: 0 !important;
 }
 
 .dashboard-container .header {
@@ -995,25 +1034,13 @@ html.dark .dashboard-container .el-main {
 }
 
 .wang-meta-host {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  display: block;
   margin: 6px 0 14px;
   color: #f8fafc;
   font-weight: 800;
-  word-break: break-all;
-}
-
-.wang-meta-host button {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(148, 163, 184, .3);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, .04);
-  color: #cbd5e1;
-  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wang-meta-row {

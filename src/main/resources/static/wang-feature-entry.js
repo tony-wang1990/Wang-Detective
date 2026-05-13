@@ -1,16 +1,21 @@
 (function () {
+  const icons = {
+    features: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3z"/></svg>',
+    terminal: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M7 9l3 3-3 3"/><path d="M12 15h5"/></svg>'
+  };
+
   const entries = [
     {
       id: 'wang-feature-center-entry',
       label: '新版功能',
-      icon: '◆',
+      icon: icons.features,
       href: '/wang-features.html',
       title: '新版功能'
     },
     {
       id: 'wang-ops-terminal-entry',
       label: '运维终端',
-      icon: '⌁',
+      icon: icons.terminal,
       href: '/ops-terminal.html',
       title: '运维终端'
     }
@@ -24,10 +29,11 @@
     item.style.cssText = [
       'height:56px',
       'line-height:56px',
-      'display:flex',
+      'display:grid',
+      'grid-template-columns:28px minmax(0,1fr)',
       'align-items:center',
-      'gap:14px',
-      'padding:0 20px',
+      'gap:12px',
+      'padding:0 14px',
       'cursor:pointer'
     ].join(';');
     item.innerHTML = [
@@ -136,11 +142,12 @@
       style.id = 'wang-feature-entry-style';
       style.textContent = [
         '.wang-extra-menu-item{color:#e8eefc!important;}',
-        '.wang-extra-menu-item:hover{background:#315fc8!important;color:#fff!important;}',
-        '.wang-extra-icon{width:18px;text-align:center;font-weight:700;color:#7dd3fc;}',
+        '.wang-extra-menu-item:hover{background:rgba(8,145,178,.16)!important;color:#fff!important;}',
+        '.wang-extra-icon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;color:#67e8f9;}',
+        '.wang-extra-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}',
         '.sidebar.collapsed .wang-extra-menu-item{justify-content:center;padding:0!important;}',
         '.sidebar.collapsed .wang-extra-menu-item .menu-text{display:none;}',
-        '.wang-extra-menu-item.is-active{background:#2f69dc!important;color:#fff!important;}'
+        '.wang-extra-menu-item.is-active{background:rgba(8,145,178,.26)!important;color:#fff!important;}'
       ].join('');
       document.head.appendChild(style);
     }

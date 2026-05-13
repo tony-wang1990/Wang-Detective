@@ -1,5 +1,26 @@
 (function () {
   const REFRESH_MS = 30000;
+  const MENU_ICONS = {
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-8.5z"/></svg>',
+    user: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+    task: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-5"/><path d="M20 12a8 8 0 1 1-5.3-7.5"/></svg>',
+    log: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>',
+    system: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M4.9 15.5l-1.1 2 2.3 2.3 2-1.1 1.3.5.6 2.3h4l.6-2.3 1.3-.5 2 1.1 2.3-2.3-1.1-2 .5-1.3 2.3-.6v-4l-2.3-.6-.5-1.3 1.1-2-2.3-2.3-2 1.1-1.3-.5L14 1.7h-4l-.6 2.3-1.3.5-2-1.1-2.3 2.3 1.1 2-.5 1.3-2.3.6v4l2.3.6z"/></svg>',
+    ai: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4h-4l-4 3v-3H7a4 4 0 0 1-4-4v-1a4 4 0 0 1 4-4z"/><path d="M9 12h.01M15 12h.01"/></svg>',
+    features: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3z"/></svg>',
+    terminal: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M7 9l3 3-3 3"/><path d="M12 15h5"/></svg>'
+  };
+  const MENU_ORDER = ['home', 'user', 'task', 'log', 'system', 'ai'];
+  const MENU_LABELS = {
+    '主页': 'home',
+    '配置列表': 'user',
+    '任务列表': 'task',
+    '服务日志': 'log',
+    '系统配置': 'system',
+    'AI聊天室': 'ai',
+    '新版功能': 'features',
+    '运维终端': 'terminal'
+  };
 
   function token() {
     return sessionStorage.getItem('token') || '';
@@ -164,17 +185,26 @@
       '<div class="wang-meta-label">API 网关地址</div>',
       '<div class="wang-meta-host">',
       window.location.host,
-      '<button type="button" title="复制地址">⧉</button>',
       '</div>',
       '<div class="wang-meta-row"><span>环境</span><b>生产环境</b></div>',
       '<div class="wang-meta-row"><span>面板</span><b>W-探长</b></div>'
     ].join('');
-
-    const button = card.querySelector('button');
-    button.addEventListener('click', function () {
-      navigator.clipboard && navigator.clipboard.writeText(window.location.origin);
-    });
     sidebar.appendChild(card);
+  }
+
+  function ensureMenuIcons() {
+    const items = Array.from(document.querySelectorAll('.sidebar-menu .el-menu-item'));
+    items.forEach(function (item, index) {
+      const label = (item.textContent || '').trim();
+      const key = MENU_LABELS[label] || (item.classList.contains('wang-extra-menu-item') ? null : MENU_ORDER[index]);
+      const svg = MENU_ICONS[key];
+      const icon = item.querySelector('.menu-icon, .wang-extra-icon, .el-icon');
+      if (!svg || !icon || icon.classList.contains('wang-menu-icon-ready')) {
+        return;
+      }
+      icon.innerHTML = svg;
+      icon.classList.add('wang-menu-icon-ready');
+    });
   }
 
   function makeDiagRow(title, detail, state) {
@@ -292,6 +322,7 @@
     ensureLoginRedirect();
     ensureLoginCopy();
     ensureTopbar();
+    ensureMenuIcons();
     ensureSidebarInfo();
     ensureDashboardGrid();
     ensureChartTitle();
