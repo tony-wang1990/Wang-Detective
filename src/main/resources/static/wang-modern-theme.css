@@ -476,20 +476,53 @@ html.dark .dashboard-container .el-main {
 }
 
 .login-container::after {
-  content: "W\A W-探长\A OCI Operations Console";
+  display: none !important;
+}
+
+.login-container .background {
+  display: block !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: min(42vw, 760px) !important;
+  height: 100% !important;
+  z-index: 2 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.login-container .background::before {
+  content: "W";
+  position: absolute;
+  left: clamp(64px, 7vw, 126px);
+  top: clamp(84px, 15vh, 146px);
+  width: 128px;
+  height: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: #ecfeff;
+  background: linear-gradient(135deg, #14b8a6, #0891b2);
+  box-shadow: 0 22px 44px rgba(8, 145, 178, .24);
+  font-size: 82px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.login-container .background::after {
+  content: "W-探长\A OCI 管理与运维控制台\A 资源监控 · 任务编排 · 运维诊断";
   white-space: pre;
   position: absolute;
-  left: clamp(34px, 5vw, 84px);
-  top: clamp(44px, 9vh, 120px);
-  z-index: 2;
+  left: clamp(64px, 7vw, 126px);
+  top: clamp(238px, 36vh, 330px);
+  max-width: 390px;
   color: #e5f7f7;
-  font-size: 16px;
-  line-height: 1.9;
+  font-size: 17px;
+  line-height: 2;
   font-weight: 800;
   letter-spacing: 0;
 }
 
-.login-container .background,
 .login-container .grid-lines,
 .login-container .stars-container,
 .login-container .scan-line,

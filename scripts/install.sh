@@ -5,6 +5,7 @@ echo "步骤 1: 检查环境..."
 
 # 检查必要的命令
 command -v wget >/dev/null 2>&1 || { echo "错误: 未安装 wget"; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "错误: 未安装 curl"; exit 1; }
 # 检查并安装 Docker
 if ! command -v docker &> /dev/null; then
     echo "未检测到 Docker，正在尝试自动安装..."
@@ -164,8 +165,38 @@ done
 # 数据目录均为 bind mount，不会删除业务数据。
 compose up -d king-detective || { echo "错误: 启动服务失败"; exit 1; }
 
+echo "步骤 6: 等待服务就绪..."
+HEALTH_URL="http://127.0.0.1:9527/actuator/health"
+HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-900}"
+WAIT_STARTED_AT="$(date +%s)"
+while true; do
+    HEALTH_BODY="$(curl -fsS --max-time 5 "$HEALTH_URL" 2>/dev/null || true)"
+    if echo "$HEALTH_BODY" | grep -q '"status":"UP"'; then
+        echo "  - 服务已就绪 health=UP"
+        break
+    fi
+
+    NOW="$(date +%s)"
+    ELAPSED=$((NOW - WAIT_STARTED_AT))
+    if [ "$ELAPSED" -ge "$HEALTH_TIMEOUT_SECONDS" ]; then
+        echo "错误: 服务在 ${HEALTH_TIMEOUT_SECONDS} 秒内未就绪"
+        echo "----- docker ps -----"
+        docker ps --filter "name=king-detective"
+        echo "----- docker logs --tail 120 king-detective -----"
+        docker logs --tail 120 king-detective || true
+        exit 1
+    fi
+
+    CONTAINER_STATUS="$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' king-detective 2>/dev/null || true)"
+    echo "  - 服务启动中... ${ELAPSED}s/${HEALTH_TIMEOUT_SECONDS}s ${CONTAINER_STATUS}"
+    sleep 15
+done
+
+PUBLIC_IP="$(curl -fsS --max-time 8 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
+
 echo ""
 echo "=== 安装完成！ ==="
-echo "访问地址: http://$(curl -s ifconfig.me):9527"
+echo "访问地址: http://${PUBLIC_IP}:9527"
 echo "账号信息: 请查看 /app/king-detective/.env 中的 ADMIN_USERNAME / ADMIN_PASSWORD"
-echo "健康检查: http://127.0.0.1:9527/actuator/health"
+echo "服务器本机健康检查: ${HEALTH_URL}"
+echo "注意: 127.0.0.1 只能在服务器 SSH 内访问，电脑浏览器请使用上面的公网 IP 地址"

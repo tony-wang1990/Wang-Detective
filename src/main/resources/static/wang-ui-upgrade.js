@@ -77,6 +77,22 @@
     }
   }
 
+  function ensureLoginRedirect() {
+    const hasToken = Boolean(token());
+    const loginVisible = Boolean(document.querySelector('.login-container'));
+    const dashboardVisible = Boolean(document.querySelector('.dashboard-container'));
+
+    if (hasToken && loginVisible && !dashboardVisible) {
+      const target = '/dashboard/home';
+      if (window.location.pathname !== target) {
+        window.location.replace(target);
+      } else if (!sessionStorage.getItem('wang_dashboard_reload_once')) {
+        sessionStorage.setItem('wang_dashboard_reload_once', '1');
+        window.location.reload();
+      }
+    }
+  }
+
   function ensureTopbar() {
     if (!isDashboard()) {
       return;
@@ -273,6 +289,7 @@
   }
 
   function apply() {
+    ensureLoginRedirect();
     ensureLoginCopy();
     ensureTopbar();
     ensureSidebarInfo();
