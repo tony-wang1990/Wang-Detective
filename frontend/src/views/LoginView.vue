@@ -43,9 +43,18 @@ async function submit() {
 <template>
   <main class="wd-login">
     <section class="wd-login-brand">
-      <div class="wd-login-logo">W</div>
-      <h1>W-探长</h1>
+      <div class="wd-login-lockup">
+        <div class="wd-login-logo xl">W</div>
+        <div>
+          <span>WANG DETECTIVE</span>
+          <h1>W-探长</h1>
+        </div>
+      </div>
       <p>OCI Operations Console</p>
+      <div class="wd-login-signal">
+        <strong>OCI</strong>
+        <span>Compute · Network · Logs · Ops</span>
+      </div>
       <ul>
         <li>资源、任务、日志集中管理</li>
         <li>健康诊断与运维入口统一呈现</li>

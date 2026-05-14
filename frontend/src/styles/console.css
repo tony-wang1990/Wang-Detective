@@ -38,7 +38,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -225,6 +227,10 @@ button {
   margin-left: 6px;
 }
 
+.wd-top-status b.warn {
+  color: #f59e0b;
+}
+
 .dot {
   width: 8px;
   height: 8px;
@@ -232,6 +238,10 @@ button {
   margin-right: 8px;
   border-radius: 50%;
   background: #22c55e;
+}
+
+.dot.warn {
+  background: #f59e0b;
 }
 
 .wd-theme {
@@ -437,6 +447,15 @@ button {
 .wd-form-grid button.danger {
   border-color: var(--wd-danger);
   background: var(--wd-danger);
+}
+
+.wd-actions button.ghost,
+.wd-command-row button.ghost,
+.wd-form-grid button.ghost,
+.wd-chat-input button.ghost {
+  background: var(--wd-surface);
+  color: var(--wd-text);
+  border-color: var(--wd-line);
 }
 
 .wd-table-card header,
@@ -667,6 +686,10 @@ button {
   border-bottom: 1px solid var(--wd-line);
 }
 
+.wd-command-row.terminal-input-row {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
 .wd-chat {
   min-height: calc(100vh - 138px);
   display: grid;
@@ -753,8 +776,30 @@ button {
 .wd-login-logo {
   width: 96px;
   height: 96px;
-  margin-bottom: 28px;
   font-size: 58px;
+}
+
+.wd-login-logo.xl {
+  width: 112px;
+  height: 112px;
+  font-size: 66px;
+  box-shadow: 0 22px 60px rgba(20, 184, 166, .28);
+}
+
+.wd-login-lockup {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.wd-login-lockup span {
+  display: block;
+  margin-bottom: 8px;
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
 }
 
 .wd-login-brand h1 {
@@ -765,6 +810,28 @@ button {
 .wd-login-brand p {
   margin: 0 0 32px;
   color: #99f6e4;
+  font-weight: 800;
+}
+
+.wd-login-signal {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 6px;
+  margin-bottom: 28px;
+  padding: 16px 18px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .46);
+}
+
+.wd-login-signal strong {
+  color: #fff;
+  font-size: 28px;
+}
+
+.wd-login-signal span {
+  color: #a7f3d0;
+  font-size: 13px;
   font-weight: 800;
 }
 

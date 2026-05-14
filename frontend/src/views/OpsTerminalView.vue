@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { FolderOpen, Play, RefreshCw, Save, Server, Terminal, Wifi } from 'lucide-vue-next';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { FolderOpen, Play, RefreshCw, Save, Server, Square, Terminal, Wifi, Zap } from 'lucide-vue-next';
 import { opsGet, opsPost } from '../api/http';
 
 type Host = {
@@ -35,6 +35,10 @@ const hosts = ref<Host[]>([]);
 const selectedHostId = ref('');
 const status = ref('');
 const output = ref('等待操作...');
+const terminalOutput = ref('尚未连接。选择主机后点击 Web SSH，可在这里直接交互。');
+const terminalInput = ref('');
+const terminalStatus = ref('未连接');
+const terminalRef = ref<HTMLElement | null>(null);
 const command = ref('uname -a && uptime');
 const sftpPath = ref('.');
 const sftpEntries = ref<SftpEntry[]>([]);
@@ -49,6 +53,7 @@ const form = reactive({
   privateKey: '',
   passphrase: ''
 });
+let terminalWs: WebSocket | null = null;
 
 const currentHost = computed(() => hosts.value.find((host) => host.id === selectedHostId.value));
 
@@ -66,6 +71,10 @@ function credential() {
   };
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : '操作失败';
+}
+
 function fillHost(host: Host) {
   selectedHostId.value = host.id || '';
   form.name = host.name || '';
@@ -77,65 +86,153 @@ function fillHost(host: Host) {
 }
 
 async function loadHosts() {
-  const res = await opsGet<Host[]>('/ssh/hosts');
-  hosts.value = res.data || [];
+  try {
+    const res = await opsGet<Host[]>('/ssh/hosts');
+    hosts.value = res.data || [];
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
 }
 
 async function saveHost() {
   status.value = '保存中';
-  const payload = { ...form, port: Number(form.port || 22) };
-  await opsPost('/ssh/hosts', payload);
-  await loadHosts();
-  status.value = '主机已保存';
+  try {
+    const payload = { ...form, port: Number(form.port || 22) };
+    await opsPost('/ssh/hosts', payload);
+    await loadHosts();
+    status.value = '主机已保存';
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
 }
 
 async function testConnection() {
   status.value = '测试连接中';
-  const res = await opsPost<boolean>('/ssh/test', { credential: credential() });
-  status.value = res.data ? '连接成功' : '连接失败';
+  try {
+    const res = await opsPost<boolean>('/ssh/test', { credential: credential() });
+    status.value = res.data ? '连接成功' : '连接失败';
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
 }
 
 async function execCommand() {
   status.value = '命令执行中';
-  const res = await opsPost<CommandResult>('/ssh/exec', {
-    credential: credential(),
-    command: command.value,
-    timeoutSeconds: 60
+  try {
+    const res = await opsPost<CommandResult>('/ssh/exec', {
+      credential: credential(),
+      command: command.value,
+      timeoutSeconds: 60
+    });
+    const data = res.data || {};
+    output.value = [
+      `host: ${data.name || data.host || '-'}`,
+      `exit: ${data.exitStatus ?? '-'}`,
+      `duration: ${data.durationMillis ?? 0} ms`,
+      '',
+      data.stdout || '',
+      data.stderr ? `\n[stderr]\n${data.stderr}` : ''
+    ].join('\n');
+    status.value = '命令完成';
+  } catch (error) {
+    output.value = errorMessage(error);
+    status.value = '命令失败';
+  }
+}
+
+function appendTerminal(text: string) {
+  terminalOutput.value += text;
+  if (terminalOutput.value.length > 50000) {
+    terminalOutput.value = terminalOutput.value.slice(-50000);
+  }
+  nextTick(() => {
+    if (terminalRef.value) {
+      terminalRef.value.scrollTop = terminalRef.value.scrollHeight;
+    }
   });
-  const data = res.data || {};
-  output.value = [
-    `host: ${data.name || data.host || '-'}`,
-    `exit: ${data.exitStatus ?? '-'}`,
-    `duration: ${data.durationMillis ?? 0} ms`,
-    '',
-    data.stdout || '',
-    data.stderr ? `\n[stderr]\n${data.stderr}` : ''
-  ].join('\n');
-  status.value = '命令完成';
+}
+
+function disconnectTerminal() {
+  if (terminalWs) {
+    terminalWs.close();
+    terminalWs = null;
+  }
+  terminalStatus.value = '已断开';
 }
 
 async function createSession() {
+  disconnectTerminal();
   status.value = '创建 Web SSH 会话中';
-  const res = await opsPost<{ websocketPath?: string; sessionId?: string }>('/ssh/session', {
-    credential: credential(),
-    ttlMinutes: 30
-  });
-  output.value = `Web SSH 会话已创建：${res.data?.websocketPath || res.data?.sessionId || '-'}`;
-  status.value = '会话已创建';
+  terminalStatus.value = '连接中';
+  terminalOutput.value = '正在创建 SSH 会话...\n';
+  try {
+    const res = await opsPost<{ websocketPath?: string; sessionId?: string }>('/ssh/session', {
+      credential: credential(),
+      ttlMinutes: 30
+    });
+    const websocketPath = res.data?.websocketPath;
+    if (!websocketPath) {
+      terminalStatus.value = '创建失败';
+      status.value = '会话创建失败';
+      appendTerminal('后端没有返回 WebSocket 地址。\n');
+      return;
+    }
+    const token = sessionStorage.getItem('token') || '';
+    const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${scheme}//${window.location.host}${websocketPath}?token=${encodeURIComponent(token)}`;
+    terminalWs = new WebSocket(url);
+    terminalWs.onopen = () => {
+      terminalStatus.value = '已连接';
+      status.value = 'Web SSH 已连接';
+    };
+    terminalWs.onmessage = (event) => appendTerminal(String(event.data || ''));
+    terminalWs.onerror = () => {
+      terminalStatus.value = '连接错误';
+      status.value = 'Web SSH 连接错误';
+    };
+    terminalWs.onclose = () => {
+      terminalWs = null;
+      terminalStatus.value = '已断开';
+    };
+  } catch (error) {
+    terminalStatus.value = '连接失败';
+    status.value = 'Web SSH 连接失败';
+    appendTerminal(`[本地] ${errorMessage(error)}\n`);
+  }
+}
+
+function sendTerminalLine() {
+  if (!terminalWs || terminalWs.readyState !== WebSocket.OPEN) {
+    appendTerminal('\n[本地] 终端未连接，请先点击 Web SSH。\n');
+    return;
+  }
+  terminalWs.send(`${terminalInput.value}\n`);
+  terminalInput.value = '';
+}
+
+function sendCtrlC() {
+  if (terminalWs && terminalWs.readyState === WebSocket.OPEN) {
+    terminalWs.send('\u0003');
+  }
 }
 
 async function listSftp(path = sftpPath.value) {
   status.value = '读取 SFTP 目录中';
-  const res = await opsPost<{ path?: string; entries?: SftpEntry[] }>('/sftp/list', {
-    credential: credential(),
-    path
-  });
-  sftpPath.value = res.data?.path || path;
-  sftpEntries.value = res.data?.entries || [];
-  status.value = 'SFTP 已刷新';
+  try {
+    const res = await opsPost<{ path?: string; entries?: SftpEntry[] }>('/sftp/list', {
+      credential: credential(),
+      path
+    });
+    sftpPath.value = res.data?.path || path;
+    sftpEntries.value = res.data?.entries || [];
+    status.value = 'SFTP 已刷新';
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
 }
 
 onMounted(loadHosts);
+onBeforeUnmount(disconnectTerminal);
 </script>
 
 <template>
@@ -196,6 +293,20 @@ onMounted(loadHosts);
             <button type="button" @click="execCommand"><Play :size="16" />执行</button>
           </div>
           <pre class="wd-terminal">{{ output }}</pre>
+        </div>
+
+        <div class="wd-card wd-log-card">
+          <header>
+            <h2><Terminal :size="17" /> Web SSH</h2>
+            <span>{{ terminalStatus }}</span>
+          </header>
+          <pre ref="terminalRef" class="wd-terminal">{{ terminalOutput }}</pre>
+          <div class="wd-command-row terminal-input-row">
+            <input v-model="terminalInput" placeholder="输入命令，Enter 发送" @keyup.enter="sendTerminalLine" />
+            <button type="button" @click="sendTerminalLine"><Zap :size="16" />发送</button>
+            <button type="button" @click="sendCtrlC"><Square :size="14" />Ctrl+C</button>
+            <button type="button" class="ghost" @click="disconnectTerminal">断开</button>
+          </div>
         </div>
 
         <div class="wd-card">

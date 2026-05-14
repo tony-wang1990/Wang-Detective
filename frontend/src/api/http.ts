@@ -44,10 +44,30 @@ function authHeaders(): HeadersInit {
 }
 
 async function parseResponse<T>(response: Response, url: string): Promise<T> {
-  if (!response.ok) {
-    throw new Error(`${url} ${response.status}`);
+  const text = await response.text();
+  let payload: unknown = undefined;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
+    }
   }
-  return response.json();
+  if (!response.ok) {
+    const message = typeof payload === 'object' && payload
+      ? (payload as { msg?: string; message?: string }).msg || (payload as { msg?: string; message?: string }).message
+      : String(payload || '');
+    throw new Error(message || `${url} ${response.status}`);
+  }
+  if (
+    typeof payload === 'object' &&
+    payload &&
+    'success' in payload &&
+    (payload as { success?: boolean }).success === false
+  ) {
+    throw new Error((payload as { msg?: string; message?: string }).msg || (payload as { msg?: string; message?: string }).message || '请求失败');
+  }
+  return payload as T;
 }
 
 export async function apiGet<T>(url: string): Promise<ApiEnvelope<T>> {

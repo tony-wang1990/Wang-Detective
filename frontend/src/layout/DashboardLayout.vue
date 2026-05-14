@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Bot,
@@ -18,11 +18,15 @@ import {
   UserRound
 } from 'lucide-vue-next';
 import { useTheme } from '../composables/useTheme';
+import { getHealth } from '../api/http';
 
 const router = useRouter();
 const route = useRoute();
 const { theme, toggleTheme } = useTheme();
 const host = window.location.host;
+const healthStatus = ref('检查中');
+const version = ref(localStorage.getItem('currentVersion') || 'main');
+let healthTimer: number | undefined;
 
 const navItems = [
   { label: '主页', path: '/dashboard/home', icon: Home, match: ['/dashboard', '/dashboard/home'] },
@@ -35,7 +39,8 @@ const navItems = [
   { label: '运维终端', path: '/dashboard/ops-terminal', icon: Terminal }
 ];
 
-const currentVersion = computed(() => localStorage.getItem('currentVersion') || 'main');
+const currentVersion = computed(() => version.value);
+const healthClass = computed(() => (healthStatus.value === '正常' || healthStatus.value === 'UP' ? 'ok' : 'warn'));
 
 function isActive(item: { path: string; match?: string[] }) {
   return item.match ? item.match.includes(route.path) : route.path === item.path;
@@ -45,6 +50,30 @@ function logout() {
   sessionStorage.clear();
   router.push('/login');
 }
+
+async function refreshTopStatus() {
+  try {
+    const health = await getHealth();
+    healthStatus.value = health.status === 'UP' ? '正常' : health.status || '未知';
+    if (health.version) {
+      version.value = health.version;
+      localStorage.setItem('currentVersion', health.version);
+    }
+  } catch {
+    healthStatus.value = '异常';
+  }
+}
+
+onMounted(() => {
+  refreshTopStatus();
+  healthTimer = window.setInterval(refreshTopStatus, 60000);
+});
+
+onBeforeUnmount(() => {
+  if (healthTimer) {
+    window.clearInterval(healthTimer);
+  }
+});
 </script>
 
 <template>
@@ -87,8 +116,8 @@ function logout() {
           <kbd>⌘K</kbd>
         </label>
         <div class="wd-top-status">
-          <span class="dot"></span>
-          系统健康 <b>正常</b>
+          <span class="dot" :class="healthClass"></span>
+          系统健康 <b :class="healthClass">{{ healthStatus }}</b>
         </div>
         <div class="wd-version">版本 <b>{{ currentVersion }}</b></div>
         <button type="button" class="wd-theme" @click="toggleTheme">
