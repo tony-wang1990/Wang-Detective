@@ -1,14 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import DashboardLayout from '../layout/DashboardLayout.vue';
-import LoginView from '../views/LoginView.vue';
-import HomeView from '../views/HomeView.vue';
-import FeatureCenterView from '../views/FeatureCenterView.vue';
-import ResourceListView from '../views/ResourceListView.vue';
-import TaskListView from '../views/TaskListView.vue';
-import ServiceLogView from '../views/ServiceLogView.vue';
-import SystemConfigView from '../views/SystemConfigView.vue';
-import AiChatView from '../views/AiChatView.vue';
-import OpsTerminalView from '../views/OpsTerminalView.vue';
+
+const DashboardLayout = () => import('../layout/DashboardLayout.vue');
+const LoginView = () => import('../views/LoginView.vue');
+const HomeView = () => import('../views/HomeView.vue');
+const FeatureCenterView = () => import('../views/FeatureCenterView.vue');
+const ResourceListView = () => import('../views/ResourceListView.vue');
+const TaskListView = () => import('../views/TaskListView.vue');
+const ServiceLogView = () => import('../views/ServiceLogView.vue');
+const SystemConfigView = () => import('../views/SystemConfigView.vue');
+const AiChatView = () => import('../views/AiChatView.vue');
+const OpsTerminalView = () => import('../views/OpsTerminalView.vue');
 
 const router = createRouter({
   history: createWebHistory(),

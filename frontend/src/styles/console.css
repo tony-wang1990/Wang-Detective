@@ -337,24 +337,77 @@ button {
 
 .wd-map-body {
   min-height: 410px;
-  display: grid;
-  place-items: center;
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(14, 165, 233, .08) 1px, transparent 1px),
-    linear-gradient(rgba(14, 165, 233, .08) 1px, transparent 1px),
-    radial-gradient(circle at 60% 45%, rgba(20, 184, 166, .18), transparent 42%);
-  background-size: 48px 48px, 48px 48px, auto;
+  background: var(--wd-surface-2);
   color: var(--wd-muted);
 }
 
-.wd-map-pin {
-  width: 18px;
-  height: 18px;
+.wd-leaflet-map {
+  position: absolute;
+  inset: 0;
+}
+
+html.dark .wd-leaflet-map .leaflet-tile {
+  filter: brightness(.78) contrast(1.08) saturate(.82);
+}
+
+.wd-map-marker {
+  display: grid;
+  place-items: center;
+}
+
+.wd-map-marker span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, .92);
   border-radius: 50%;
-  background: #0ea5e9;
-  box-shadow: 0 0 0 12px rgba(14, 165, 233, .16);
+  background: linear-gradient(135deg, #14b8a6, #0891b2);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .28);
+}
+
+.wd-map-empty {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 450;
+  padding: 8px 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wd-surface) 92%, transparent);
+  color: var(--wd-muted);
+  font-weight: 800;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--wd-surface);
+  color: var(--wd-text);
+  border: 1px solid var(--wd-line);
+}
+
+.wd-charts-grid {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: 16px;
+}
+
+.wd-chart-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wd-chart {
+  min-height: 300px;
+}
+
+.wd-chart.wide {
+  min-height: 300px;
 }
 
 .wd-health-list {
@@ -1025,6 +1078,8 @@ button {
   }
 
   .wd-home-grid,
+  .wd-charts-grid,
+  .wd-chart-row,
   .wd-kpis,
   .wd-split,
   .wd-ops-grid,

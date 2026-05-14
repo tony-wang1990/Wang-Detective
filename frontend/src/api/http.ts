@@ -18,6 +18,16 @@ export interface GlanceData {
   regions?: number;
   days?: number;
   currentVersion?: string;
+  cities?: Array<{
+    lat?: number;
+    lng?: number;
+    country?: string;
+    area?: string;
+    city?: string;
+    org?: string;
+    asn?: string;
+    count?: number;
+  }>;
 }
 
 export interface HealthData {
