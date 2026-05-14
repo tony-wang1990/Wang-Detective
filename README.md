@@ -186,3 +186,21 @@ npm --prefix frontend run build
 ```
 
 后续第一优先级仍然是 UI 重建和 Vue 原生化：把 `新版功能`、`运维终端` 从静态 HTML/iframe 迁成真正 Vue 路由，再逐步重做配置列表、任务列表、服务日志、系统配置和 AI 聊天室页面。
+
+## 2026-05-14 UI 原生化收口
+
+本次把新 Vue 前端切为正式生产入口，完成今天这一整块 UI 原生化迁移：
+
+- `frontend/` 已成为可维护前端源码，`npm --prefix frontend run build` 直接输出到 `src/main/resources/dist`。
+- 登录页、主控制台框架、首页、配置列表、任务列表、服务日志、系统配置、AI 聊天室、新版功能、运维终端都已接入 Vue 原生路由。
+- `/dashboard/features` 和 `/dashboard/ops-terminal` 不再依赖 iframe 作为主入口。
+- 旧版完整控制台临时保留为 `/legacy-dashboard.html`，便于明天部署测试时对照和回退查看旧功能细节。
+- 旧的打包资源暂时保留，等新页面路由细节全部验证通过后再删除旧 bundle 和过渡脚本。
+
+本阶段只做最小验证，已通过：
+
+```bash
+npm --prefix frontend run build
+```
+
+明天优先测试：登录跳转、暗色/亮色切换、配置列表分页、任务列表、日志 WebSocket、系统配置保存、AI 流式响应、运维终端 SSH/SFTP 真实连接。

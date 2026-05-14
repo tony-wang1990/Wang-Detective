@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  ExternalLink,
   Search,
   ServerCog,
   Settings,
@@ -24,7 +25,7 @@ const { theme, toggleTheme } = useTheme();
 const host = window.location.host;
 
 const navItems = [
-  { label: '主页', path: '/dashboard/home', icon: Home },
+  { label: '主页', path: '/dashboard/home', icon: Home, match: ['/dashboard', '/dashboard/home'] },
   { label: '配置列表', path: '/dashboard/user', icon: UserRound },
   { label: '任务列表', path: '/dashboard/createTask', icon: ClipboardList },
   { label: '服务日志', path: '/dashboard/ociLog', icon: FileText },
@@ -35,6 +36,10 @@ const navItems = [
 ];
 
 const currentVersion = computed(() => localStorage.getItem('currentVersion') || 'main');
+
+function isActive(item: { path: string; match?: string[] }) {
+  return item.match ? item.match.includes(route.path) : route.path === item.path;
+}
 
 function logout() {
   sessionStorage.clear();
@@ -55,7 +60,7 @@ function logout() {
           v-for="item in navItems"
           :key="item.path"
           type="button"
-          :class="{ active: route.path === item.path }"
+          :class="{ active: isActive(item) }"
           @click="router.push(item.path)"
         >
           <component :is="item.icon" :size="19" />
@@ -91,6 +96,10 @@ function logout() {
           <Moon v-else :size="16" />
           {{ theme === 'dark' ? '开灯' : '关灯' }}
         </button>
+        <a class="wd-legacy" href="/legacy-dashboard.html">
+          <ExternalLink :size="16" />
+          旧版入口
+        </a>
         <button type="button" class="wd-logout" @click="logout">
           <LogOut :size="16" />
           退出登录

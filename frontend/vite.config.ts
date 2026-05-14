@@ -11,8 +11,8 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: '../src/main/resources/dist-next',
-    emptyOutDir: true,
+    outDir: '../src/main/resources/dist',
+    emptyOutDir: false,
     sourcemap: false
   }
 });
