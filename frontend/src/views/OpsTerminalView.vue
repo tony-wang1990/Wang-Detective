@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { FolderOpen, Play, RefreshCw, Save, Server, Square, Terminal, Wifi, Zap } from 'lucide-vue-next';
-import { opsGet, opsPost } from '../api/http';
+import { Download, FilePenLine, FolderPlus, FolderOpen, Play, RefreshCw, Save, Server, Square, Terminal, Trash2, Upload, Wifi, Zap } from 'lucide-vue-next';
+import { opsDownload, opsGet, opsPost, opsUpload } from '../api/http';
 
 type Host = {
   id?: string;
@@ -42,6 +42,13 @@ const terminalRef = ref<HTMLElement | null>(null);
 const command = ref('uname -a && uptime');
 const sftpPath = ref('.');
 const sftpEntries = ref<SftpEntry[]>([]);
+const selectedSftpPath = ref('');
+const editorPath = ref('');
+const editorContent = ref('');
+const newDirName = ref('');
+const renameTarget = ref('');
+const uploadTargetPath = ref('');
+const uploadFileInput = ref<HTMLInputElement | null>(null);
 const form = reactive({
   name: '',
   tags: '',
@@ -73,6 +80,40 @@ function credential() {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : '操作失败';
+}
+
+function formatBytes(bytes?: number) {
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = Number(bytes || 0);
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+  return `${value.toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function joinRemotePath(parent: string, child: string) {
+  if (!parent || parent === '.') return child;
+  return parent.endsWith('/') ? `${parent}${child}` : `${parent}/${child}`;
+}
+
+function downloadName(path: string, disposition?: string) {
+  const match = disposition && /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (match) {
+    return decodeURIComponent(match[1]);
+  }
+  const normalized = String(path || 'download.bin').replace(/\\/g, '/');
+  const name = normalized.substring(normalized.lastIndexOf('/') + 1);
+  return name || 'download.bin';
+}
+
+function chooseEntry(entry: SftpEntry) {
+  selectedSftpPath.value = entry.path || entry.name || '';
+  if (!entry.directory) {
+    editorPath.value = selectedSftpPath.value;
+    uploadTargetPath.value = sftpPath.value;
+  }
 }
 
 function fillHost(host: Host) {
@@ -225,7 +266,164 @@ async function listSftp(path = sftpPath.value) {
     });
     sftpPath.value = res.data?.path || path;
     sftpEntries.value = res.data?.entries || [];
+    selectedSftpPath.value = '';
+    if (!uploadTargetPath.value) {
+      uploadTargetPath.value = sftpPath.value;
+    }
     status.value = 'SFTP 已刷新';
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function readSftpFile(path = selectedSftpPath.value || editorPath.value) {
+  if (!path) {
+    status.value = '请选择文件';
+    return;
+  }
+  status.value = '读取文件中';
+  try {
+    const res = await opsPost<string>('/sftp/read', {
+      credential: credential(),
+      path
+    });
+    editorPath.value = path;
+    editorContent.value = res.data || '';
+    status.value = '文件已读取';
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function writeSftpFile() {
+  if (!editorPath.value) {
+    status.value = '请先填写文件路径';
+    return;
+  }
+  status.value = '保存文件中';
+  try {
+    await opsPost('/sftp/write', {
+      credential: credential(),
+      path: editorPath.value,
+      content: editorContent.value
+    });
+    status.value = '文件已保存';
+    await listSftp();
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function downloadSftpFile(path = selectedSftpPath.value || editorPath.value) {
+  if (!path) {
+    status.value = '请选择要下载的文件';
+    return;
+  }
+  status.value = '下载准备中';
+  try {
+    const result = await opsDownload('/sftp/download', {
+      credential: credential(),
+      path
+    });
+    const url = URL.createObjectURL(result.blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = downloadName(path, result.filename);
+    anchor.click();
+    URL.revokeObjectURL(url);
+    status.value = '文件下载已触发';
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function uploadSftpFile() {
+  const input = uploadFileInput.value;
+  const file = input?.files?.[0];
+  if (!selectedHostId.value) {
+    status.value = '上传需要先选择保存的主机';
+    return;
+  }
+  if (!file) {
+    status.value = '请选择要上传的文件';
+    return;
+  }
+  const targetPath = uploadTargetPath.value || joinRemotePath(sftpPath.value, file.name);
+  status.value = '上传文件中';
+  try {
+    await opsUpload(targetPath, selectedHostId.value, file);
+    status.value = '文件已上传';
+    if (input) {
+      input.value = '';
+    }
+    await listSftp();
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function mkdirSftp() {
+  const name = newDirName.value.trim();
+  if (!name) {
+    status.value = '请填写目录名称';
+    return;
+  }
+  const path = name.startsWith('/') ? name : joinRemotePath(sftpPath.value, name);
+  status.value = '创建目录中';
+  try {
+    await opsPost('/sftp/mkdir', {
+      credential: credential(),
+      path
+    });
+    newDirName.value = '';
+    status.value = '目录已创建';
+    await listSftp();
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function deleteSftpPath() {
+  const path = selectedSftpPath.value || editorPath.value;
+  if (!path) {
+    status.value = '请选择要删除的路径';
+    return;
+  }
+  if (!window.confirm(`确认删除 ${path} ?`)) {
+    return;
+  }
+  status.value = '删除中';
+  try {
+    await opsPost('/sftp/delete', {
+      credential: credential(),
+      path,
+      recursive: true
+    });
+    selectedSftpPath.value = '';
+    status.value = '路径已删除';
+    await listSftp();
+  } catch (error) {
+    status.value = errorMessage(error);
+  }
+}
+
+async function renameSftpPath() {
+  const path = selectedSftpPath.value || editorPath.value;
+  if (!path || !renameTarget.value) {
+    status.value = '请选择路径并填写新路径';
+    return;
+  }
+  status.value = '重命名中';
+  try {
+    await opsPost('/sftp/rename', {
+      credential: credential(),
+      path,
+      targetPath: renameTarget.value
+    });
+    selectedSftpPath.value = renameTarget.value;
+    renameTarget.value = '';
+    status.value = '路径已重命名';
+    await listSftp();
   } catch (error) {
     status.value = errorMessage(error);
   }
@@ -318,18 +516,55 @@ onBeforeUnmount(disconnectTerminal);
             <input v-model="sftpPath" placeholder="远程目录，例如 /root" @keyup.enter="listSftp()" />
             <button type="button" @click="listSftp()">打开</button>
           </div>
+          <div class="wd-sftp-toolbar">
+            <div class="wd-inline-field">
+              <input v-model="newDirName" placeholder="新目录名" />
+              <button type="button" @click="mkdirSftp"><FolderPlus :size="16" />新建目录</button>
+            </div>
+            <div class="wd-inline-field">
+              <input v-model="renameTarget" placeholder="新路径/新名称" />
+              <button type="button" @click="renameSftpPath"><FilePenLine :size="16" />重命名</button>
+            </div>
+            <button type="button" class="ghost" @click="readSftpFile()"><FilePenLine :size="16" />读取</button>
+            <button type="button" class="ghost" @click="downloadSftpFile()"><Download :size="16" />下载</button>
+            <button type="button" class="danger" @click="deleteSftpPath"><Trash2 :size="16" />删除</button>
+          </div>
           <table class="wd-table">
-            <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>路径</th></tr></thead>
+            <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>路径</th><th>操作</th></tr></thead>
             <tbody>
-              <tr v-if="sftpEntries.length === 0"><td colspan="4">暂无目录数据</td></tr>
-              <tr v-for="entry in sftpEntries" :key="entry.path || entry.name" @dblclick="entry.directory && listSftp(entry.path)">
+              <tr v-if="sftpEntries.length === 0"><td colspan="5">暂无目录数据</td></tr>
+              <tr
+                v-for="entry in sftpEntries"
+                :key="entry.path || entry.name"
+                :class="{ selected: selectedSftpPath === (entry.path || entry.name) }"
+                @click="chooseEntry(entry)"
+                @dblclick="entry.directory ? listSftp(entry.path) : readSftpFile(entry.path)"
+              >
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.directory ? '目录' : '文件' }}</td>
-                <td>{{ entry.size || 0 }}</td>
+                <td>{{ entry.directory ? '-' : formatBytes(entry.size) }}</td>
                 <td>{{ entry.path }}</td>
+                <td>
+                  <button v-if="entry.directory" type="button" class="wd-link-button" @click.stop="listSftp(entry.path)">打开</button>
+                  <button v-else type="button" class="wd-link-button" @click.stop="readSftpFile(entry.path)">编辑</button>
+                </td>
               </tr>
             </tbody>
           </table>
+          <div class="wd-editor">
+            <div class="wd-inline-field">
+              <input v-model="editorPath" placeholder="文件路径，例如 /root/app.log" />
+              <button type="button" @click="readSftpFile(editorPath)"><FilePenLine :size="16" />读取文件</button>
+              <button type="button" @click="writeSftpFile"><Save :size="16" />保存文件</button>
+            </div>
+            <textarea v-model="editorContent" placeholder="选择文件后可在这里查看或编辑文本内容"></textarea>
+          </div>
+          <div class="wd-upload-row">
+            <input ref="uploadFileInput" type="file" />
+            <input v-model="uploadTargetPath" placeholder="上传目标路径，留空则使用当前目录/文件名" />
+            <button type="button" @click="uploadSftpFile"><Upload :size="16" />上传</button>
+          </div>
+          <p class="wd-muted-line">提示：上传接口目前需要选择“保存的主机”，临时手动主机可先保存后再上传。</p>
         </div>
       </main>
     </section>

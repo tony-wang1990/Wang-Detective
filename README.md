@@ -198,6 +198,7 @@ npm --prefix frontend run build
 - `/dashboard/features` 和 `/dashboard/ops-terminal` 不再依赖 iframe 作为主入口。
 - 顶部系统健康状态已改为读取 `/actuator/health`，版本号同步使用健康检查返回值，避免再显示硬编码状态。
 - 运维终端已补上 Vue 内交互式 Web SSH：创建会话后直接连接 WebSocket，支持命令输入、发送、Ctrl+C 和断开。
+- 运维终端 SFTP 已补齐 Vue 内文件操作：目录浏览、文本读取/编辑保存、上传、下载、新建目录、删除和重命名。
 - 登录页左侧品牌区已增强为更明显的 W-探长标识和 OCI 运维控制台信息，不再只是左上角小字。
 - 前端接口错误处理已增强，后端返回 `msg/message` 或 `success:false` 时会在页面显示更明确的错误。
 - 旧版完整控制台临时保留为 `/legacy-dashboard.html`，便于明天部署测试时对照和回退查看旧功能细节。

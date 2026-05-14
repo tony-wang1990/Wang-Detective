@@ -108,6 +108,38 @@ export async function opsPost<T>(url: string, body: unknown): Promise<ApiEnvelop
   return parseResponse<ApiEnvelope<T>>(response, url);
 }
 
+export async function opsDownload(url: string, body: unknown): Promise<{ blob: Blob; filename?: string }> {
+  const response = await fetch(`/api/ops${url}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders()
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `${url} ${response.status}`);
+  }
+  return {
+    blob: await response.blob(),
+    filename: response.headers.get('Content-Disposition') || undefined
+  };
+}
+
+export async function opsUpload(path: string, hostId: string, file: File): Promise<ApiEnvelope<void>> {
+  const form = new FormData();
+  form.append('hostId', hostId);
+  form.append('path', path);
+  form.append('file', file);
+  const response = await fetch('/api/ops/sftp/upload', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: form
+  });
+  return parseResponse<ApiEnvelope<void>>(response, '/sftp/upload');
+}
+
 export async function rawGet<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     headers: authHeaders()

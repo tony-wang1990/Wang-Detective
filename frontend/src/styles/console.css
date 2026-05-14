@@ -481,6 +481,8 @@ button {
 
 .wd-inline-search input,
 .wd-command-row input,
+.wd-inline-field input,
+.wd-upload-row input,
 .wd-form-grid input,
 .wd-form-grid select,
 .wd-form-grid textarea,
@@ -505,6 +507,8 @@ button {
 
 .wd-inline-search input:focus,
 .wd-command-row input:focus,
+.wd-inline-field input:focus,
+.wd-upload-row input:focus,
 .wd-form-grid input:focus,
 .wd-form-grid select:focus,
 .wd-form-grid textarea:focus,
@@ -559,6 +563,19 @@ button {
 
 .wd-table tbody tr:hover {
   background: color-mix(in srgb, var(--wd-accent) 8%, transparent);
+}
+
+.wd-table tbody tr.selected {
+  background: color-mix(in srgb, var(--wd-accent) 14%, var(--wd-surface));
+}
+
+.wd-link-button {
+  min-height: 28px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: var(--wd-surface);
+  color: var(--wd-accent-2);
+  font-weight: 900;
 }
 
 .wd-table-footer {
@@ -688,6 +705,72 @@ button {
 
 .wd-command-row.terminal-input-row {
   grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+.wd-sftp-toolbar,
+.wd-upload-row,
+.wd-editor {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid var(--wd-line);
+}
+
+.wd-sftp-toolbar {
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto auto auto;
+  align-items: center;
+}
+
+.wd-inline-field,
+.wd-upload-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.wd-upload-row {
+  grid-template-columns: minmax(180px, .7fr) minmax(260px, 1fr) auto;
+}
+
+.wd-editor textarea {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--wd-surface);
+  color: var(--wd-text);
+  font-family: Consolas, "Courier New", monospace;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.wd-sftp-toolbar button,
+.wd-upload-row button,
+.wd-editor button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--wd-accent);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--wd-accent);
+  color: #fff;
+  font-weight: 800;
+}
+
+.wd-sftp-toolbar button.ghost,
+.wd-upload-row button.ghost,
+.wd-editor button.ghost {
+  background: var(--wd-surface);
+  color: var(--wd-text);
+  border-color: var(--wd-line);
+}
+
+.wd-sftp-toolbar button.danger {
+  background: var(--wd-danger);
+  border-color: var(--wd-danger);
 }
 
 .wd-chat {
