@@ -1,29 +1,88 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { RefreshCw, UploadCloud, UserRound } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
+import { CheckCircle2, ExternalLink, RefreshCw, ShieldCheck, Trash2, UploadCloud, UserRound } from 'lucide-vue-next';
 import { apiPost, type PageResult } from '../api/http';
 
-type Row = Record<string, unknown>;
+type Row = {
+  id?: string;
+  username?: string;
+  cfgName?: string;
+  userName?: string;
+  tenantName?: string;
+  region?: string;
+  regionName?: string;
+  enableCreate?: number;
+  isEnableCreate?: boolean;
+  createTime?: string;
+  [key: string]: unknown;
+};
 
 const loading = ref(false);
 const keyword = ref('');
 const rows = ref<Row[]>([]);
 const total = ref(0);
 const error = ref('');
+const notice = ref('');
+const currentPage = ref(1);
+const pageSize = ref(10);
+const isEnableCreate = ref<string>('');
+const selectedIds = ref<string[]>([]);
+const selectedDetail = ref<Row | null>(null);
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
+const selectedCount = computed(() => selectedIds.value.length);
 
 const columns = [
-  { key: 'cfgName', label: '配置名称' },
-  { key: 'userName', label: '用户' },
+  { key: 'username', label: '配置名称' },
   { key: 'tenantName', label: '租户' },
   { key: 'region', label: '区域' },
-  { key: 'isEnableCreate', label: '开机' }
+  { key: 'enableCreate', label: '开机任务' },
+  { key: 'createTime', label: '创建时间' }
 ];
 
+function rowId(row: Row) {
+  return String(row.id || '');
+}
+
+function displayName(row: Row) {
+  return String(row.username || row.cfgName || row.userName || '-');
+}
+
 function cell(row: Row, key: string) {
+  if (key === 'username') return displayName(row);
+  if (key === 'region') {
+    const region = row.region || '-';
+    return row.regionName ? `${region} (${row.regionName})` : String(region);
+  }
+  if (key === 'enableCreate') {
+    const enabled = Number(row.enableCreate ?? 0) === 1 || row.isEnableCreate === true;
+    return enabled ? '执行中' : '无任务';
+  }
   const value = row[key];
   if (value === null || value === undefined || value === '') return '-';
   if (typeof value === 'boolean') return value ? '是' : '否';
   return String(value);
+}
+
+function statusClass(row: Row) {
+  const enabled = Number(row.enableCreate ?? 0) === 1 || row.isEnableCreate === true;
+  return enabled ? 'success' : 'muted';
+}
+
+function toggleRow(row: Row) {
+  const id = rowId(row);
+  if (!id) return;
+  selectedIds.value = selectedIds.value.includes(id)
+    ? selectedIds.value.filter((item) => item !== id)
+    : [...selectedIds.value, id];
+}
+
+function toggleAll(checked: boolean) {
+  selectedIds.value = checked ? rows.value.map(rowId).filter(Boolean) : [];
+}
+
+function resetPageAndLoad() {
+  currentPage.value = 1;
+  load();
 }
 
 async function load() {
@@ -32,15 +91,96 @@ async function load() {
   try {
     const res = await apiPost<PageResult<Row>>('/oci/userPage', {
       keyword: keyword.value,
-      currentPage: 1,
-      pageSize: 20
+      currentPage: currentPage.value,
+      pageSize: pageSize.value,
+      isEnableCreate: isEnableCreate.value === '' ? null : Number(isEnableCreate.value)
     });
     rows.value = res.data?.records || [];
     total.value = Number(res.data?.total || rows.value.length || 0);
+    selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => rowId(row) === id));
+    notice.value = `已刷新：${new Date().toLocaleTimeString()}`;
   } catch (err) {
     error.value = err instanceof Error ? err.message : '配置列表读取失败';
   } finally {
     loading.value = false;
+  }
+}
+
+async function checkAlive() {
+  loading.value = true;
+  try {
+    const res = await apiPost<unknown>('/oci/checkAlive', {});
+    notice.value = res.msg || '测活完成';
+    await load();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '测活失败';
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function renameConfig(row: Row) {
+  const id = rowId(row);
+  if (!id) return;
+  const nextName = window.prompt('请输入新的配置名称', displayName(row));
+  if (!nextName || nextName === displayName(row)) return;
+  try {
+    await apiPost('/oci/updateCfgName', { cfgId: id, updateCfgName: nextName });
+    notice.value = '配置名称已修改';
+    await load();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '修改配置名称失败';
+  }
+}
+
+async function deleteSelected() {
+  if (!selectedIds.value.length) return;
+  if (!window.confirm(`确认删除 ${selectedIds.value.length} 个配置？`)) return;
+  try {
+    await apiPost('/oci/removeCfg', { idList: selectedIds.value });
+    notice.value = '配置已删除';
+    selectedIds.value = [];
+    await load();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '删除配置失败';
+  }
+}
+
+async function stopCreate(row: Row) {
+  const id = rowId(row);
+  if (!id || !window.confirm(`确认停止 ${displayName(row)} 的开机任务？`)) return;
+  try {
+    await apiPost('/oci/stopCreate', { userId: id });
+    notice.value = '停止开机任务已提交';
+    await load();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '停止开机任务失败';
+  }
+}
+
+async function releaseSecurityRule(row: Row) {
+  const id = rowId(row);
+  if (!id || !window.confirm(`确认放行 ${displayName(row)} 的安全列表？`)) return;
+  try {
+    await apiPost('/oci/releaseSecurityRule', { ociCfgId: id });
+    notice.value = '安全列表放行任务已提交';
+    await load();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '安全列表放行失败';
+  }
+}
+
+function previousPage() {
+  if (currentPage.value > 1) {
+    currentPage.value -= 1;
+    load();
+  }
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value += 1;
+    load();
   }
 }
 
@@ -52,39 +192,85 @@ onMounted(load);
     <div class="wd-page-title">
       <div>
         <h1>配置列表</h1>
-        <p>OCI API 配置、租户和区域资源入口，后续继续补齐新增/编辑/上传完整表单。</p>
+        <p>OCI API 配置、租户和区域资源入口，已补齐分页、筛选、测活、改名、删除和常用操作。</p>
       </div>
       <div class="wd-actions">
         <button type="button" @click="load"><RefreshCw :size="16" />刷新</button>
-        <button type="button"><UploadCloud :size="16" />上传配置</button>
+        <button type="button" @click="checkAlive"><CheckCircle2 :size="16" />一键测活</button>
+        <button type="button" class="ghost" disabled><UploadCloud :size="16" />上传配置</button>
+        <button type="button" class="danger" :disabled="selectedCount === 0" @click="deleteSelected">
+          <Trash2 :size="16" />删除 {{ selectedCount || '' }}
+        </button>
       </div>
     </div>
 
     <div class="wd-card wd-table-card">
       <header>
         <h2><UserRound :size="17" /> OCI 配置</h2>
-        <label class="wd-inline-search">
-          <input v-model="keyword" placeholder="搜索配置、用户、租户..." @keyup.enter="load" />
-          <button type="button" @click="load">查询</button>
-        </label>
+        <div class="wd-table-tools">
+          <label class="wd-inline-search">
+            <input v-model="keyword" placeholder="搜索配置、用户、租户..." @keyup.enter="resetPageAndLoad" />
+            <button type="button" @click="resetPageAndLoad">查询</button>
+          </label>
+          <select v-model="isEnableCreate" @change="resetPageAndLoad">
+            <option value="">全部开机状态</option>
+            <option value="1">执行开机任务中</option>
+            <option value="0">无开机任务</option>
+          </select>
+        </div>
       </header>
       <p v-if="error" class="wd-error-line">{{ error }}</p>
+      <p v-else-if="notice" class="wd-muted-line">{{ notice }}</p>
       <table class="wd-table">
         <thead>
           <tr>
+            <th><input type="checkbox" :checked="rows.length > 0 && selectedCount === rows.length" @change="toggleAll(($event.target as HTMLInputElement).checked)" /></th>
             <th v-for="column in columns" :key="column.key">{{ column.label }}</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="!loading && rows.length === 0">
-            <td :colspan="columns.length">暂无配置数据</td>
+          <tr v-if="loading">
+            <td :colspan="columns.length + 2">加载中...</td>
           </tr>
-          <tr v-for="(row, index) in rows" :key="String(row.id || index)">
-            <td v-for="column in columns" :key="column.key">{{ cell(row, column.key) }}</td>
+          <tr v-else-if="rows.length === 0">
+            <td :colspan="columns.length + 2">暂无配置数据</td>
+          </tr>
+          <tr v-for="(row, index) in rows" v-else :key="String(row.id || index)">
+            <td><input type="checkbox" :checked="selectedIds.includes(rowId(row))" @change="toggleRow(row)" /></td>
+            <td v-for="column in columns" :key="column.key">
+              <span v-if="column.key === 'enableCreate'" class="wd-badge" :class="statusClass(row)">{{ cell(row, column.key) }}</span>
+              <span v-else>{{ cell(row, column.key) }}</span>
+            </td>
+            <td>
+              <div class="wd-row-actions">
+                <button type="button" @click="selectedDetail = row"><ExternalLink :size="14" />详情</button>
+                <button type="button" @click="renameConfig(row)">改名</button>
+                <button type="button" @click="releaseSecurityRule(row)"><ShieldCheck :size="14" />放行</button>
+                <button type="button" :disabled="Number(row.enableCreate || 0) === 0" @click="stopCreate(row)">停止</button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
-      <footer class="wd-table-footer">共 {{ total }} 条 · 当前显示 {{ rows.length }} 条</footer>
+      <footer class="wd-table-footer wd-pager">
+        <span>共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
+        <select v-model.number="pageSize" @change="resetPageAndLoad">
+          <option :value="10">10 条/页</option>
+          <option :value="20">20 条/页</option>
+          <option :value="50">50 条/页</option>
+        </select>
+        <button type="button" :disabled="currentPage <= 1" @click="previousPage">上一页</button>
+        <button type="button" :disabled="currentPage >= totalPages" @click="nextPage">下一页</button>
+      </footer>
+    </div>
+
+    <div v-if="selectedDetail" class="wd-card wd-detail-card">
+      <header>
+        <h2>配置详情预览</h2>
+        <button type="button" @click="selectedDetail = null">关闭</button>
+      </header>
+      <pre class="wd-terminal small">{{ JSON.stringify(selectedDetail, null, 2) }}</pre>
     </div>
   </section>
 </template>

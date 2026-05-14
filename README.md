@@ -198,6 +198,7 @@ npm --prefix frontend run build
 - `/dashboard/features` 和 `/dashboard/ops-terminal` 不再依赖 iframe 作为主入口。
 - 顶部系统健康状态已改为读取 `/actuator/health`，版本号同步使用健康检查返回值，避免再显示硬编码状态。
 - 首页已接入真实 Leaflet 地图和 ECharts 资源图表：使用 `/api/sys/glance` 的城市数据渲染地图点位，并通过 `/metrics/{token}` 实时刷新 CPU、内存和网络流量。
+- 配置列表已完成第二轮 Vue 原生化：补齐搜索、开机任务筛选、分页、测活、批量删除、改名、停止开机任务、安全列表放行和详情预览。
 - 运维终端已补上 Vue 内交互式 Web SSH：创建会话后直接连接 WebSocket，支持命令输入、发送、Ctrl+C 和断开。
 - 运维终端 SFTP 已补齐 Vue 内文件操作：目录浏览、文本读取/编辑保存、上传、下载、新建目录、删除和重命名。
 - 登录页左侧品牌区已增强为更明显的 W-探长标识和 OCI 运维控制台信息，不再只是左上角小字。
