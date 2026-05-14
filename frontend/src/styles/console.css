@@ -540,6 +540,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
 .wd-table-tools {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -744,6 +745,56 @@ html.dark .wd-leaflet-map .leaflet-tile {
   max-height: 420px;
 }
 
+.wd-log-terminal {
+  min-height: 520px;
+  max-height: calc(100vh - 360px);
+}
+
+.wd-log-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wd-stat-card {
+  padding: 14px 16px;
+}
+
+.wd-stat-card span {
+  display: block;
+  color: var(--wd-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wd-stat-card strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--wd-text);
+  font-size: 20px;
+}
+
+.wd-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--wd-muted);
+}
+
+.wd-dot.success {
+  background: #22c55e;
+}
+
+.wd-dot.warning {
+  background: #f59e0b;
+}
+
+.wd-dot.danger {
+  background: var(--wd-danger);
+}
+
 .wd-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, .72fr);
@@ -765,12 +816,58 @@ html.dark .wd-leaflet-map .leaflet-tile {
   grid-template-columns: 1fr;
 }
 
+.wd-form-grid .wide {
+  grid-column: 1 / -1;
+}
+
 .wd-form-grid label {
   display: grid;
   gap: 7px;
   color: var(--wd-muted);
   font-size: 12px;
   font-weight: 900;
+}
+
+.wd-switch-row {
+  min-height: 42px;
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 10px !important;
+  padding: 10px 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: var(--wd-surface-2);
+  color: var(--wd-text) !important;
+}
+
+.wd-switch-row input {
+  width: 18px !important;
+  min-height: 18px !important;
+  padding: 0 !important;
+  accent-color: var(--wd-accent);
+}
+
+.wd-mfa-preview {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: var(--wd-surface-2);
+  color: var(--wd-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wd-mfa-preview img {
+  width: 104px;
+  height: 104px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .wd-two {
@@ -1174,6 +1271,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-ops-grid,
   .wd-form-grid,
   .wd-feature-grid,
+  .wd-log-summary,
   .wd-chat-input {
     grid-template-columns: 1fr;
   }

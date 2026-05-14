@@ -1,6 +1,7 @@
 package com.tony.kingdetective.telegram.handler.impl;
 
 import com.tony.kingdetective.telegram.handler.AbstractCallbackHandler;
+import com.tony.kingdetective.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.botapimethods.BotApiMethod;
@@ -26,7 +27,6 @@ import java.util.LinkedList;
 @Component
 public class LogQueryHandler extends AbstractCallbackHandler {
 
-    private static final String LOG_FILE_PATH = "/var/log/king-detective.log";
     private static final int MAX_LINES = 300;
 
     @Override
@@ -41,12 +41,12 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             ));
 
             // Read last 100 lines from log file
-            File logFile = new File(LOG_FILE_PATH);
+            File logFile = new File(CommonUtils.LOG_FILE_PATH);
 
             if (!logFile.exists()) {
                 return buildEditMessage(
                         callbackQuery,
-                        "❌ 日志文件不存在: " + LOG_FILE_PATH
+                        "❌ 日志文件不存在: " + CommonUtils.LOG_FILE_PATH
                 );
             }
 

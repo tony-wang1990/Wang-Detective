@@ -27,6 +27,10 @@ public class KeyboardBuilder {
                         InlineKeyboardButton.builder()
                                 .text("🚀 一键抢机")
                                 .callbackData("config_list")
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("🧭 运维中心")
+                                .callbackData("ops_center")
                                 .build()
                 ),
                 
@@ -190,7 +194,7 @@ public class KeyboardBuilder {
                                 .build(),
                         InlineKeyboardButton.builder()
                                 .text("开源地址（帮忙点点star⭐）")
-                                .url("https://github.com/tony-wang1990/king-detective")
+                                .url("https://github.com/tony-wang1990/Wang-Detective")
                                 .build()
                 ),
                 
