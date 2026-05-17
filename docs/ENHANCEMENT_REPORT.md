@@ -42,7 +42,7 @@
 
 - CORS 来源支持 `CORS_ALLOWED_ORIGINS` 配置。
 - `/actuator/health` 增加版本、运行时长、JVM 内存和数据库状态。
-- 新增 `GET /api/v1/system/diagnostics`，输出数据库、目录、日志、默认密码、Bot Token、OpenAI Key、磁盘和运行时状态。
+- 新增 `GET /api/v1/system/diagnostics`，输出数据库、目录、日志、默认密码、Telegram 配置、磁盘和运行时状态。
 - README、FEATURES、API 文档和增强报告重新整理为清晰中文。
 
 ## 第一优先级已落地：运维入口一期

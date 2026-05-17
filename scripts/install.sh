@@ -84,8 +84,8 @@ else
     echo "  - docker-compose.yml 已存在，跳过下载"
 fi
 
-# 兼容早期增强版部署文件：刷新旧镜像、旧健康检查或缺少低配 VPS 优化的 compose。
-if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main\\|start_period: 45s" docker-compose.yml || ! grep -q "JAVA_TOOL_OPTIONS" docker-compose.yml; then
+# 兼容早期增强版部署文件：刷新旧镜像、旧健康检查、未启用 watcher 或缺少低配 VPS 优化的 compose。
+if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main\\|start_period: 45s\\|profiles:.*watcher" docker-compose.yml || ! grep -q "JAVA_TOOL_OPTIONS" docker-compose.yml || ! grep -q "king-detective-watcher" docker-compose.yml; then
     backup_file="docker-compose.yml.bak.$(date +%Y%m%d%H%M%S)"
     cp docker-compose.yml "$backup_file"
     wget -q -O docker-compose.yml https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/docker-compose.yml || { echo "错误: 刷新 docker-compose.yml 失败"; mv "$backup_file" docker-compose.yml; exit 1; }
@@ -153,19 +153,25 @@ ensure_env "SERVER_ADDRESS" "0.0.0.0"
 ensure_env "SERVER_PORT" "9527"
 ensure_env "KING_DETECTIVE_GITHUB_REPOSITORY" "tony-wang1990/Wang-Detective"
 ensure_env "KING_DETECTIVE_GITHUB_BRANCH" "main"
+ensure_env "KING_DETECTIVE_IMAGE" "ghcr.io/tony-wang1990/wang-detective:main"
 ensure_env "JAVA_TOOL_OPTIONS" "-Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Djava.net.preferIPv4Stack=true"
 
 echo "步骤 4: 拉取最新镜像..."
-compose pull king-detective || { echo "错误: 拉取核心镜像失败"; exit 1; }
+compose pull king-detective watcher || { echo "错误: 拉取核心镜像或 watcher 镜像失败"; exit 1; }
 
 echo "步骤 5: 启动服务..."
 for container_id in $(docker ps -aq --filter "name=king-detective"); do
-    docker rm -f "$container_id" >/dev/null 2>&1 || true
+    container_name="$(docker inspect --format '{{.Name}}' "$container_id" 2>/dev/null | sed 's#^/##')"
+    case "$container_name" in
+        king-detective|*_king-detective)
+            docker rm -f "$container_id" >/dev/null 2>&1 || true
+            ;;
+    esac
 done
 # docker-compose v1.29 在重建新版 BuildKit/GHCR 镜像时可能触发 KeyError: ContainerConfig。
 # 先删除旧容器和失败重建留下的 hash_king-detective 残留容器再创建。
 # 数据目录均为 bind mount，不会删除业务数据。
-compose up -d king-detective || { echo "错误: 启动服务失败"; exit 1; }
+compose up -d king-detective watcher || { echo "错误: 启动服务失败"; exit 1; }
 
 echo "步骤 6: 等待服务就绪..."
 HEALTH_URL="http://127.0.0.1:9527/actuator/health"

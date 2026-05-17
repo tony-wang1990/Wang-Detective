@@ -33,7 +33,7 @@ public class SystemController {
         try {
             VersionUpdateUtils.triggerUpdate();
             log.info("触发自动更新，timestamp: {}", System.currentTimeMillis());
-            return ResponseData.successData("更新触发成功，系统将在几分钟内自动更新并重启");
+            return ResponseData.successData("更新触发成功，watcher 已接管拉取镜像和重启流程。通常 1-3 分钟后恢复访问。");
         } catch (Exception e) {
             log.error("触发更新失败", e);
             return ResponseData.errorData("更新触发失败: " + e.getMessage());
@@ -57,6 +57,7 @@ public class SystemController {
         versionInfo.put("latestVersion", latestVersion);
         versionInfo.put("updateAvailable", VersionUpdateUtils.hasNewVersion(currentVersion, latestVersion));
         versionInfo.put("triggerFile", VersionUpdateUtils.TRIGGER_FILE_PATH);
+        versionInfo.put("watcherActive", VersionUpdateUtils.isWatcherAlive());
         versionInfo.put("checkedAt", System.currentTimeMillis());
         return ResponseData.successData(versionInfo);
     }

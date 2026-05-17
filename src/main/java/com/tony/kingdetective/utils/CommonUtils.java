@@ -671,8 +671,8 @@ public class CommonUtils {
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
             connection.setRequestProperty("User-Agent", "King-Detective");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -709,8 +709,8 @@ public class CommonUtils {
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
             connection.setRequestProperty("User-Agent", "Wang-Detective");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
 
             int responseCode = connection.getResponseCode();
             if (responseCode != HttpURLConnection.HTTP_OK) {
@@ -775,7 +775,7 @@ public class CommonUtils {
     }
 
     private static String getGithubRepositoryInfo(String item) {
-        String repository = "tony-wang1990/king-detective";
+        String repository = DEFAULT_GITHUB_REPOSITORY;
         String apiUrl = "https://api.github.com/repos/" + repository + "/releases/latest";
         String rst = null;
         try {
@@ -809,7 +809,7 @@ public class CommonUtils {
             connection.disconnect();
         } catch (Exception e) {
             log.error("Failed to fetch the latest release. exception: {}", e.getMessage());
-            throw new OciException(-1, "获取 king-detective 项目信息失败");
+            throw new OciException(-1, "获取 Wang-Detective 项目信息失败");
         }
         return rst;
     }

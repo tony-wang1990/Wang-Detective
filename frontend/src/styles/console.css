@@ -46,11 +46,38 @@ textarea {
 
 button {
   cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    transform .12s ease,
+    border-color .16s ease,
+    background-color .16s ease,
+    color .16s ease,
+    box-shadow .16s ease;
 }
 
 button:disabled {
   cursor: not-allowed;
   opacity: .55;
+}
+
+button:not(:disabled):hover,
+.wd-legacy:hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .12);
+}
+
+button:not(:disabled):active,
+.wd-legacy:active {
+  transform: translateY(1px) scale(.985);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--wd-accent) 64%, transparent);
+  outline-offset: 2px;
 }
 
 .wd-shell {
@@ -60,6 +87,10 @@ button:disabled {
   background: var(--wd-bg);
 }
 
+.wd-shell.is-sidebar-collapsed {
+  grid-template-columns: 84px minmax(0, 1fr);
+}
+
 .wd-sidebar {
   min-height: 100vh;
   display: flex;
@@ -67,6 +98,11 @@ button:disabled {
   padding: 18px 12px;
   background: linear-gradient(180deg, var(--wd-sidebar), var(--wd-sidebar-2));
   color: #e5e7eb;
+}
+
+.wd-shell.is-sidebar-collapsed .wd-sidebar {
+  align-items: center;
+  padding-inline: 10px;
 }
 
 .wd-brand,
@@ -95,6 +131,17 @@ button:disabled {
   font-weight: 900;
 }
 
+.wd-shell.is-sidebar-collapsed .wd-brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.wd-shell.is-sidebar-collapsed .wd-brand strong,
+.wd-shell.is-sidebar-collapsed .wd-nav span,
+.wd-shell.is-sidebar-collapsed .wd-sidebar-card {
+  display: none;
+}
+
 .wd-nav {
   display: grid;
   gap: 6px;
@@ -112,6 +159,13 @@ button:disabled {
   background: transparent;
   color: #cbd5e1;
   text-align: left;
+}
+
+.wd-shell.is-sidebar-collapsed .wd-nav button {
+  width: 52px;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 0;
 }
 
 .wd-nav button:hover,
@@ -177,6 +231,7 @@ button:disabled {
 .wd-logout,
 .wd-card header button {
   min-height: 36px;
+  min-width: 40px;
   border: 1px solid var(--wd-line);
   border-radius: 8px;
   background: var(--wd-surface);
@@ -187,6 +242,7 @@ button:disabled {
   gap: 8px;
   padding: 0 12px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .wd-search {
@@ -517,6 +573,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
 .wd-form-grid button,
 .wd-chat-input button {
   min-height: 36px;
+  min-width: 72px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -527,6 +584,8 @@ html.dark .wd-leaflet-map .leaflet-tile {
   background: var(--wd-accent);
   color: #fff;
   font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .wd-actions button.danger,
@@ -563,6 +622,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: min(100%, 360px);
 }
 
 .wd-table-tools {
@@ -591,6 +651,14 @@ html.dark .wd-leaflet-map .leaflet-tile {
   background: var(--wd-surface);
   color: var(--wd-text);
   outline: 0;
+}
+
+.wd-inline-search input {
+  min-width: 180px;
+}
+
+.wd-inline-search button {
+  flex: 0 0 auto;
 }
 
 .wd-form-grid textarea,
@@ -695,6 +763,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
 .wd-pager button,
 .wd-row-actions button {
   min-height: 30px;
+  min-width: 64px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -705,6 +774,22 @@ html.dark .wd-leaflet-map .leaflet-tile {
   background: var(--wd-surface);
   color: var(--wd-text);
   font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.wd-row-actions button {
+  min-width: 58px;
+}
+
+.wd-pager select {
+  width: auto;
+  min-width: 112px;
+}
+
+.wd-table-tools select {
+  width: auto;
+  min-width: 150px;
 }
 
 .wd-row-actions button.danger-soft {
@@ -1502,6 +1587,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
 
 @media (max-width: 1100px) {
   .wd-shell,
+  .wd-shell.is-sidebar-collapsed,
   .wd-login {
     grid-template-columns: 1fr;
   }

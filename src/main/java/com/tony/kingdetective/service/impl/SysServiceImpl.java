@@ -173,7 +173,6 @@ public class SysServiceImpl implements ISysService {
         payload.put("account", CommonUtils.getMD5(account));
         String token = CommonUtils.genToken(payload, password);
 
-        String latestVersion = CommonUtils.getLatestVersion();
         String currentVersion = kvService.getObj(new LambdaQueryWrapper<OciKv>()
                 .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
                 .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode())
@@ -182,7 +181,7 @@ public class SysServiceImpl implements ISysService {
         LoginRsp rsp = new LoginRsp();
         rsp.setToken(token);
         rsp.setCurrentVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));
-        rsp.setLatestVersion(StrUtil.blankToDefault(latestVersion, CommonUtils.getCurrentVersion()));
+        rsp.setLatestVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));
         return rsp;
     }
 
@@ -955,8 +954,6 @@ public class SysServiceImpl implements ISysService {
             tokenPayload.put("googleUser", true);
             String token = CommonUtils.genToken(tokenPayload, password);
 
-            // Get version info
-            String latestVersion = CommonUtils.getLatestVersion();
             String currentVersion = kvService.getObj(new LambdaQueryWrapper<OciKv>()
                     .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
                     .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode())
@@ -968,7 +965,7 @@ public class SysServiceImpl implements ISysService {
             LoginRsp rsp = new LoginRsp();
             rsp.setToken(token);
             rsp.setCurrentVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));
-            rsp.setLatestVersion(StrUtil.blankToDefault(latestVersion, CommonUtils.getCurrentVersion()));
+            rsp.setLatestVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));
             return rsp;
         } catch (Exception e) {
             log.error("请求IP：{} Google登录失败，错误信息：{}", clientIp, e.getMessage(), e);

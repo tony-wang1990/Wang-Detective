@@ -29,7 +29,7 @@ GET /api/v1/system/diagnostics
 Authorization: Bearer <token>
 ```
 
-用于部署后快速检查数据库、数据目录、密钥目录、日志文件、默认密码、Telegram Bot Token、OpenAI Key、磁盘和运行时信息。
+用于部署后快速检查数据库、数据目录、密钥目录、日志文件、默认密码、Telegram 配置、磁盘和运行时信息。
 
 ## 健康检查
 

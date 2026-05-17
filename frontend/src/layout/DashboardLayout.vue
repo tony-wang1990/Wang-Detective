@@ -26,6 +26,7 @@ type VersionInfo = {
   currentVersion?: string;
   latestVersion?: string;
   updateAvailable?: boolean;
+  watcherActive?: boolean;
   checkedAt?: number;
 };
 
@@ -39,6 +40,7 @@ const latestVersion = ref(localStorage.getItem('latestVersion') || '');
 const updateAvailable = ref(false);
 const versionStatus = ref('');
 const updatingVersion = ref(false);
+const sidebarCollapsed = ref(false);
 let healthTimer: number | undefined;
 let versionTimer: number | undefined;
 
@@ -94,7 +96,11 @@ async function refreshVersionInfo() {
     updateAvailable.value = Boolean(info.updateAvailable ?? (
       info.latestVersion && info.currentVersion && info.latestVersion !== info.currentVersion
     ));
-    versionStatus.value = updateAvailable.value ? '发现新版本，可点击更新' : '已是最新版本';
+    if (info.watcherActive === false) {
+      versionStatus.value = '自动更新 watcher 未运行，请重新执行安装脚本启用';
+    } else {
+      versionStatus.value = updateAvailable.value ? '发现新版本，可点击更新' : '已是最新版本';
+    }
   } catch (error) {
     versionStatus.value = error instanceof Error ? error.message : '版本检测失败';
   }
@@ -108,9 +114,13 @@ async function triggerVersionUpdate() {
   versionStatus.value = '正在触发更新...';
   try {
     const res = await apiPost<string>('/v1/system/trigger-update', {});
-    versionStatus.value = res.msg || res.data || '已触发更新，watcher 将自动拉取并重启服务';
+    const message = res.msg || res.data || '已触发更新，watcher 将自动拉取并重启服务';
+    versionStatus.value = message;
+    window.alert(message);
   } catch (error) {
-    versionStatus.value = error instanceof Error ? error.message : '触发更新失败';
+    const message = error instanceof Error ? error.message : '触发更新失败';
+    versionStatus.value = message;
+    window.alert(message);
   } finally {
     updatingVersion.value = false;
   }
@@ -134,7 +144,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="wd-shell">
+  <div class="wd-shell" :class="{ 'is-sidebar-collapsed': sidebarCollapsed }">
     <aside class="wd-sidebar">
       <div class="wd-brand">
         <div class="wd-logo">W</div>
@@ -163,7 +173,13 @@ onBeforeUnmount(() => {
 
     <section class="wd-main">
       <header class="wd-topbar">
-        <button type="button" class="wd-icon-button" aria-label="菜单">
+        <button
+          type="button"
+          class="wd-icon-button"
+          :aria-label="sidebarCollapsed ? '展开菜单' : '收起菜单'"
+          :title="sidebarCollapsed ? '展开菜单' : '收起菜单'"
+          @click="sidebarCollapsed = !sidebarCollapsed"
+        >
           <Menu :size="20" />
         </button>
         <label class="wd-search">

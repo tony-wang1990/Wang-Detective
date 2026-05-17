@@ -2,7 +2,6 @@ services:
   watcher:
     image: docker:27-cli
     container_name: king-detective-watcher
-    profiles: ["watcher"]
     restart: always
     command: sh /scripts/watcher.sh
     volumes:
@@ -11,6 +10,11 @@ services:
       - ./scripts/watcher.sh:/scripts/watcher.sh:ro
     environment:
       - TZ=Asia/Shanghai
+      - KING_DETECTIVE_GITHUB_REPOSITORY=${KING_DETECTIVE_GITHUB_REPOSITORY:-tony-wang1990/Wang-Detective}
+      - KING_DETECTIVE_GITHUB_BRANCH=${KING_DETECTIVE_GITHUB_BRANCH:-main}
+      - KING_DETECTIVE_IMAGE=${KING_DETECTIVE_IMAGE:-ghcr.io/tony-wang1990/wang-detective:main}
+    networks:
+      - app-network
 
   king-detective:
     image: ghcr.io/tony-wang1990/wang-detective:main

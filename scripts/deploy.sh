@@ -74,7 +74,7 @@ check_deployment_type() {
 # 拉取最新镜像
 pull_latest_image() {
     log_info "正在拉取最新Docker镜像..."
-    docker pull ghcr.io/tony-wang1990/king-detective:main
+    docker pull ghcr.io/tony-wang1990/wang-detective:main
     log_success "镜像拉取完成"
 }
 

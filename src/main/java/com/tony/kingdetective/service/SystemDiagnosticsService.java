@@ -1,6 +1,9 @@
 package com.tony.kingdetective.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tony.kingdetective.bean.entity.OciKv;
 import com.tony.kingdetective.bean.vo.SystemDiagnostics;
+import com.tony.kingdetective.enums.SysCfgEnum;
 import com.tony.kingdetective.utils.CommonUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import java.util.List;
 public class SystemDiagnosticsService {
 
     private final DataSource dataSource;
+    private final IOciKvService kvService;
 
     @Value("${spring.datasource.url:}")
     private String datasourceUrl;
@@ -37,14 +41,9 @@ public class SystemDiagnosticsService {
     @Value("${telegram.bot.token:}")
     private String telegramToken;
 
-    @Value("${spring.ai.openai.api-key:}")
-    private String openAiApiKey;
-
-    @Value("${ops.ssh.secret-key:}")
-    private String opsSshSecretKey;
-
-    public SystemDiagnosticsService(DataSource dataSource) {
+    public SystemDiagnosticsService(DataSource dataSource, IOciKvService kvService) {
         this.dataSource = dataSource;
+        this.kvService = kvService;
     }
 
     public SystemDiagnostics diagnostics() {
@@ -66,9 +65,7 @@ public class SystemDiagnosticsService {
         checks.add(checkPath("log-file", logPath, false, "实时日志文件"));
         checks.add(checkWritable("data-directory", root.toPath()));
         checks.add(checkDefaultPassword());
-        checks.add(checkPresent("telegram-bot-token", telegramToken, "Telegram Bot Token"));
-        checks.add(checkOpsSshSecretKey());
-        checks.add(checkOpenAiKey());
+        checks.add(checkTelegramBot());
 
         long usedMemory = runtime.totalMemory() - runtime.freeMemory();
         boolean hasError = checks.stream().anyMatch(item -> "ERROR".equals(item.getStatus()));
@@ -130,26 +127,41 @@ public class SystemDiagnosticsService {
         return item("admin-password", "OK", "管理员密码已自定义");
     }
 
-    private SystemDiagnostics.CheckItem checkPresent(String name, String value, String label) {
-        return item(name, value == null || value.isBlank() ? "WARN" : "OK",
-                value == null || value.isBlank() ? label + "未配置，相关能力不可用" : label + "已配置");
+    private SystemDiagnostics.CheckItem checkTelegramBot() {
+        String token = firstNonBlank(telegramToken, getCfgValue(SysCfgEnum.SYS_TG_BOT_TOKEN));
+        String chatId = getCfgValue(SysCfgEnum.SYS_TG_CHAT_ID);
+        if (isBlank(token) && isBlank(chatId)) {
+            return item("telegram-bot", "WARN", "Telegram Bot 未配置，相关能力不可用");
+        }
+        if (isBlank(token) || isBlank(chatId)) {
+            return item("telegram-bot", "WARN", "Telegram Bot 配置不完整，需要同时配置 Token 和 Chat ID");
+        }
+        return item("telegram-bot", "OK", "Telegram Bot Token 和 Chat ID 已配置");
     }
 
-    private SystemDiagnostics.CheckItem checkOpenAiKey() {
-        if (openAiApiKey == null || openAiApiKey.isBlank() || "dummy".equals(openAiApiKey) || "sk-xxx".equals(openAiApiKey)) {
-            return item("openai-api-key", "WARN", "AI 聊天未配置可用 API Key");
+    private String getCfgValue(SysCfgEnum cfg) {
+        try {
+            OciKv kv = kvService.getOne(new LambdaQueryWrapper<OciKv>()
+                    .eq(OciKv::getCode, cfg.getCode())
+                    .eq(OciKv::getType, cfg.getType().getCode())
+                    .last("LIMIT 1"));
+            return kv == null ? null : kv.getValue();
+        } catch (Exception e) {
+            return null;
         }
-        return item("openai-api-key", "OK", "AI 聊天 API Key 已配置");
     }
 
-    private SystemDiagnostics.CheckItem checkOpsSshSecretKey() {
-        if (opsSshSecretKey == null || opsSshSecretKey.isBlank()) {
-            return item("ops-ssh-secret-key", "WARN", "OPS_SSH_SECRET_KEY is not configured; saved SSH secrets may not be stable");
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value;
+            }
         }
-        if ("admin123456".equals(opsSshSecretKey)) {
-            return item("ops-ssh-secret-key", "WARN", "OPS_SSH_SECRET_KEY is using the default password value");
-        }
-        return item("ops-ssh-secret-key", "OK", "OPS_SSH_SECRET_KEY is configured");
+        return null;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private SystemDiagnostics.CheckItem item(String name, String status, String message) {

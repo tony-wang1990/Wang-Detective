@@ -47,6 +47,7 @@ docker compose up -d --force-recreate
 - Vue 原生化已开始接管生产入口：`frontend/` 为可维护源码，登录页、主框架、首页、配置/任务/日志/系统配置/AI/功能中心/运维终端已进入 Vue 路由。
 - 2026-05-17 完成代码审计第一轮：核对前后端 API 映射、Vue 路由、TGBOT 回调覆盖、OCI 实时详情入口和新增运维能力，修复 MFA 登录缺口、配置新增/实时详情、TGBOT 回调前缀冲突、分页/创建实例返回按钮无处理器、TGBOT 运维中心审计/主机概览入口。
 - 2026-05-17 完成前端操作审计页原生化：新增 `/dashboard/ops-audit`，接入 `/api/ops/audit/recent`，支持审计摘要、搜索、状态筛选、条数切换和详情查看。
+- 2026-05-18 修复 Web/TGBOT 一键更新链路：安装脚本默认启动 `king-detective-watcher`，后端检测 watcher 心跳，更新失败会给明确提示；同时修复诊断页 Telegram 误报、按钮卡字和登录阶段同步查 GitHub 导致的卡顿。
 
 当前仍未完成、后续必须重点推进：
 
@@ -72,14 +73,14 @@ docker compose up -d --force-recreate
 
 - 修复 Docker Compose 挂载整个工作目录导致镜像内 JAR 被隐藏的问题。
 - 统一 `data/`、`keys/`、`logs/`、`runtime/` 持久化目录。
-- 修复 watcher 更新触发、数据库版本写入和 `oci_kv.id` 缺失问题。
+- 修复 watcher 更新触发、数据库版本写入和 `oci_kv.id` 缺失问题；新版安装会默认启动 watcher，Web/TGBOT 一键更新依赖它执行镜像拉取和容器重建。
 - 修复数据库迁移 SQL 被注释跳过和无效索引问题。
 - 启用 MyBatis Plus SQLite 分页插件。
 - 修复 VCN、引导卷分页 total 只返回当前页数量的问题。
 - 隔离开机任务和换 IP 任务的内存键前缀，避免互相覆盖。
 - 强化日志 WebSocket token 校验、非法连接关闭、历史日志推送和日志文件初始化。
 - 增强 `/actuator/health`，返回版本、运行时长、数据库和 JVM 内存状态。
-- 新增 `/api/v1/system/diagnostics`，检查数据库、数据目录、密钥目录、日志、默认密码、Bot Token、OpenAI Key、磁盘和内存。
+- 新增 `/api/v1/system/diagnostics`，检查数据库、数据目录、密钥目录、日志、默认密码、Telegram 配置、磁盘和内存；AI Key 和 SSH 加密密钥属于可选能力，不再作为告警噪音显示。
 - 新增一期运维入口：Web SSH 终端、SSH 单命令、批量命令、SFTP 列表/读取/写入/上传/下载/重命名/删除。
 - 新增 SSH 主机资产库：保存常用主机、AES-GCM 加密保存密码/私钥、通过 `hostId` 复用凭据。
 - 新增发布前代码审计修复：MFA 登录、配置新增、配置 OCI 实时详情、TGBOT 回调覆盖、操作审计和主机概览。
@@ -127,7 +128,7 @@ TELEGRAM_BOT_TOKEN="xxx" ADMIN_USERNAME="admin" ADMIN_PASSWORD="strong_password"
 
 如果安装时卡在 `Pulling websockify ... error`，说明服务器上保留了早期增强版的旧 `docker-compose.yml`，其中引用了未发布的 `king-detective-websockify` 镜像。新版默认部署已移除该非必需服务，并会自动备份旧 compose 后刷新。
 
-如果 1C/1G 左右的 VPS 部署后长时间 `health: starting` 或 `unhealthy`，通常是首次 Spring 初始化太慢，不一定是程序崩溃。新版默认限制 JVM 使用 1 个 CPU、384MB 堆内存、IPv4 监听，并把健康检查启动宽限延长到 10 分钟；`watcher` 也改为可选 profile，避免低配机器默认多跑一个容器。
+如果 1C/1G 左右的 VPS 部署后长时间 `health: starting` 或 `unhealthy`，通常是首次 Spring 初始化太慢，不一定是程序崩溃。新版默认限制 JVM 使用 1 个 CPU、384MB 堆内存、IPv4 监听，并把健康检查启动宽限延长到 10 分钟；首次启动 1 分钟左右在低配 VPS 上属于正常范围。
 
 如果启动时报 `KeyError: 'ContainerConfig'`，这是旧版 `docker-compose 1.29.x` 重建新版 GHCR/BuildKit 镜像时的兼容问题。新版安装脚本会优先使用 Docker Compose v2，并在启动前移除旧容器后重新创建；数据目录通过 bind mount 持久化，不会因为删除容器而丢失。
 
@@ -140,11 +141,11 @@ rm -f docker-compose.yml
 bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/scripts/install.sh)
 ```
 
-需要启用自动更新 watcher 时再执行：
+查看自动更新 watcher 日志：
 
 ```bash
 cd /app/king-detective
-docker compose --profile watcher up -d
+docker logs -f king-detective-watcher
 ```
 
 ## 本地验证
@@ -176,6 +177,19 @@ mvn package
 UI 重设计路线和后续拆分见 [docs/UI_REDESIGN_ROADMAP.md](docs/UI_REDESIGN_ROADMAP.md)。
 
 代码审计、API 映射和本轮修复记录见 [docs/CODE_AUDIT_REPORT.md](docs/CODE_AUDIT_REPORT.md)。
+
+## 2026-05-18 更新链路与 UI 细节修复
+
+本次针对部署后的真实反馈做快速修复：
+
+- 自动更新 watcher 从可选 profile 改为默认部署服务，安装脚本会同时拉取并启动 `king-detective` 和 `king-detective-watcher`。
+- watcher 新增 `runtime/watcher_heartbeat` 心跳文件；Web/TGBOT 点击更新前会检测 watcher 是否在线，避免“已触发但无人执行”的假成功。
+- watcher 镜像拉取、版本查询和数据库版本写入全部切回 `tony-wang1990/Wang-Detective`，不再引用旧的 `king-detective` 仓库。
+- 修复安装脚本清理旧容器时误删 `king-detective-watcher` 的问题。
+- 系统诊断改为读取网页保存的 Telegram Token/Chat ID，避免已经配置 TGBOT 却仍显示未配置；OpenAI Key 和 SSH Secret Key 不再作为告警项。
+- 登录接口不再同步访问 GitHub 查询最新版本，减少登录按钮长时间卡住的情况；最新版本仍由控制台顶部异步检测。
+- 统一按钮最小宽度、禁止中文按钮换行，补充 hover/active/focus 反馈，修复“查询”“上一页/下一页”等按钮卡上下字的问题。
+- 顶部菜单按钮已变为真实折叠侧边栏操作，不再是无反馈按钮。
 
 ## 2026-05-17 操作审计页原生化
 
