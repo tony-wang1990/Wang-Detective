@@ -7,6 +7,7 @@ const FeatureCenterView = () => import('../views/FeatureCenterView.vue');
 const ResourceListView = () => import('../views/ResourceListView.vue');
 const TaskListView = () => import('../views/TaskListView.vue');
 const ServiceLogView = () => import('../views/ServiceLogView.vue');
+const OpsAuditView = () => import('../views/OpsAuditView.vue');
 const SystemConfigView = () => import('../views/SystemConfigView.vue');
 const AiChatView = () => import('../views/AiChatView.vue');
 const OpsTerminalView = () => import('../views/OpsTerminalView.vue');
@@ -26,6 +27,7 @@ const router = createRouter({
         { path: 'user', component: ResourceListView },
         { path: 'createTask', component: TaskListView },
         { path: 'ociLog', component: ServiceLogView },
+        { path: 'ops-audit', component: OpsAuditView },
         { path: 'sysCfg', component: SystemConfigView },
         { path: 'ai-chat', component: AiChatView },
         { path: 'features', component: FeatureCenterView },
