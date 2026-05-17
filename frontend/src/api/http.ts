@@ -99,6 +99,15 @@ export async function apiPost<T>(url: string, body: unknown): Promise<ApiEnvelop
   return parseResponse<ApiEnvelope<T>>(response, url);
 }
 
+export async function apiForm<T>(url: string, form: FormData): Promise<ApiEnvelope<T>> {
+  const response = await fetch(`/api${url}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: form
+  });
+  return parseResponse<ApiEnvelope<T>>(response, url);
+}
+
 export async function opsGet<T>(url: string): Promise<ApiEnvelope<T>> {
   const response = await fetch(`/api/ops${url}`, {
     headers: authHeaders()

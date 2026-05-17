@@ -221,7 +221,7 @@ public class KeyboardBuilder {
             InlineKeyboardRow row = new InlineKeyboardRow();
             row.add(InlineKeyboardButton.builder()
                     .text(accountId)
-                    .callbackData("account:" + accountId)
+                    .callbackData("account_detail:" + accountId)
                     .build());
             keyboard.add(row);
         }

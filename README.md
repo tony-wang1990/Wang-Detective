@@ -11,8 +11,8 @@ bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/
 部署完成后访问：
 
 - Web 面板：`http://your-server-ip:9527`
-- 新版功能中心：`http://your-server-ip:9527/wang-features.html`
-- 运维终端：`http://your-server-ip:9527/ops-terminal.html`
+- 新版功能中心：`http://your-server-ip:9527/dashboard/features`
+- 运维终端：`http://your-server-ip:9527/dashboard/ops-terminal`
 - 健康检查：`http://your-server-ip:9527/actuator/health`
 - 系统诊断：`GET /api/v1/system/diagnostics`，需要登录 token
 
@@ -35,7 +35,7 @@ docker compose up -d --force-recreate
 
 ## 当前阶段状态
 
-本阶段已经完成第一轮稳定性修复、部署修复、运维入口一期、主面板新功能入口和 UI 重设计的第一阶段落地。当前仓库 `main` 是阶段性收尾版本，后续开发会继续以 UI 重建和前端原生化为一条主线推进。
+本阶段已经完成第一轮稳定性修复、部署修复、运维入口一期、主面板新功能入口、UI 重设计第一阶段和发布前代码审计第一轮。当前仓库 `main` 是可继续部署验证的阶段版本，后续开发会继续以 UI 深化、运维审计和 OCI 能力补齐为主线推进。
 
 已完成重点：
 
@@ -45,16 +45,17 @@ docker compose up -d --force-recreate
 - UI 可见性已修复：左侧菜单增加“新版功能”和“运维终端”，并进入主面板 Vue 路由，不再默认跳到独立页面。
 - UI 重设计第一阶段已落地：新增现代控制台主题、重做登录页视觉、改造侧边栏/顶部栏/首页卡片，并为首页增加顶部搜索/健康/版本区、地图+系统诊断双栏、资源使用面板。
 - Vue 原生化已开始接管生产入口：`frontend/` 为可维护源码，登录页、主框架、首页、配置/任务/日志/系统配置/AI/新版功能/运维终端已进入 Vue 路由。
+- 2026-05-17 完成代码审计第一轮：核对前后端 API 映射、Vue 路由、TGBOT 回调覆盖、OCI 实时详情入口和新增运维能力，修复 MFA 登录缺口、配置新增/实时详情、TGBOT 回调前缀冲突、分页/创建实例返回按钮无处理器、TGBOT 运维中心审计/主机概览入口。
 
 当前仍未完成、后续必须重点推进：
 
-- **UI 重建和完善仍是下一阶段最大重点。** 生产入口已切到新 Vue，但多数页面还是第一版原生化，需要继续做视觉细节、真实数据、操作状态、异常提示和移动端适配。
-- 配置列表、任务列表、服务日志、系统配置、AI 聊天室、运维终端还需要继续按新版 UI 深化，补齐旧版所有细节能力。
-- 首页地图目前是新版框架占位，后续要迁入 Leaflet 实时资源地图、指标图表和任务状态。
-- 运维终端已具备 Vue 内交互式 Web SSH，后续还要补 SFTP 上传/下载/重命名/删除的原生按钮和审计筛选。
+- **UI 重建和完善仍是下一阶段最大重点。** 生产入口已切到新 Vue，首页、配置、任务、日志、系统配置、运维终端均可用，但仍需要继续做视觉细节、移动端适配、更多空状态/错误状态和旧版高级操作补齐。
+- 配置列表已接入新增 OCI 配置、真实分页、测活、实时详情、改名、删除、放行和停任务；后续还要补完整实例操作入口、批量策略和更友好的 OCI 错误解释。
+- 首页已接入 Leaflet 地图、健康检查和 `/metrics/{token}` 实时指标；后续要继续做 Always Free/配额风险卡片和跨区域资源摘要。
+- 运维终端已具备 Vue 内 Web SSH、单命令、SFTP 上传/下载/重命名/删除等能力；后续要补前端操作审计页、命令模板、终端 resize/重连和大文件进度。
 - 旧版完整控制台和旧 bundle 暂时保留为回退入口，验证稳定后再清理。
 - 移动端/窄屏布局还需要专项优化。
-- Telegram Bot 菜单仍有扩展空间，后续建议增加系统诊断摘要、最近审计、任务状态、主机列表和安全确认后的快捷运维入口。
+- Telegram Bot 已新增运维中心、系统诊断、任务状态、最近日志、审计摘要、主机概览和快捷入口；后续建议继续增加安全确认后的快捷命令、SSH 主机分组和异常告警订阅。
 
 ## 数据目录
 
@@ -80,13 +81,14 @@ docker compose up -d --force-recreate
 - 新增 `/api/v1/system/diagnostics`，检查数据库、数据目录、密钥目录、日志、默认密码、Bot Token、OpenAI Key、磁盘和内存。
 - 新增一期运维入口：Web SSH 终端、SSH 单命令、批量命令、SFTP 列表/读取/写入/上传/下载/重命名/删除。
 - 新增 SSH 主机资产库：保存常用主机、AES-GCM 加密保存密码/私钥、通过 `hostId` 复用凭据。
+- 新增发布前代码审计修复：MFA 登录、配置新增、配置 OCI 实时详情、TGBOT 回调覆盖、操作审计和主机概览。
 
 ## 运维终端
 
 登录 Web 面板后，可以直接打开：
 
 ```text
-http://your-server-ip:9527/ops-terminal.html
+http://your-server-ip:9527/dashboard/ops-terminal
 ```
 
 页面会自动读取浏览器 `sessionStorage` 中的登录 token，也可以手动粘贴 token。当前一期能力包括：
@@ -169,6 +171,23 @@ mvn package
 当前进度、UI 集成约定和后续计划见 [docs/PROJECT_STATUS_AND_UI_GUIDE.md](docs/PROJECT_STATUS_AND_UI_GUIDE.md)。
 
 UI 重设计路线和后续拆分见 [docs/UI_REDESIGN_ROADMAP.md](docs/UI_REDESIGN_ROADMAP.md)。
+
+代码审计、API 映射和本轮修复记录见 [docs/CODE_AUDIT_REPORT.md](docs/CODE_AUDIT_REPORT.md)。
+
+## 2026-05-17 代码审计与功能修复
+
+本轮优先做全项目第一轮发布前审计，覆盖 Controller、Vue API 调用、Vue Router、WebSocket、OCI SDK 调用链和 Telegram Bot 回调菜单。
+
+- 前端当前使用的 `/api/*` 调用已核对后端 Controller，未发现缺失映射。
+- Telegram Bot 按钮回调已静态扫描，当前按钮入口均有处理器或明确的 no-op 处理。
+- 修复 TGBOT 回调工厂的前缀匹配风险，避免短 pattern 抢先处理长 pattern。
+- 修复分页按钮 `page_info` 没有处理器的问题。
+- TGBOT 运维中心新增“操作审计”和“主机概览”，并加入快捷运维入口。
+- 新版登录页补齐 MFA 输入流程，启用 MFA 后会先读取状态并显示验证码输入框。
+- 配置列表补齐新增 OCI 配置表单，提交时调用 `/api/oci/addCfg` 上传 config 内容和私钥文件。
+- 配置详情从本地 JSON 预览升级为调用 `/api/oci/details`，并强制刷新 OCI 实时实例/NLB 数据。
+- 新增 `docs/CODE_AUDIT_REPORT.md`，记录本轮审计结论、真实性说明、修复项和后续风险。
+- 已通过 `npm --prefix frontend run build`；本地环境缺少 Java/Maven/Docker，后端编译需继续由 GitHub Actions 或服务器环境验证。
 
 ## 2026-05-14 任务列表原生化增强
 

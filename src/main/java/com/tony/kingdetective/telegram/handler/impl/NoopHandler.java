@@ -29,4 +29,9 @@ public class NoopHandler extends AbstractCallbackHandler {
     public String getCallbackPattern() {
         return "noop";
     }
+
+    @Override
+    public boolean canHandle(String callbackData) {
+        return "noop".equals(callbackData) || "page_info".equals(callbackData);
+    }
 }

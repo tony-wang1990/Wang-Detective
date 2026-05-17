@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { CheckCircle2, ExternalLink, RefreshCw, ShieldCheck, Trash2, UploadCloud, UserRound } from 'lucide-vue-next';
-import { apiPost, type PageResult } from '../api/http';
+import { apiForm, apiPost, type PageResult } from '../api/http';
 
 type Row = {
   id?: string;
@@ -28,6 +28,13 @@ const pageSize = ref(10);
 const isEnableCreate = ref<string>('');
 const selectedIds = ref<string[]>([]);
 const selectedDetail = ref<Row | null>(null);
+const detailLoading = ref(false);
+const showAddForm = ref(false);
+const keyFile = ref<File | null>(null);
+const addForm = reactive({
+  username: '',
+  ociCfgStr: ''
+});
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
 const selectedCount = computed(() => selectedIds.value.length);
 
@@ -119,6 +126,37 @@ async function checkAlive() {
   }
 }
 
+function onKeyFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  keyFile.value = input.files?.[0] || null;
+}
+
+async function addConfig() {
+  if (!addForm.username.trim() || !addForm.ociCfgStr.trim() || !keyFile.value) {
+    error.value = '请填写配置名称、OCI config 内容并选择私钥文件';
+    return;
+  }
+  loading.value = true;
+  error.value = '';
+  try {
+    const form = new FormData();
+    form.append('username', addForm.username.trim());
+    form.append('ociCfgStr', addForm.ociCfgStr.trim());
+    form.append('file', keyFile.value);
+    const res = await apiForm<void>('/oci/addCfg', form);
+    notice.value = res.msg || '配置已新增';
+    addForm.username = '';
+    addForm.ociCfgStr = '';
+    keyFile.value = null;
+    showAddForm.value = false;
+    await load();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '新增配置失败';
+  } finally {
+    loading.value = false;
+  }
+}
+
 async function renameConfig(row: Row) {
   const id = rowId(row);
   if (!id) return;
@@ -170,6 +208,29 @@ async function releaseSecurityRule(row: Row) {
   }
 }
 
+async function openDetails(row: Row) {
+  const id = rowId(row);
+  if (!id) return;
+  selectedDetail.value = row;
+  detailLoading.value = true;
+  error.value = '';
+  try {
+    const res = await apiPost<Record<string, unknown>>('/oci/details', {
+      cfgId: id,
+      cleanReLaunchDetails: true
+    });
+    selectedDetail.value = {
+      ...row,
+      liveDetails: res.data || {}
+    };
+    notice.value = '已读取 OCI 实时详情';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '读取 OCI 实时详情失败';
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
 function previousPage() {
   if (currentPage.value > 1) {
     currentPage.value -= 1;
@@ -197,10 +258,34 @@ onMounted(load);
       <div class="wd-actions">
         <button type="button" @click="load"><RefreshCw :size="16" />刷新</button>
         <button type="button" @click="checkAlive"><CheckCircle2 :size="16" />一键测活</button>
-        <button type="button" class="ghost" disabled><UploadCloud :size="16" />上传配置</button>
+        <button type="button" class="ghost" @click="showAddForm = !showAddForm"><UploadCloud :size="16" />新增配置</button>
         <button type="button" class="danger" :disabled="selectedCount === 0" @click="deleteSelected">
           <Trash2 :size="16" />删除 {{ selectedCount || '' }}
         </button>
+      </div>
+    </div>
+
+    <div v-if="showAddForm" class="wd-card wd-form-card">
+      <header>
+        <h2><UploadCloud :size="17" /> 新增 OCI 配置</h2>
+        <button type="button" class="ghost" @click="showAddForm = false">收起</button>
+      </header>
+      <div class="wd-form-grid">
+        <label>
+          <span>配置名称</span>
+          <input v-model="addForm.username" placeholder="例如 oracle-seoul-a1" />
+        </label>
+        <label>
+          <span>私钥文件</span>
+          <input type="file" @change="onKeyFileChange" />
+        </label>
+        <label class="wide">
+          <span>OCI config 内容</span>
+          <textarea v-model="addForm.ociCfgStr" placeholder="[DEFAULT]&#10;user=ocid1.user...&#10;fingerprint=...&#10;tenancy=ocid1.tenancy...&#10;region=ap-seoul-1"></textarea>
+        </label>
+      </div>
+      <div class="wd-actions compact">
+        <button type="button" :disabled="loading" @click="addConfig"><UploadCloud :size="16" />提交并校验</button>
       </div>
     </div>
 
@@ -244,7 +329,7 @@ onMounted(load);
             </td>
             <td>
               <div class="wd-row-actions">
-                <button type="button" @click="selectedDetail = row"><ExternalLink :size="14" />详情</button>
+                <button type="button" @click="openDetails(row)"><ExternalLink :size="14" />实时详情</button>
                 <button type="button" @click="renameConfig(row)">改名</button>
                 <button type="button" @click="releaseSecurityRule(row)"><ShieldCheck :size="14" />放行</button>
                 <button type="button" :disabled="Number(row.enableCreate || 0) === 0" @click="stopCreate(row)">停止</button>
@@ -267,7 +352,8 @@ onMounted(load);
 
     <div v-if="selectedDetail" class="wd-card wd-detail-card">
       <header>
-        <h2>配置详情预览</h2>
+        <h2>OCI 实时详情</h2>
+        <span v-if="detailLoading">读取 OCI 中...</span>
         <button type="button" @click="selectedDetail = null">关闭</button>
       </header>
       <pre class="wd-terminal small">{{ JSON.stringify(selectedDetail, null, 2) }}</pre>

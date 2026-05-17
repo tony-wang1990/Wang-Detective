@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +22,9 @@ public class CallbackHandlerFactory {
     
     @Autowired
     public CallbackHandlerFactory(List<CallbackHandler> handlers) {
-        this.handlers = handlers;
+        this.handlers = handlers.stream()
+                .sorted(Comparator.comparingInt((CallbackHandler handler) -> handler.getCallbackPattern().length()).reversed())
+                .toList();
         log.info("已加载 {} 个回调处理器", handlers.size());
     }
     

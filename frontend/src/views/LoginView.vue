@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiPost, type LoginResponse } from '../api/http';
 import { useTheme } from '../composables/useTheme';
@@ -8,10 +8,21 @@ const router = useRouter();
 const { theme, toggleTheme } = useTheme();
 const loading = ref(false);
 const error = ref('');
+const mfaRequired = ref(false);
 const form = reactive({
   username: 'admin',
-  password: ''
+  password: '',
+  mfaCode: ''
 });
+
+async function loadMfaState() {
+  try {
+    const result = await apiPost<boolean>('/sys/getEnableMfa', {});
+    mfaRequired.value = Boolean(result.data);
+  } catch {
+    mfaRequired.value = false;
+  }
+}
 
 async function submit() {
   loading.value = true;
@@ -19,7 +30,8 @@ async function submit() {
   try {
     const result = await apiPost<LoginResponse>('/sys/login', {
       account: form.username,
-      password: form.password
+      password: form.password,
+      mfaCode: mfaRequired.value ? form.mfaCode : undefined
     });
     if (!result.success || !result.data?.token) {
       throw new Error(result.msg || '登录失败');
@@ -38,6 +50,8 @@ async function submit() {
     loading.value = false;
   }
 }
+
+onMounted(loadMfaState);
 </script>
 
 <template>
@@ -79,6 +93,10 @@ async function submit() {
           <label>
             <span>密码</span>
             <input v-model="form.password" type="password" autocomplete="current-password" />
+          </label>
+          <label v-if="mfaRequired">
+            <span>MFA 验证码</span>
+            <input v-model="form.mfaCode" inputmode="numeric" autocomplete="one-time-code" placeholder="6 位动态验证码" />
           </label>
           <p v-if="error" class="wd-error">{{ error }}</p>
           <button type="submit" :disabled="loading">

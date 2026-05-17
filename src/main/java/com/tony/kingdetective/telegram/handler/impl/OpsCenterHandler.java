@@ -2,12 +2,16 @@ package com.tony.kingdetective.telegram.handler.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.tony.kingdetective.bean.entity.AuditLog;
 import com.tony.kingdetective.bean.entity.OciCreateTask;
 import com.tony.kingdetective.bean.entity.OciUser;
+import com.tony.kingdetective.bean.response.ops.SshHostRsp;
 import com.tony.kingdetective.bean.vo.SystemDiagnostics;
+import com.tony.kingdetective.service.IAuditLogService;
 import com.tony.kingdetective.service.IOciCreateTaskService;
 import com.tony.kingdetective.service.IOciUserService;
 import com.tony.kingdetective.service.SystemDiagnosticsService;
+import com.tony.kingdetective.service.ops.SshHostService;
 import com.tony.kingdetective.telegram.builder.KeyboardBuilder;
 import com.tony.kingdetective.telegram.handler.AbstractCallbackHandler;
 import com.tony.kingdetective.utils.CommonUtils;
@@ -62,6 +66,10 @@ public class OpsCenterHandler extends AbstractCallbackHandler {
         rows.add(new InlineKeyboardRow(
                 KeyboardBuilder.button("最近日志", "ops_recent_logs"),
                 KeyboardBuilder.button("日志文件", "log_query")
+        ));
+        rows.add(new InlineKeyboardRow(
+                KeyboardBuilder.button("操作审计", "ops_audit_recent"),
+                KeyboardBuilder.button("主机概览", "ops_host_list")
         ));
         rows.add(new InlineKeyboardRow(
                 KeyboardBuilder.button("快捷运维", "ops_quick_actions"),
@@ -252,6 +260,104 @@ class OpsRecentLogsHandler extends AbstractCallbackHandler {
     }
 }
 
+@Slf4j
+@Component
+class OpsAuditRecentHandler extends AbstractCallbackHandler {
+
+    @Override
+    public BotApiMethod<? extends Serializable> handle(CallbackQuery callbackQuery, TelegramClient telegramClient) {
+        try {
+            IAuditLogService auditLogService = SpringUtil.getBean(IAuditLogService.class);
+            List<AuditLog> logs = auditLogService.recent(10);
+
+            StringBuilder message = new StringBuilder("【操作审计】\n\n");
+            if (CollectionUtil.isEmpty(logs)) {
+                message.append("暂无审计记录。");
+            } else {
+                logs.forEach(log -> message.append(log.getSuccess() != null && log.getSuccess() ? "OK " : "FAIL ")
+                        .append(OpsCenterSupport.formatTime(log.getCreateTime()))
+                        .append(" / ")
+                        .append(OpsCenterSupport.blankToDash(log.getOperation()))
+                        .append(" / ")
+                        .append(OpsCenterSupport.blankToDash(log.getTarget()))
+                        .append('\n')
+                        .append("  ")
+                        .append(OpsCenterSupport.blankToDash(log.getDetails() == null ? log.getErrorMessage() : log.getDetails()))
+                        .append('\n'));
+            }
+
+            List<InlineKeyboardRow> rows = new ArrayList<>();
+            rows.add(new InlineKeyboardRow(
+                    KeyboardBuilder.button("刷新审计", "ops_audit_recent"),
+                    KeyboardBuilder.button("返回运维中心", "ops_center")
+            ));
+            rows.add(KeyboardBuilder.buildCancelRow());
+            return buildEditMessage(callbackQuery, OpsCenterSupport.escapeMarkdown(OpsCenterSupport.limitTelegramText(message.toString())), new InlineKeyboardMarkup(rows));
+        } catch (Exception e) {
+            log.error("Telegram audit query failed", e);
+            return buildEditMessage(callbackQuery, OpsCenterSupport.escapeMarkdown("操作审计读取失败: " + e.getMessage()), OpsCenterHandler.buildOpsKeyboard());
+        }
+    }
+
+    @Override
+    public String getCallbackPattern() {
+        return "ops_audit_recent";
+    }
+}
+
+@Slf4j
+@Component
+class OpsHostListHandler extends AbstractCallbackHandler {
+
+    @Override
+    public BotApiMethod<? extends Serializable> handle(CallbackQuery callbackQuery, TelegramClient telegramClient) {
+        try {
+            SshHostService sshHostService = SpringUtil.getBean(SshHostService.class);
+            List<SshHostRsp> hosts = sshHostService.list(null);
+
+            StringBuilder message = new StringBuilder("【SSH 主机概览】\n\n");
+            if (CollectionUtil.isEmpty(hosts)) {
+                message.append("暂无保存的 SSH 主机。");
+            } else {
+                message.append("已保存主机: ").append(hosts.size()).append(" 台\n\n");
+                hosts.stream().limit(10).forEach(host -> message.append("- ")
+                        .append(OpsCenterSupport.blankToDash(host.getName()))
+                        .append(" / ")
+                        .append(OpsCenterSupport.blankToDash(host.getUsername()))
+                        .append('@')
+                        .append(OpsCenterSupport.blankToDash(host.getHost()))
+                        .append(':')
+                        .append(host.getPort() == null ? 22 : host.getPort())
+                        .append('\n')
+                        .append("  认证: ")
+                        .append(OpsCenterSupport.blankToDash(host.getAuthType()))
+                        .append(", 标签: ")
+                        .append(OpsCenterSupport.blankToDash(host.getTags()))
+                        .append(", 最近使用: ")
+                        .append(OpsCenterSupport.formatTime(host.getLastUsedAt()))
+                        .append('\n'));
+            }
+
+            List<InlineKeyboardRow> rows = new ArrayList<>();
+            rows.add(new InlineKeyboardRow(
+                    KeyboardBuilder.button("刷新主机", "ops_host_list"),
+                    KeyboardBuilder.button("进入 SSH 管理", "ssh_management")
+            ));
+            rows.add(new InlineKeyboardRow(KeyboardBuilder.button("返回运维中心", "ops_center")));
+            rows.add(KeyboardBuilder.buildCancelRow());
+            return buildEditMessage(callbackQuery, OpsCenterSupport.escapeMarkdown(OpsCenterSupport.limitTelegramText(message.toString())), new InlineKeyboardMarkup(rows));
+        } catch (Exception e) {
+            log.error("Telegram SSH host list failed", e);
+            return buildEditMessage(callbackQuery, OpsCenterSupport.escapeMarkdown("主机概览读取失败: " + e.getMessage()), OpsCenterHandler.buildOpsKeyboard());
+        }
+    }
+
+    @Override
+    public String getCallbackPattern() {
+        return "ops_host_list";
+    }
+}
+
 @Component
 class OpsQuickActionsHandler extends AbstractCallbackHandler {
 
@@ -273,6 +379,10 @@ class OpsQuickActionsHandler extends AbstractCallbackHandler {
         rows.add(new InlineKeyboardRow(
                 KeyboardBuilder.button("系统诊断", "ops_diagnostics"),
                 KeyboardBuilder.button("最近日志", "ops_recent_logs")
+        ));
+        rows.add(new InlineKeyboardRow(
+                KeyboardBuilder.button("操作审计", "ops_audit_recent"),
+                KeyboardBuilder.button("主机概览", "ops_host_list")
         ));
         rows.add(new InlineKeyboardRow(
                 KeyboardBuilder.button("版本信息", "version_info"),
@@ -334,6 +444,10 @@ final class OpsCenterSupport {
             unit++;
         }
         return String.format("%.1f %s", value, units[unit]);
+    }
+
+    static String formatTime(LocalDateTime time) {
+        return time == null ? "-" : time.format(DateTimeFormatter.ofPattern("MM-dd HH:mm"));
     }
 
     static String shorten(String text, int max) {
