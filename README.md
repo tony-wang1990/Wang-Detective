@@ -11,7 +11,7 @@ bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/
 部署完成后访问：
 
 - Web 面板：`http://your-server-ip:9527`
-- 新版功能中心：`http://your-server-ip:9527/dashboard/features`
+- 功能中心：`http://your-server-ip:9527/dashboard/features`
 - 运维终端：`http://your-server-ip:9527/dashboard/ops-terminal`
 - 健康检查：`http://your-server-ip:9527/actuator/health`
 - 系统诊断：`GET /api/v1/system/diagnostics`，需要登录 token
@@ -42,9 +42,9 @@ docker compose up -d --force-recreate
 - Docker 部署链路已切到 `ghcr.io/tony-wang1990/wang-detective:main`，修复旧 compose、旧容器残留、低配 VPS 启动慢、IPv6 监听和版本 `null` 等问题。
 - 后端增强已落地：健康检查、系统诊断、数据库迁移修复、SQLite 分页、WebSocket 日志、VCN/引导卷分页 total、任务前缀隔离。
 - 运维入口一期已落地：Web SSH、SSH 主机库、批量命令、SFTP 基础文件操作、操作审计基础表和接口。
-- UI 可见性已修复：左侧菜单增加“新版功能”和“运维终端”，并进入主面板 Vue 路由，不再默认跳到独立页面。
+- UI 可见性已修复：左侧菜单增加“功能中心”和“运维终端”，并进入主面板 Vue 路由，不再默认跳到独立页面。
 - UI 重设计第一阶段已落地：新增现代控制台主题、重做登录页视觉、改造侧边栏/顶部栏/首页卡片，并为首页增加顶部搜索/健康/版本区、地图+系统诊断双栏、资源使用面板。
-- Vue 原生化已开始接管生产入口：`frontend/` 为可维护源码，登录页、主框架、首页、配置/任务/日志/系统配置/AI/新版功能/运维终端已进入 Vue 路由。
+- Vue 原生化已开始接管生产入口：`frontend/` 为可维护源码，登录页、主框架、首页、配置/任务/日志/系统配置/AI/功能中心/运维终端已进入 Vue 路由。
 - 2026-05-17 完成代码审计第一轮：核对前后端 API 映射、Vue 路由、TGBOT 回调覆盖、OCI 实时详情入口和新增运维能力，修复 MFA 登录缺口、配置新增/实时详情、TGBOT 回调前缀冲突、分页/创建实例返回按钮无处理器、TGBOT 运维中心审计/主机概览入口。
 - 2026-05-17 完成前端操作审计页原生化：新增 `/dashboard/ops-audit`，接入 `/api/ops/audit/recent`，支持审计摘要、搜索、状态筛选、条数切换和详情查看。
 
@@ -161,7 +161,7 @@ mvn package
 
 对比 R-Bot / java_oci_manage 等同类 OCI 运维工具后，下一阶段建议按这个顺序继续：
 
-1. UI 重建和完善：恢复/重建 Vue 前端源码，把“新版功能”“运维终端”做成真正 Vue 路由；全量重绘登录页、首页、配置列表、任务列表、日志、系统配置、AI 聊天室和运维页面。
+1. UI 重建和完善：恢复/重建 Vue 前端源码，把“功能中心”“运维终端”做成真正 Vue 路由；全量重绘登录页、首页、配置列表、任务列表、日志、系统配置、AI 聊天室和运维页面。
 2. 运维入口二期：操作审计筛选/导出、权限控制、命令模板、端口转发、大文件传输进度和断点续传。
 3. Telegram Bot 增强：系统诊断摘要、最近审计、任务状态、主机列表、快捷命令菜单和危险操作二次确认。
 4. OCI Object Storage：Bucket/Object 管理、数据库备份归档、日志归档、临时下载链接。
@@ -259,7 +259,7 @@ AI 聊天室本轮保持现状，不做体验重构和功能升级。
 
 - 修复 `scripts/install.sh` 被 Windows CRLF 换行污染的问题，避免 Linux 上执行 raw 脚本时报 `$'\r': command not found` 和 `syntax error near unexpected token elif`。
 - 扩展 `.gitattributes`，强制 `.sh`、前端源码、HTML/CSS/JS/JSON 等文本文件使用 LF，降低后续再次混入 CRLF 的概率。
-- 修复新增模块暗色模式：`新版功能`、`运维终端`、首页新增诊断卡片和内嵌 iframe 会跟随主系统开关灯变化，不再出现暗色外壳里一片白色的页面。
+- 修复新增模块暗色模式：`功能中心`、`运维终端`、首页新增诊断卡片和内嵌 iframe 会跟随主系统开关灯变化，不再出现暗色外壳里一片白色的页面。
 - 新增 `frontend/` 可维护 Vue 源码目录，已落地登录页、控制台主框架、首页、基础路由、主题切换和 API 封装。
 - 新 Vue 源码当前构建到 `src/main/resources/dist-next`，暂不替换生产入口 `src/main/resources/dist`。后续等页面迁移完整后，再把 Maven/Docker 构建切到新前端产物。
 
@@ -270,14 +270,14 @@ npm --prefix frontend install
 npm --prefix frontend run build
 ```
 
-后续第一优先级仍然是 UI 重建和 Vue 原生化：把 `新版功能`、`运维终端` 从静态 HTML/iframe 迁成真正 Vue 路由，再逐步重做配置列表、任务列表、服务日志、系统配置和 AI 聊天室页面。
+后续第一优先级仍然是 UI 重建和 Vue 原生化：把 `功能中心`、`运维终端` 从静态 HTML/iframe 迁成真正 Vue 路由，再逐步重做配置列表、任务列表、服务日志、系统配置和 AI 聊天室页面。
 
 ## 2026-05-14 UI 原生化收口
 
 本次把新 Vue 前端切为正式生产入口，完成今天这一整块 UI 原生化迁移：
 
 - `frontend/` 已成为可维护前端源码，`npm --prefix frontend run build` 直接输出到 `src/main/resources/dist`。
-- 登录页、主控制台框架、首页、配置列表、任务列表、服务日志、系统配置、AI 聊天室、新版功能、运维终端都已接入 Vue 原生路由。
+- 登录页、主控制台框架、首页、配置列表、任务列表、服务日志、系统配置、AI 聊天室、功能中心、运维终端都已接入 Vue 原生路由。
 - `/dashboard/features` 和 `/dashboard/ops-terminal` 不再依赖 iframe 作为主入口。
 - 顶部系统健康状态已改为读取 `/actuator/health`，版本号同步使用健康检查返回值，避免再显示硬编码状态。
 - 首页已接入真实 Leaflet 地图和 ECharts 资源图表：使用 `/api/sys/glance` 的城市数据渲染地图点位，并通过 `/metrics/{token}` 实时刷新 CPU、内存和网络流量。

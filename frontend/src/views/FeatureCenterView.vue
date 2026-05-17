@@ -45,7 +45,7 @@ onMounted(refresh);
   <section class="wd-page">
     <div class="wd-page-title">
       <div>
-        <h1>{{ mode === 'legacy' ? '页面迁移中' : '新版功能' }}</h1>
+        <h1>{{ mode === 'legacy' ? '页面迁移中' : '功能中心' }}</h1>
         <p>这一版已经从 iframe 过渡为 Vue 原生路由，后续新能力继续按当前控制台框架扩展。</p>
       </div>
       <div class="wd-actions">

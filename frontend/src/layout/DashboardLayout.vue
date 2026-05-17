@@ -46,12 +46,12 @@ const navItems = [
   { label: '主页', path: '/dashboard/home', icon: Home, match: ['/dashboard', '/dashboard/home'] },
   { label: '配置列表', path: '/dashboard/user', icon: UserRound },
   { label: '任务列表', path: '/dashboard/createTask', icon: ClipboardList },
+  { label: '功能中心', path: '/dashboard/features', icon: ServerCog },
+  { label: '运维终端', path: '/dashboard/ops-terminal', icon: Terminal },
+  { label: 'AI聊天室', path: '/dashboard/ai-chat', icon: Bot },
   { label: '服务日志', path: '/dashboard/ociLog', icon: FileText },
   { label: '操作审计', path: '/dashboard/ops-audit', icon: ShieldCheck },
-  { label: '系统配置', path: '/dashboard/sysCfg', icon: Settings },
-  { label: 'AI聊天室', path: '/dashboard/ai-chat', icon: Bot },
-  { label: '新版功能', path: '/dashboard/features', icon: ServerCog, badge: 'NEW' },
-  { label: '运维终端', path: '/dashboard/ops-terminal', icon: Terminal }
+  { label: '系统配置', path: '/dashboard/sysCfg', icon: Settings }
 ];
 
 const currentVersion = computed(() => version.value);
@@ -151,7 +151,6 @@ onBeforeUnmount(() => {
         >
           <component :is="item.icon" :size="19" />
           <span>{{ item.label }}</span>
-          <em v-if="item.badge">{{ item.badge }}</em>
         </button>
       </nav>
 
