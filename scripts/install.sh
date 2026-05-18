@@ -167,6 +167,27 @@ ensure_env "JAVA_TOOL_OPTIONS" "-Xms96m -Xmx384m -XX:MaxMetaspaceSize=192m -XX:A
 
 echo "步骤 3.1: 同步运维脚本..."
 SCRIPT_BASE_URL="https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/scripts"
+download_script() {
+    script_name="$1"
+    target="scripts/${script_name}"
+    temp_target="${target}.tmp.$$"
+    url="${SCRIPT_BASE_URL}/${script_name}"
+
+    if [ -d "$target" ]; then
+        backup_target="${target}.dir.bak.$(date +%Y%m%d%H%M%S)"
+        mv "$target" "$backup_target" || { echo "错误: 备份目录 ${target} 失败"; exit 1; }
+        echo "  - 检测到 ${target} 是目录，已备份为 ${backup_target}"
+    elif [ -e "$target" ] && [ ! -f "$target" ]; then
+        backup_target="${target}.bak.$(date +%Y%m%d%H%M%S)"
+        mv "$target" "$backup_target" || { echo "错误: 备份异常路径 ${target} 失败"; exit 1; }
+        echo "  - 检测到 ${target} 不是普通文件，已备份为 ${backup_target}"
+    fi
+
+    rm -f "$temp_target"
+    wget -q -O "$temp_target" "$url" || { rm -f "$temp_target"; echo "错误: 下载 ${target} 失败"; exit 1; }
+    mv "$temp_target" "$target" || { rm -f "$temp_target"; echo "错误: 写入 ${target} 失败"; exit 1; }
+}
+
 for script_name in \
     watcher.sh \
     server-smoke-test.sh \
@@ -179,7 +200,7 @@ for script_name in \
     setup-backup-cron.sh \
     verify-release.sh
 do
-    wget -q -O "scripts/${script_name}" "${SCRIPT_BASE_URL}/${script_name}" || { echo "错误: 下载 scripts/${script_name} 失败"; exit 1; }
+    download_script "$script_name"
 done
 chmod +x scripts/*.sh
 echo "  - 运维脚本已同步"

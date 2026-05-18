@@ -62,6 +62,8 @@ bash scripts/server-smoke-test.sh
 - 2026-05-18 新增服务器部署冒烟检查：`scripts/server-smoke-test.sh` 可在 VPS 上检查 Docker/Compose、配置文件、容器健康、watcher 心跳、Web 登录、诊断、版本、配置/任务分页、运维主机、操作审计和前端路由；真实 OCI 改动项整理到验收清单，避免部署后靠截图猜问题。
 - 2026-05-18 补齐服务器运维脚本工具箱：安装脚本会同步 `backup.sh`、`restore.sh`、`update.sh`、`rollback.sh`、`support-bundle.sh`、`maintenance.sh`、`setup-backup-cron.sh` 和 `verify-release.sh`，先把后续规划需要的脚本基础铺完整。
 - 2026-05-18 大版本继续补齐可发布能力：新增 OCI 风险看板、Object Storage 备份归档、审计搜索/CSV 导出、SSH 主机分组、可维护命令模板、TGBOT 风险/备份入口，并同步重构前端生产包。
+- 2026-05-18 修复安装脚本同步脚本目录冲突：如果服务器上误把 `scripts/watcher.sh` 等目标建成目录，安装脚本会自动备份异常目录后重新下载脚本，不再中断部署。
+- 2026-05-18 补充 OCI 救援与 netboot.xyz 集成路线：后续以“救援中心”为产品形态推进，优先做轻量自救、boot volume 拆卷救援和带安全边界的 netboot 实验区，详见 [docs/RESCUE_NETBOOT_ROADMAP.md](docs/RESCUE_NETBOOT_ROADMAP.md)。
 
 当前仍未完成、后续必须重点推进：
 
@@ -69,6 +71,7 @@ bash scripts/server-smoke-test.sh
 - 配置列表已接入新增 OCI 配置、真实分页、测活、实时详情、改名、删除、放行和停任务；后续还要补完整实例操作入口、批量策略和更友好的 OCI 错误解释。
 - 首页已接入 Leaflet 地图、健康检查和 `/metrics/{token}` 实时指标；后续要继续做 Always Free/配额风险卡片和跨区域资源摘要。
 - 运维终端已具备 Vue 内 Web SSH、单命令、命令模板、命令历史、会话列表、断线重连、终端 resize、SFTP 上传/下载/重命名/删除和删除二次确认；操作审计已进入左侧菜单；后续要补大文件进度、端口转发和权限分级。
+- OCI 救援中心尚未正式开发：需要补轻量自救、boot volume 拆卷救援、实例控制台辅助和 netboot.xyz 实验区。
 - 旧版完整控制台和旧 bundle 暂时保留为回退入口，验证稳定后再清理。
 - 移动端/窄屏布局还需要专项优化。
 - Telegram Bot 已新增运维中心、系统诊断、任务状态、最近日志、审计摘要、主机概览和快捷入口；后续建议继续增加安全确认后的快捷命令、SSH 主机分组和异常告警订阅。
