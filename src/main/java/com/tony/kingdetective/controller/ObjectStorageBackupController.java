@@ -46,4 +46,19 @@ public class ObjectStorageBackupController {
         backupService.deleteObject(params);
         return ResponseData.successData();
     }
+
+    @GetMapping("/local")
+    public ResponseData<List<ObjectStorageBackupRsp.LocalBackupInfo>> localBackups(@RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit) {
+        return ResponseData.successData(backupService.listLocalBackupInfos(limit));
+    }
+
+    @GetMapping("/restore-plan")
+    public ResponseData<ObjectStorageBackupRsp.RestorePlan> restorePlan(@RequestParam("backupName") String backupName) {
+        return ResponseData.successData(backupService.restorePlan(backupName));
+    }
+
+    @GetMapping("/schedule-plan")
+    public ResponseData<ObjectStorageBackupRsp.SchedulePlan> schedulePlan(@RequestParam(value = "cron", required = false, defaultValue = "0 3 * * *") String cron) {
+        return ResponseData.successData(backupService.schedulePlan(cron));
+    }
 }

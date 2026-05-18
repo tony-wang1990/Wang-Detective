@@ -71,7 +71,7 @@ else
 fi
 
 echo "步骤 2: 创建目录..."
-mkdir -p /app/king-detective/data /app/king-detective/keys /app/king-detective/logs /app/king-detective/runtime /app/king-detective/scripts || { echo "错误: 无法创建目录"; exit 1; }
+mkdir -p /app/king-detective/data /app/king-detective/keys /app/king-detective/logs /app/king-detective/runtime /app/king-detective/scripts /app/king-detective/backups || { echo "错误: 无法创建目录"; exit 1; }
 cd /app/king-detective || { echo "错误: 无法进入目录"; exit 1; }
 
 echo "步骤 3: 下载配置文件..."
@@ -85,7 +85,7 @@ else
 fi
 
 # 兼容早期增强版部署文件：刷新旧镜像、旧健康检查、未启用 watcher 或缺少低配 VPS 优化的 compose。
-if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main\\|start_period: 45s\\|profiles:.*watcher" docker-compose.yml || ! grep -q "JAVA_TOOL_OPTIONS" docker-compose.yml || ! grep -q "king-detective-watcher" docker-compose.yml || ! grep -Fq 'image: ${KING_DETECTIVE_IMAGE:-ghcr.io/tony-wang1990/wang-detective:main}' docker-compose.yml; then
+if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:main\\|start_period: 45s\\|profiles:.*watcher" docker-compose.yml || ! grep -q "JAVA_TOOL_OPTIONS" docker-compose.yml || ! grep -q "king-detective-watcher" docker-compose.yml || ! grep -Fq 'image: ${KING_DETECTIVE_IMAGE:-ghcr.io/tony-wang1990/wang-detective:main}' docker-compose.yml || ! grep -Fq './backups:/app/king-detective/backups' docker-compose.yml || ! grep -Fq './scripts:/app/king-detective/scripts:ro' docker-compose.yml; then
     backup_file="docker-compose.yml.bak.$(date +%Y%m%d%H%M%S)"
     cp docker-compose.yml "$backup_file"
     wget -q -O docker-compose.yml https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/docker-compose.yml || { echo "错误: 刷新 docker-compose.yml 失败"; mv "$backup_file" docker-compose.yml; exit 1; }

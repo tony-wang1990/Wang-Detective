@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Archive, CloudUpload, DatabaseBackup, RefreshCw, Trash2 } from 'lucide-vue-next';
+import { Archive, CloudUpload, Clock, DatabaseBackup, RefreshCw, RotateCcw, Trash2 } from 'lucide-vue-next';
 import { apiGet, apiPost, notifyGlobal, type PageResult } from '../api/http';
 
 type OciConfig = {
@@ -41,6 +41,29 @@ type BackupResult = {
   createTime?: string;
 };
 
+type LocalBackupInfo = {
+  name?: string;
+  path?: string;
+  sizeBytes?: number;
+  modifiedTime?: string;
+};
+
+type RestorePlan = {
+  backupName?: string;
+  backupPath?: string;
+  sizeBytes?: number;
+  command?: string;
+  steps?: string[];
+  warnings?: string[];
+};
+
+type SchedulePlan = {
+  cronExpression?: string;
+  command?: string;
+  steps?: string[];
+  objectStoragePolicy?: string[];
+};
+
 type DeleteConfirm = {
   objectName: string;
 };
@@ -57,6 +80,11 @@ const loading = ref('');
 const error = ref('');
 const notice = ref('');
 const lastBackup = ref<BackupResult | null>(null);
+const localBackups = ref<LocalBackupInfo[]>([]);
+const selectedBackupName = ref('');
+const restorePlan = ref<RestorePlan | null>(null);
+const cronExpression = ref('0 3 * * *');
+const schedulePlan = ref<SchedulePlan | null>(null);
 const deleteConfirm = ref<DeleteConfirm | null>(null);
 
 const selectedConfig = computed(() => configs.value.find((item) => item.id === selectedConfigId.value));
@@ -162,6 +190,7 @@ async function createArchive() {
     lastBackup.value = res.data || null;
     notice.value = uploadToObjectStorage.value ? '备份已生成并上传对象存储' : '本地备份包已生成';
     notifyGlobal(notice.value, 'success');
+    await loadLocalBackups();
     await loadObjects();
   } catch (err) {
     error.value = err instanceof Error ? err.message : '创建备份失败';
@@ -169,6 +198,59 @@ async function createArchive() {
   } finally {
     loading.value = '';
   }
+}
+
+async function loadLocalBackups() {
+  loading.value = 'localBackups';
+  error.value = '';
+  try {
+    const res = await apiGet<LocalBackupInfo[]>('/v1/backups/local?limit=20');
+    localBackups.value = res.data || [];
+    if (!selectedBackupName.value && localBackups.value[0]?.name) {
+      selectedBackupName.value = localBackups.value[0].name;
+      await loadRestorePlan();
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '读取本地备份失败';
+  } finally {
+    loading.value = '';
+  }
+}
+
+async function loadRestorePlan() {
+  if (!selectedBackupName.value) {
+    restorePlan.value = null;
+    return;
+  }
+  loading.value = 'restorePlan';
+  error.value = '';
+  try {
+    const res = await apiGet<RestorePlan>(`/v1/backups/restore-plan?backupName=${encodeURIComponent(selectedBackupName.value)}`);
+    restorePlan.value = res.data || null;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '生成恢复方案失败';
+  } finally {
+    loading.value = '';
+  }
+}
+
+async function loadSchedulePlan() {
+  loading.value = 'schedulePlan';
+  error.value = '';
+  try {
+    const res = await apiGet<SchedulePlan>(`/v1/backups/schedule-plan?cron=${encodeURIComponent(cronExpression.value)}`);
+    schedulePlan.value = res.data || null;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '生成定时备份方案失败';
+  } finally {
+    loading.value = '';
+  }
+}
+
+async function copyText(text?: string) {
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  notifyGlobal('命令已复制', 'success');
 }
 
 function requestDeleteObject(item: ObjectInfo) {
@@ -201,7 +283,11 @@ async function deleteObject() {
   }
 }
 
-onMounted(loadConfigs);
+onMounted(() => {
+  loadConfigs();
+  loadLocalBackups();
+  loadSchedulePlan();
+});
 </script>
 
 <template>
@@ -215,7 +301,7 @@ onMounted(loadConfigs);
         <button type="button" @click="loadConfigs" :disabled="Boolean(loading)">
           <RefreshCw :size="16" />刷新配置
         </button>
-        <button type="button" @click="createArchive" :disabled="Boolean(loading) || !selectedConfigId">
+        <button type="button" @click="createArchive" :disabled="Boolean(loading) || (uploadToObjectStorage && !selectedConfigId)">
           <CloudUpload :size="16" />{{ loading === 'archive' ? '备份中...' : '创建备份' }}
         </button>
       </div>
@@ -298,6 +384,62 @@ onMounted(loadConfigs);
         </div>
         <div v-else class="wd-placeholder">
           <p>尚未在本页面创建备份。创建后会显示本地路径、对象存储路径和校验信息。</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="wd-split">
+      <article class="wd-card wd-table-card">
+        <header>
+          <h2><RotateCcw :size="17" /> 本地恢复与回滚</h2>
+          <button type="button" class="ghost" @click="loadLocalBackups" :disabled="Boolean(loading)">
+            <RefreshCw :size="16" />刷新本地备份
+          </button>
+        </header>
+        <div class="wd-form-grid single">
+          <label>
+            <span>恢复目标备份包</span>
+            <select v-model="selectedBackupName" @change="loadRestorePlan">
+              <option value="">请选择本地备份包</option>
+              <option v-for="item in localBackups" :key="item.name" :value="item.name">
+                {{ item.name }} / {{ formatBytes(item.sizeBytes) }} / {{ formatTime(item.modifiedTime) }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <div v-if="restorePlan" class="wd-placeholder">
+          <p>恢复前会保留当前 data、keys、scripts 等目录到回滚目录。建议先在低峰期 SSH 执行命令。</p>
+          <pre class="wd-terminal small">{{ restorePlan.command }}</pre>
+          <div class="wd-actions compact">
+            <button type="button" @click="copyText(restorePlan.command)">复制恢复命令</button>
+          </div>
+          <ul class="wd-check-list">
+            <li v-for="item in restorePlan.warnings" :key="item"><strong>注意</strong><span>{{ item }}</span></li>
+          </ul>
+        </div>
+        <div v-else class="wd-placeholder">
+          <p>暂无可恢复的本地备份。先创建一次备份，或把 Object Storage 归档下载到 backups/ 目录。</p>
+        </div>
+      </article>
+
+      <article class="wd-card wd-form-card">
+        <header><h2><Clock :size="17" /> 定时备份与归档策略</h2></header>
+        <div class="wd-form-grid single">
+          <label>
+            <span>Cron 表达式</span>
+            <input v-model="cronExpression" placeholder="0 3 * * *" @keyup.enter="loadSchedulePlan" />
+          </label>
+          <div class="wd-actions compact">
+            <button type="button" @click="loadSchedulePlan" :disabled="Boolean(loading)">生成定时方案</button>
+            <button type="button" class="ghost" @click="copyText(schedulePlan?.command)" :disabled="!schedulePlan?.command">复制命令</button>
+          </div>
+        </div>
+        <div v-if="schedulePlan" class="wd-placeholder">
+          <pre class="wd-terminal small">{{ schedulePlan.command }}</pre>
+          <ul class="wd-check-list">
+            <li v-for="item in schedulePlan.steps" :key="item"><strong>执行步骤</strong><span>{{ item }}</span></li>
+            <li v-for="item in schedulePlan.objectStoragePolicy" :key="item"><strong>归档策略</strong><span>{{ item }}</span></li>
+          </ul>
         </div>
       </article>
     </section>

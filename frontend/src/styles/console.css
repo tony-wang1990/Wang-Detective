@@ -861,6 +861,32 @@ html.dark .wd-leaflet-map .leaflet-tile {
   color: var(--wd-muted);
 }
 
+.wd-check-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wd-check-list li {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: var(--wd-surface-2);
+}
+
+.wd-check-list strong {
+  color: var(--wd-text);
+}
+
+.wd-check-list span {
+  color: var(--wd-muted);
+  line-height: 1.6;
+}
+
 .wd-detail-card {
   max-width: 100%;
 }

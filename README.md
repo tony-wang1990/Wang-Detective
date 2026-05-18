@@ -1,6 +1,8 @@
 # Wang-Detective
 
-Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板和 Telegram Bot 运维助手。当前版本基于 King-Detective 做了部署稳定性、Vue 新前端、真实 OCI 操作入口、Web SSH/SFTP、操作审计、风险看板、备份归档和自动更新能力增强。
+Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板和 Telegram Bot 运维助手。当前版本已经从原始 King-Detective 升级为“OCI 管理 + Web 运维 + Telegram Bot + 风险诊断 + 备份恢复 + 救援中心”的增强版控制台。
+
+状态更新时间：2026-05-19
 
 ## 快速部署
 
@@ -19,7 +21,7 @@ cd /app/king-detective
 bash scripts/server-smoke-test.sh
 ```
 
-默认账号兼容旧版本：`admin / admin123456`。生产环境请立刻修改 `/app/king-detective/.env`：
+生产环境请修改 `/app/king-detective/.env`：
 
 ```env
 ADMIN_USERNAME=admin
@@ -35,112 +37,66 @@ cd /app/king-detective
 docker compose up -d --force-recreate
 ```
 
-## 当前状态
+## 当前完成度
 
-状态更新：2026-05-18
-
-当前项目已经从原始 OCI 管理面板升级为“OCI 管理 + Web 运维 + Telegram Bot + 风险/备份/审计”的增强版控制台。主线功能已经能部署、能登录、能进入 Vue 新界面，也具备真实 OCI 操作入口和基础运维闭环。
-
-整体成熟度估算：
-
-| 模块 | 完成度 | 状态 |
+| 模块 | 完成度 | 当前状态 |
 |---|---:|---|
-| 部署与更新 | 85% | 安装脚本、compose、watcher、低配 VPS 参数、脚本同步和目录冲突已修复 |
-| Web 新前端 | 70% | Vue 主框架已接管生产入口，仍需继续打磨细节和移动端 |
-| OCI 核心管理 | 75% | 配置、任务、实例实时详情和高频实例操作已接入，仍需继续做全量验收 |
-| Web SSH/SFTP | 75% | 主机库、Web SSH、命令模板、会话重连、SFTP 基础操作已完成 |
-| 操作审计 | 75% | 运维操作、命令模板和本轮新增 OCI 高危操作审计已接入 |
-| 风险看板 | 60% | 已有 OCI 风险扫描入口，后续还要补配额/成本/Always Free 深化 |
-| 备份归档 | 65% | 本地备份和 OCI Object Storage 归档入口已完成，恢复流程还需产品化 |
-| Telegram Bot | 70% | 运维中心、诊断、任务、日志、风险、备份、更新入口已完成，实例操作向导待补 |
-| 测试与发布 | 55% | 已有发布验证脚本和服务器体检脚本，后续要补 CI 后端编译和接口测试 |
+| 部署与更新 | 90% | 安装脚本、Compose v2、watcher、自检脚本、低配 JVM、脚本同步和一键更新链路已完成 |
+| Vue 新前端 | 82% | 登录、主框架、首页、配置、任务、日志、系统配置、功能中心、终端、审计、风险、备份、救援中心已原生化 |
+| OCI 核心管理 | 82% | 配置、任务、实例详情、实例动作、网络/安全/引导卷等入口已接入真实后端，仍需真机逐项验收 |
+| Web SSH/SFTP | 82% | 主机库、Web SSH、命令模板、会话列表、断线重连、resize、SFTP 基础文件操作已完成 |
+| Telegram Bot | 78% | 运维中心、诊断、任务、日志、风险、备份、版本更新和实例操作向导已接入 |
+| 备份恢复 | 78% | Web 备份统一改为 `backup.sh` 的 tar.gz 格式，恢复计划、定时备份和 Object Storage 归档策略已接入 |
+| 救援中心 | 65% | 轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线为安全向导，自动救砖仍在实验阶段 |
+| CI/测试 | 70% | GitHub Actions 已增加 Java 21、Node 20、前端构建、Maven 构建和前后端接口映射检查 |
 
 ## 已完成
 
-- Docker 部署链路切换到 `ghcr.io/tony-wang1990/wang-detective:main`。
-- 统一持久化目录：`data/`、`keys/`、`logs/`、`runtime/`。
-- 修复数据库迁移、SQLite 分页、WebSocket 日志、VCN/引导卷分页 total、任务前缀隔离等基础问题。
-- 新增 `/actuator/health` 增强健康检查和 `/api/v1/system/diagnostics` 系统诊断。
-- 新增 Vue 前端源码目录 `frontend/`，生产入口已切到新版 Vue。
-- 已原生化页面：登录页、主框架、首页、配置列表、任务列表、服务日志、系统配置、功能中心、运维终端、操作审计、风险看板、备份归档。
-- 配置列表已接入真实 OCI 实时详情和实例操作入口：启动、停止、重启、改名、换 IP、IPv6、VNC、500M、Shape、CPU/内存、引导卷、终止实例等。
-- 高危 OCI 操作已改为页面内确认弹窗，逐步移除浏览器原生 `alert/confirm/prompt`。
-- 新增全局请求状态和 toast，前端按钮点击后会有更明确的请求中、成功、失败反馈。
-- 新增 Web SSH、SSH 主机库、单命令、批量命令、命令模板、会话列表、断线重连和终端 resize。
+- Docker 镜像统一为 `ghcr.io/tony-wang1990/wang-detective:main`。
+- 持久化目录统一为 `data/`、`keys/`、`logs/`、`runtime/`、`backups/`。
+- 修复部署挂载覆盖 JAR、数据库迁移、SQLite 分页、WebSocket 日志、VCN/引导卷分页 total、任务前缀隔离等基础问题。
+- 新增增强健康检查 `/actuator/health` 和系统诊断 `/api/v1/system/diagnostics`。
+- 新增可维护 Vue 前端源码 `frontend/`，生产入口已切到新版 Vue。
+- 全站移除原生 `alert/confirm/prompt`，改为页面内弹窗、toast、loading 和错误提示。
+- 配置列表接入真实 OCI 操作：启动、停止、重启、改名、换 IP、IPv6、VNC、500M、Shape、CPU/内存、引导卷、终止实例等。
+- 新增 Web SSH、SSH 主机库、单命令、批量命令、命令模板、会话列表、断线重连、终端 resize。
 - 新增 SFTP 浏览、读取、写入、上传、下载、重命名和删除确认。
-- 新增操作审计页，支持搜索、状态筛选、详情查看和 CSV 导出。
-- 新增 OCI 风险看板和 `/api/v1/oci/risk`。
-- 新增备份归档页和 `/api/v1/backups/*`，支持本地备份包和 Object Storage 归档。
-- 新增服务器脚本工具箱：备份、恢复、更新、回滚、支持包、维护菜单、发布验证和服务器冒烟检查。
-- 修复安装脚本同步脚本时遇到 `scripts/watcher.sh` 是目录导致部署中断的问题。
-- Telegram Bot 已增加运维中心、系统诊断、任务状态、最近日志、审计摘要、主机概览、风险看板、备份归档和版本更新入口。
+- 新增操作审计页，支持搜索、筛选、详情和 CSV 导出。
+- 新增 OCI 风险看板 `/api/v1/oci/risk`。
+- 新增备份归档页 `/api/v1/backups/*`，支持本地备份、Object Storage 归档、恢复计划、定时备份方案。
+- 修复 Web 备份格式，统一使用 `scripts/backup.sh` 生成可被 `scripts/restore.sh` 恢复的 `.tar.gz` 备份包。
+- 新增救援中心 `/dashboard/rescue` 和 `/api/v1/rescue/*`，提供轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
+- Telegram Bot 运维中心已支持系统诊断、任务状态、最近日志、错误日志、审计摘要、主机概览、风险看板、备份归档、版本更新和实例操作向导。
+- Telegram Bot 实例管理新增启动、停止、重启确认执行，并写入操作审计。
+- CI 增强：发布前执行脚本语法检查、前端 API 到后端 Controller 映射检查、前端 build、Maven package、Docker build。
 
-## 仍未完成
+## 未完成和后续重点
 
-这些是当前剩余重点，不包含后续“救援中心 / netboot.xyz”专项：
-
-1. **前端细节继续打磨**
-   - 全站按钮高度、图标、loading、禁用态、空状态、错误态还要逐页过一遍。
-   - 暗色/亮色模式还需要继续检查所有新页面。
-   - 移动端和窄屏布局还没有专项完成。
-
-2. **OCI 操作全量验收**
-   - 需要继续逐个验证所有前端按钮是否真实调用后端、后端是否真实调用 OCI SDK。
-   - 需要补更友好的 OCI 错误解释，例如容量不足、配额不足、认证失败、区域不可用。
-   - 批量实例操作、批量策略和失败重试建议还不够完整。
-
-3. **Telegram Bot 实例操作向导**
-   - 当前 Bot 已有运维入口和摘要能力。
-   - 还缺完整的“选择配置 -> 选择实例 -> 确认动作 -> 执行 OCI 操作”的闭环。
-   - 高危动作需要更严格的二次确认和权限限制。
-
-4. **备份恢复产品化**
-   - 已能创建备份和归档对象存储。
-   - Web 上的恢复、回滚、备份策略、定时任务管理还需要继续做成完整流程。
-
-5. **发布质量和自动化测试**
-   - 服务器体检脚本已有，但 CI 还需要更严格。
-   - 后续要补 Maven 后端编译、前端 build、Docker compose 配置校验、关键 API 契约测试、TGBOT 回调测试。
-
-6. **旧资源清理**
-   - 旧版 dashboard 静态包仍保留为回退入口。
-   - 等新版 Vue 稳定后，需要逐步删除旧 bundle 和历史兼容入口，降低维护混乱。
-
-## 下一步计划
-
-建议按下面顺序推进：
-
-1. 全站 UI/交互验收：按钮卡字、点击反馈、loading、错误提示、暗色模式、移动端。
-2. OCI 真实操作验收：逐个核实配置、任务、实例、网络、安全规则、引导卷、备份相关按钮。
-3. TGBOT 实例操作向导：把 Bot 从“查看和入口”推进到“可控执行”。
-4. 备份恢复闭环：Web 恢复、回滚、定时备份和 Object Storage 归档策略。
-5. CI/测试增强：让 GitHub Actions 先发现构建、接口和脚本问题。
-6. 救援中心专项：轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
+| 优先级 | 事项 | 说明 |
+|---|---|---|
+| P0 | 真实 OCI 全量验收 | 需要在真实账号逐个点配置、任务、实例、网络、安全规则、引导卷、备份相关按钮，确认 OCI SDK 返回和错误提示都正确 |
+| P0 | 低配 VPS 启动体验 | 当前低配机器首次启动约 60-90 秒属正常范围，但登录页等待和启动提示还可以继续优化 |
+| P1 | UI/移动端深度打磨 | 继续检查按钮卡字、窄屏、暗色模式、空状态、失败态和点击反馈 |
+| P1 | 备份恢复执行按钮 | 现在 Web 已生成恢复命令和策略；直接从 Web 执行恢复/回滚仍需更严格的二次确认和权限边界 |
+| P1 | netboot.xyz 自动救砖 | 当前只做安全向导和脚本，不自动改 bootloader；后续需在测试机实测 AMD/ARM、UEFI/BIOS 后再开放一键引导 |
+| P2 | TGBOT 权限模型 | 高危操作后续可增加白名单、管理员确认、操作冷却时间 |
+| P2 | API 契约测试 | 继续补 Controller 层 Mock 测试和 Bot 回调测试，减少上线后才发现接口问题 |
 
 ## 常用命令
 
 ```bash
 cd /app/king-detective
 
-# 查看服务
+# 查看服务和日志
 docker compose ps
-
-# 查看日志
 docker logs -f king-detective
 
-# 重启服务
-docker compose restart king-detective
-
-# 手动更新
+# 手动更新、回滚、体检
 bash scripts/update.sh
-
-# 服务器体检
+bash scripts/rollback.sh ghcr.io/tony-wang1990/wang-detective:main
 bash scripts/server-smoke-test.sh
 
-# 维护菜单
-bash scripts/maintenance.sh menu
-
-# 备份 / 恢复 / 支持包
+# 备份、恢复、支持包
 bash scripts/backup.sh
 bash scripts/restore.sh /app/king-detective/backups/wang-detective-backup-YYYYmmdd-HHMMSS.tar.gz
 bash scripts/support-bundle.sh

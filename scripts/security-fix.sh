@@ -1,36 +1,36 @@
 #!/bin/bash
-# 安全修复快速执行脚本
-# 执行前请先在BotFather撤销旧Token并获取新Token
+# 瀹夊叏淇蹇€熸墽琛岃剼鏈?
+# 鎵ц鍓嶈鍏堝湪BotFather鎾ら攢鏃oken骞惰幏鍙栨柊Token
 
 set -e
 
-echo "🔒 King-Detective 安全修复脚本"
+echo "馃敀 King-Detective 瀹夊叏淇鑴氭湰"
 echo "================================"
 echo ""
 
-# 检查是否已撤销Token
-read -p "❓ 是否已在BotFather撤销旧Token并获取新Token? (y/n): " -n 1 -r
+# 妫€鏌ユ槸鍚﹀凡鎾ら攢Token
+read -p "鉂?鏄惁宸插湪BotFather鎾ら攢鏃oken骞惰幏鍙栨柊Token? (y/n): " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ 请先在 @BotFather 撤销旧Token！"
-    echo "   1. 发送 /mybots"
-    echo "   2. 选择Bot → API Token → Revoke current token"
+    echo "鉂?璇峰厛鍦?@BotFather 鎾ら攢鏃oken锛?
+    echo "   1. 鍙戦€?/mybots"
+    echo "   2. 閫夋嫨Bot 鈫?API Token 鈫?Revoke current token"
     exit 1
 fi
 
-# 获取新Token
+# 鑾峰彇鏂癟oken
 echo ""
-echo "📝 请输入新的Telegram Bot Token:"
+echo "馃摑 璇疯緭鍏ユ柊鐨凾elegram Bot Token:"
 read -r NEW_TOKEN
 
 if [ -z "$NEW_TOKEN" ]; then
-    echo "❌ Token不能为空"
+    echo "鉂?Token涓嶈兘涓虹┖"
     exit 1
 fi
 
-# 创建.env文件
+# 鍒涘缓.env鏂囦欢
 echo ""
-echo "📝 创建 .env 文件..."
+echo "馃摑 鍒涘缓 .env 鏂囦欢..."
 cat > .env << EOF
 # Telegram Bot Configuration
 TELEGRAM_BOT_TOKEN=$NEW_TOKEN
@@ -43,50 +43,50 @@ ADMIN_PASSWORD=${ADMIN_PASSWORD:-${WEB_PASSWORD:-admin123456}}
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
 EOF
 
-echo "✅ .env 文件已创建"
+echo "鉁?.env 鏂囦欢宸插垱寤?
 
-# 验证.gitignore
+# 楠岃瘉.gitignore
 if ! grep -q ".env" .gitignore 2>/dev/null; then
-    echo "⚠️  添加 .env 到 .gitignore"
+    echo "鈿狅笍  娣诲姞 .env 鍒?.gitignore"
     echo ".env" >> .gitignore
 fi
 
-# 提交更改
+# 鎻愪氦鏇存敼
 echo ""
-read -p "❓ 是否提交更改到Git? (y/n): " -n 1 -r
+read -p "鉂?鏄惁鎻愪氦鏇存敼鍒癎it? (y/n): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     git add .gitignore .env.example src/main/resources/application.yml
     git commit -m "security: use environment variables for sensitive data"
-    echo "✅ 更改已提交"
+    echo "鉁?鏇存敼宸叉彁浜?
     
-    read -p "❓ 是否推送到远程仓库? (y/n): " -n 1 -r
+    read -p "鉂?鏄惁鎺ㄩ€佸埌杩滅▼浠撳簱? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         git push
-        echo "✅ 已推送到远程仓库"
+        echo "鉁?宸叉帹閫佸埌杩滅▼浠撳簱"
     fi
 fi
 
-# 重启服务
+# 閲嶅惎鏈嶅姟
 echo ""
-read -p "❓ 是否重启Docker服务? (y/n): " -n 1 -r
+read -p "鉂?鏄惁閲嶅惎Docker鏈嶅姟? (y/n): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "🔄 重启服务..."
+    echo "馃攧 閲嶅惎鏈嶅姟..."
     docker-compose down
     docker-compose up -d
-    echo "✅ 服务已重启"
+    echo "鉁?鏈嶅姟宸查噸鍚?
     
     echo ""
-    echo "📋 查看日志:"
+    echo "馃搵 鏌ョ湅鏃ュ織:"
     docker-compose logs -f --tail=50
 fi
 
 echo ""
-echo "✅ 安全修复完成！"
+echo "鉁?瀹夊叏淇瀹屾垚锛?
 echo ""
-echo "🔍 下一步："
-echo "1. 测试Bot是否正常 (发送 /start)"
-echo "2. 在GitHub关闭安全警报"
-echo "3. 检查是否需要清理Git历史"
+echo "馃攳 涓嬩竴姝ワ細"
+echo "1. 娴嬭瘯Bot鏄惁姝ｅ父 (鍙戦€?/start)"
+echo "2. 鍦℅itHub鍏抽棴瀹夊叏璀︽姤"
+echo "3. 妫€鏌ユ槸鍚﹂渶瑕佹竻鐞咷it鍘嗗彶"

@@ -44,4 +44,33 @@ public class ObjectStorageBackupRsp {
         private String prefix;
         private List<ObjectInfo> objects;
     }
+
+    @Data
+    @Builder
+    public static class LocalBackupInfo {
+        private String name;
+        private String path;
+        private Long sizeBytes;
+        private LocalDateTime modifiedTime;
+    }
+
+    @Data
+    @Builder
+    public static class RestorePlan {
+        private String backupName;
+        private String backupPath;
+        private Long sizeBytes;
+        private String command;
+        private List<String> steps;
+        private List<String> warnings;
+    }
+
+    @Data
+    @Builder
+    public static class SchedulePlan {
+        private String cronExpression;
+        private String command;
+        private List<String> steps;
+        private List<String> objectStoragePolicy;
+    }
 }

@@ -13,6 +13,7 @@ const AiChatView = () => import('../views/AiChatView.vue');
 const OpsTerminalView = () => import('../views/OpsTerminalView.vue');
 const RiskDashboardView = () => import('../views/RiskDashboardView.vue');
 const BackupArchiveView = () => import('../views/BackupArchiveView.vue');
+const RescueCenterView = () => import('../views/RescueCenterView.vue');
 
 const router = createRouter({
   history: createWebHistory(),
@@ -30,6 +31,7 @@ const router = createRouter({
         { path: 'createTask', component: TaskListView },
         { path: 'risk', component: RiskDashboardView },
         { path: 'backups', component: BackupArchiveView },
+        { path: 'rescue', component: RescueCenterView },
         { path: 'ociLog', component: ServiceLogView },
         { path: 'ops-audit', component: OpsAuditView },
         { path: 'sysCfg', component: SystemConfigView },

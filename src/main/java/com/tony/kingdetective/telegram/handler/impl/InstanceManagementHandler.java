@@ -3,7 +3,10 @@ package com.tony.kingdetective.telegram.handler.impl;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.tony.kingdetective.bean.dto.SysUserDTO;
+import com.tony.kingdetective.bean.params.oci.instance.UpdateInstanceStateParams;
+import com.tony.kingdetective.service.IAuditLogService;
 import com.tony.kingdetective.service.IInstanceService;
+import com.tony.kingdetective.service.IOciService;
 import com.tony.kingdetective.service.ISysService;
 import com.tony.kingdetective.telegram.builder.KeyboardBuilder;
 import com.tony.kingdetective.telegram.handler.AbstractCallbackHandler;
@@ -155,6 +158,14 @@ public class InstanceManagementHandler extends AbstractCallbackHandler {
         if (selectedInstances != null && selectedInstances.size() == 1) {
             keyboard.add(new InlineKeyboardRow(
                     KeyboardBuilder.button("🖥 开启VNC连接", "start_vnc_connection")
+            ));
+        }
+
+        if (selectedInstances != null && !selectedInstances.isEmpty()) {
+            keyboard.add(new InlineKeyboardRow(
+                    KeyboardBuilder.button("▶ 启动", "confirm_instance_state:START"),
+                    KeyboardBuilder.button("⏹ 停止", "confirm_instance_state:STOP"),
+                    KeyboardBuilder.button("↻ 重启", "confirm_instance_state:RESET")
             ));
         }
         
@@ -336,6 +347,14 @@ class ToggleInstanceHandler extends AbstractCallbackHandler {
         if (selectedInstances != null && selectedInstances.size() == 1) {
             keyboard.add(new InlineKeyboardRow(
                     KeyboardBuilder.button("🖥 开启VNC连接", "start_vnc_connection")
+            ));
+        }
+
+        if (selectedInstances != null && !selectedInstances.isEmpty()) {
+            keyboard.add(new InlineKeyboardRow(
+                    KeyboardBuilder.button("▶ 启动", "confirm_instance_state:START"),
+                    KeyboardBuilder.button("⏹ 停止", "confirm_instance_state:STOP"),
+                    KeyboardBuilder.button("↻ 重启", "confirm_instance_state:RESET")
             ));
         }
         
@@ -577,6 +596,14 @@ class RefreshInstancesHandler extends AbstractCallbackHandler {
                         KeyboardBuilder.button("🖥 开启VNC连接", "start_vnc_connection")
                 ));
             }
+
+            if (selectedInstances != null && !selectedInstances.isEmpty()) {
+                keyboard.add(new InlineKeyboardRow(
+                        KeyboardBuilder.button("▶ 启动", "confirm_instance_state:START"),
+                        KeyboardBuilder.button("⏹ 停止", "confirm_instance_state:STOP"),
+                        KeyboardBuilder.button("↻ 重启", "confirm_instance_state:RESET")
+                ));
+            }
             
             keyboard.add(new InlineKeyboardRow(
                     KeyboardBuilder.button("🗑 终止选中的实例", "confirm_terminate_instances")
@@ -614,6 +641,167 @@ class RefreshInstancesHandler extends AbstractCallbackHandler {
     @Override
     public String getCallbackPattern() {
         return "refresh_instances";
+    }
+}
+
+/**
+ * Confirm selected instance power operation.
+ */
+@Slf4j
+@Component
+class ConfirmInstanceStateHandler extends AbstractCallbackHandler {
+
+    @Override
+    public BotApiMethod<? extends Serializable> handle(CallbackQuery callbackQuery, TelegramClient telegramClient) {
+        String action = callbackQuery.getData().split(":")[1];
+        long chatId = callbackQuery.getMessage().getChatId();
+        InstanceSelectionStorage storage = InstanceSelectionStorage.getInstance();
+        java.util.Set<String> selectedInstances = storage.getSelectedInstances(chatId);
+        String ociCfgId = storage.getConfigContext(chatId);
+
+        if (ociCfgId == null || selectedInstances == null || selectedInstances.isEmpty()) {
+            return buildEditMessage(callbackQuery, "请先进入实例管理并选择至少一个实例。", new InlineKeyboardMarkup(List.of(
+                    new InlineKeyboardRow(KeyboardBuilder.button("返回运维中心", "ops_center")),
+                    KeyboardBuilder.buildCancelRow()
+            )));
+        }
+
+        StringBuilder message = new StringBuilder("【实例操作确认】\n\n");
+        message.append("动作: ").append(actionText(action)).append('\n');
+        message.append("数量: ").append(selectedInstances.size()).append(" 台\n\n");
+
+        List<SysUserDTO.CloudInstance> cached = storage.getCachedInstances(chatId);
+        selectedInstances.forEach(instanceId -> message.append("- ")
+                .append(instanceName(cached, instanceId))
+                .append(" / ...")
+                .append(instanceId.substring(Math.max(0, instanceId.length() - 8)))
+                .append('\n'));
+
+        message.append("\n确认后会真实调用 OCI 实例电源 API，并写入操作审计。");
+
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        rows.add(new InlineKeyboardRow(
+                KeyboardBuilder.button("确认执行 " + actionText(action), "execute_instance_state:" + action),
+                KeyboardBuilder.button("取消", "refresh_instances")
+        ));
+        rows.add(new InlineKeyboardRow(KeyboardBuilder.button("返回运维中心", "ops_center")));
+        rows.add(KeyboardBuilder.buildCancelRow());
+        return buildEditMessage(callbackQuery, message.toString(), new InlineKeyboardMarkup(rows));
+    }
+
+    @Override
+    public String getCallbackPattern() {
+        return "confirm_instance_state:";
+    }
+
+    private String actionText(String action) {
+        return switch (action) {
+            case "START" -> "启动";
+            case "STOP" -> "停止";
+            case "RESET" -> "重启";
+            default -> action;
+        };
+    }
+
+    private String instanceName(List<SysUserDTO.CloudInstance> cached, String instanceId) {
+        if (cached == null) {
+            return "未知实例";
+        }
+        return cached.stream()
+                .filter(instance -> instanceId.equals(instance.getOcId()))
+                .map(SysUserDTO.CloudInstance::getName)
+                .findFirst()
+                .orElse("未知实例");
+    }
+}
+
+/**
+ * Execute selected instance power operation through OCI API.
+ */
+@Slf4j
+@Component
+class ExecuteInstanceStateHandler extends AbstractCallbackHandler {
+
+    @Override
+    public BotApiMethod<? extends Serializable> handle(CallbackQuery callbackQuery, TelegramClient telegramClient) {
+        String action = callbackQuery.getData().split(":")[1];
+        long chatId = callbackQuery.getMessage().getChatId();
+        InstanceSelectionStorage storage = InstanceSelectionStorage.getInstance();
+        java.util.Set<String> selectedInstances = storage.getSelectedInstances(chatId);
+        String ociCfgId = storage.getConfigContext(chatId);
+
+        if (ociCfgId == null || selectedInstances == null || selectedInstances.isEmpty()) {
+            return buildEditMessage(callbackQuery, "实例选择已失效，请重新进入实例管理。", new InlineKeyboardMarkup(List.of(
+                    new InlineKeyboardRow(KeyboardBuilder.button("返回运维中心", "ops_center")),
+                    KeyboardBuilder.buildCancelRow()
+            )));
+        }
+
+        try {
+            telegramClient.execute(AnswerCallbackQuery.builder()
+                    .callbackQueryId(callbackQuery.getId())
+                    .text("正在执行实例操作...")
+                    .showAlert(false)
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to answer callback query", e);
+        }
+
+        IOciService ociService = SpringUtil.getBean(IOciService.class);
+        IAuditLogService auditLogService = SpringUtil.getBean(IAuditLogService.class);
+        StringBuilder detail = new StringBuilder();
+        int success = 0;
+        int failed = 0;
+
+        for (String instanceId : selectedInstances) {
+            UpdateInstanceStateParams params = new UpdateInstanceStateParams();
+            params.setOciCfgId(ociCfgId);
+            params.setInstanceId(instanceId);
+            params.setAction(action);
+            try {
+                ociService.updateInstanceState(params);
+                success++;
+                auditLogService.logSuccess(null, "TG_INSTANCE_STATE", instanceId, "action=" + action + ", cfgId=" + ociCfgId + ", chatId=" + chatId);
+                detail.append("OK ")
+                        .append(actionText(action))
+                        .append(" ...")
+                        .append(instanceId.substring(Math.max(0, instanceId.length() - 8)))
+                        .append('\n');
+            } catch (Exception e) {
+                failed++;
+                auditLogService.logFailure(null, "TG_INSTANCE_STATE", instanceId, e.getMessage());
+                detail.append("FAIL ...")
+                        .append(instanceId.substring(Math.max(0, instanceId.length() - 8)))
+                        .append(": ")
+                        .append(e.getMessage())
+                        .append('\n');
+            }
+        }
+
+        StringBuilder result = new StringBuilder("【实例操作结果】\n\n");
+        result.append("成功 ").append(success).append(" / 失败 ").append(failed).append("\n\n");
+        result.append(detail);
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        rows.add(new InlineKeyboardRow(
+                KeyboardBuilder.button("刷新实例列表", "refresh_instances"),
+                KeyboardBuilder.button("返回运维中心", "ops_center")
+        ));
+        rows.add(KeyboardBuilder.buildCancelRow());
+        return buildEditMessage(callbackQuery, result.toString(), new InlineKeyboardMarkup(rows));
+    }
+
+    @Override
+    public String getCallbackPattern() {
+        return "execute_instance_state:";
+    }
+
+    private String actionText(String action) {
+        return switch (action) {
+            case "START" -> "启动";
+            case "STOP" -> "停止";
+            case "RESET" -> "重启";
+            default -> action;
+        };
     }
 }
 

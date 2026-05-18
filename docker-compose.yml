@@ -43,6 +43,8 @@ services:
       - ./application.yml:/app/king-detective/application.yml:ro
       - ./data:/app/king-detective/data
       - ./keys:/app/king-detective/keys
+      - ./backups:/app/king-detective/backups
+      - ./scripts:/app/king-detective/scripts:ro
       - ./logs:/var/log
       - ./runtime:/app/king-detective/runtime
     networks:

@@ -204,6 +204,11 @@ if [ -f docker-compose.yml ]; then
     else
         fail "compose 未包含 king-detective-watcher，一键更新不可用"
     fi
+    if grep -Fq './backups:/app/king-detective/backups' docker-compose.yml && grep -Fq './scripts:/app/king-detective/scripts:ro' docker-compose.yml; then
+        pass "compose 已挂载 backups 和 scripts，Web 备份恢复入口可读取脚本"
+    else
+        fail "compose 未挂载 backups/scripts，Web 备份恢复入口不可用"
+    fi
     if compose config >/dev/null 2>&1; then
         pass "docker compose 配置可解析"
     else
@@ -293,7 +298,7 @@ else
     fail "健康检查不是 UP: $(printf '%s' "$HEALTH_BODY" | cut -c 1-180)"
 fi
 
-for page in /login /dashboard/home /dashboard/user /dashboard/createTask /dashboard/risk /dashboard/backups /dashboard/features /dashboard/ops-terminal /dashboard/ops-audit /dashboard/sysCfg; do
+for page in /login /dashboard/home /dashboard/user /dashboard/createTask /dashboard/risk /dashboard/backups /dashboard/features /dashboard/rescue /dashboard/ops-terminal /dashboard/ops-audit /dashboard/sysCfg; do
     code="$(http_code "$page")"
     if [ "$code" = "200" ] && grep -q '<div id="app">' "$TMP_DIR/http-code-body"; then
         pass "页面可访问: $page"
@@ -325,6 +330,9 @@ if [ -n "$TOKEN" ]; then
     check_api_success "OCI 风险看板" "$(api_get /api/v1/oci/risk?maxConfigs=1 "$TOKEN")"
     check_api_success "运维主机列表" "$(api_get /api/ops/ssh/hosts "$TOKEN")"
     check_api_success "最近操作审计" "$(api_get /api/ops/audit/recent?limit=5 "$TOKEN")"
+    check_api_success "救援中心概览" "$(api_get /api/v1/rescue/overview "$TOKEN")"
+    check_api_success "本地备份列表" "$(api_get /api/v1/backups/local?limit=5 "$TOKEN")"
+    check_api_success "定时备份方案" "$(api_get '/api/v1/backups/schedule-plan?cron=0%203%20*%20*%20*' "$TOKEN")"
 
     if [ -n "$OCI_CFG_ID" ]; then
         details_body="{\"ociCfgId\":\"$(json_escape "$OCI_CFG_ID")\"}"

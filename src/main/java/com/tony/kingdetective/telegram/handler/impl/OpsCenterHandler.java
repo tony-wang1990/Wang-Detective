@@ -92,7 +92,7 @@ public class OpsCenterHandler extends AbstractCallbackHandler {
                 KeyboardBuilder.button("备份归档", "ops_backup_archive")
         ));
         rows.add(new InlineKeyboardRow(
-                KeyboardBuilder.button("快捷运维", "ops_quick_actions"),
+                KeyboardBuilder.button("实例操作", "ops_instance_guide"),
                 KeyboardBuilder.button("日志文件", "log_query")
         ));
         rows.add(new InlineKeyboardRow(
@@ -224,6 +224,49 @@ class OpsInstanceSummaryHandler extends AbstractCallbackHandler {
                     .append(OpsCenterSupport.joinIps(instance.getPublicIp()))
                     .append('\n'));
         }
+    }
+}
+
+@Slf4j
+@Component
+class OpsInstanceGuideHandler extends AbstractCallbackHandler {
+
+    @Override
+    public BotApiMethod<? extends Serializable> handle(CallbackQuery callbackQuery, TelegramClient telegramClient) {
+        try {
+            ISysService sysService = SpringUtil.getBean(ISysService.class);
+            List<SysUserDTO> configs = sysService.list();
+            if (CollectionUtil.isEmpty(configs)) {
+                return buildEditMessage(callbackQuery, "【实例操作向导】\n\n暂无 OCI 配置，请先在 Web 或 Bot 中添加配置。", OpsCenterHandler.buildOpsKeyboard());
+            }
+
+            StringBuilder message = new StringBuilder("【实例操作向导】\n\n");
+            message.append("选择 OCI 配置后进入实例列表，可选择实例并执行 VNC、启动、停止、重启、终止等真实 OCI 操作。\n\n");
+            message.append("配置数量: ").append(configs.size()).append('\n');
+
+            List<InlineKeyboardRow> rows = new ArrayList<>();
+            configs.stream().limit(10).filter(config -> StrUtil.isNotBlank(OpsCenterSupport.configId(config))).forEach(config -> rows.add(new InlineKeyboardRow(
+                    KeyboardBuilder.button(
+                            OpsCenterSupport.shorten(OpsCenterSupport.configName(config) + " / " + OpsCenterSupport.configRegion(config), 28),
+                            "instance_management:" + OpsCenterSupport.configId(config)
+                    )
+            )));
+            rows.add(new InlineKeyboardRow(
+                    KeyboardBuilder.button("配置列表", "config_list"),
+                    KeyboardBuilder.button("返回运维中心", "ops_center")
+            ));
+            rows.add(KeyboardBuilder.buildCancelRow());
+
+            return buildEditMessage(callbackQuery, OpsCenterSupport.escapeMarkdown(message.toString()), new InlineKeyboardMarkup(rows));
+        } catch (Exception e) {
+            log.error("Telegram instance guide failed", e);
+            return buildEditMessage(callbackQuery, OpsCenterSupport.escapeMarkdown("实例操作向导读取失败: " + e.getMessage()), OpsCenterHandler.buildOpsKeyboard());
+        }
+    }
+
+    @Override
+    public String getCallbackPattern() {
+        return "ops_instance_guide";
     }
 }
 
@@ -701,6 +744,10 @@ final class OpsCenterSupport {
 
     static String configRegion(SysUserDTO config) {
         return config == null || config.getOciCfg() == null ? "-" : blankToDash(config.getOciCfg().getRegion());
+    }
+
+    static String configId(SysUserDTO config) {
+        return config == null || config.getOciCfg() == null || config.getOciCfg().getId() == null ? "" : config.getOciCfg().getId();
     }
 
     static String joinIps(List<String> ips) {
