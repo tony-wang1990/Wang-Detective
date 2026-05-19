@@ -477,7 +477,7 @@ async function openDetails(row: Row) {
   if (!id) return;
   selectedDetail.value = row;
   detail.value = null;
-  await loadDetails(true);
+  await loadDetails(false);
 }
 
 async function createForSelected() {
@@ -947,7 +947,7 @@ onMounted(load);
             </td>
             <td>
               <div class="wd-row-actions">
-                <button type="button" @click="openDetails(row)"><ExternalLink :size="14" />实时资源</button>
+                <button type="button" :disabled="detailLoading" @click="openDetails(row)"><ExternalLink :size="14" />实时资源</button>
                 <button type="button" @click="renameConfig(row)">改名</button>
                 <button type="button" @click="releaseSecurityRule(row)"><ShieldCheck :size="14" />放行</button>
                 <button type="button" :disabled="Number(row.enableCreate || 0) === 0" @click="stopCreate(row)">停止</button>

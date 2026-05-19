@@ -423,7 +423,7 @@ html.dark .wd-update.available {
 }
 
 .wd-card {
-  overflow: hidden;
+  overflow: clip;
 }
 
 .wd-card header {
@@ -444,7 +444,8 @@ html.dark .wd-update.available {
 .wd-map-body {
   min-height: 410px;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
   background: var(--wd-surface-2);
   color: var(--wd-muted);
 }
