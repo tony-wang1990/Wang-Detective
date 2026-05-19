@@ -1,4 +1,4 @@
-package com.tony.kingdetective.telegram.handler.impl;
+﻿package com.tony.kingdetective.telegram.handler.impl;
 
 import com.tony.kingdetective.telegram.handler.AbstractCallbackHandler;
 import com.tony.kingdetective.utils.CommonUtils;
@@ -37,7 +37,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             // Send loading message
             telegramClient.execute(buildEditMessage(
                     callbackQuery,
-                    "📋 正在获取日志文件，请稍候..."
+                    "ðŸ“‹ æ­£åœ¨èŽ·å–æ—¥å¿—æ–‡ä»¶ï¼Œè¯·ç¨å€™..."
             ));
 
             // Read last 100 lines from log file
@@ -46,7 +46,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             if (!logFile.exists()) {
                 return buildEditMessage(
                         callbackQuery,
-                        "❌ 日志文件不存在: " + CommonUtils.LOG_FILE_PATH
+                        "âŒ æ—¥å¿—æ–‡ä»¶ä¸å­˜åœ¨: " + CommonUtils.LOG_FILE_PATH
                 );
             }
 
@@ -56,7 +56,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             if (logContent == null) {
                 return buildEditMessage(
                         callbackQuery,
-                        "❌ 读取日志文件失败"
+                        "âŒ è¯»å–æ—¥å¿—æ–‡ä»¶å¤±è´¥"
                 );
             }
 
@@ -67,28 +67,28 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             SendDocument sendDocument = SendDocument.builder()
                     .chatId(chatId)
                     .document(new InputFile(new ByteArrayInputStream(logContent), fileName))
-                    .caption("📋 最近 " + MAX_LINES + " 条日志记录\n"
-                            + "⏰ 生成时间: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .caption("ðŸ“‹ æœ€è¿‘ " + MAX_LINES + " æ¡æ—¥å¿—è®°å½•\n"
+                            + "â° ç”Ÿæˆæ—¶é—´: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                     .build();
 
             telegramClient.execute(sendDocument);
 
-                log.info("日志文件发送成功: {}", fileName);
+                log.info("æ—¥å¿—æ–‡ä»¶å‘é€æˆåŠŸ: {}", fileName);
 
             // Return null since we already sent the document
             return null;
 
         } catch (TelegramApiException e) {
-            log.error("发送日志文件失败", e);
+            log.error("å‘é€æ—¥å¿—æ–‡ä»¶å¤±è´¥", e);
             return buildEditMessage(
                     callbackQuery,
-                    "❌ 发送日志文件失败: " + e.getMessage()
+                    "âŒ å‘é€æ—¥å¿—æ–‡ä»¶å¤±è´¥: " + e.getMessage()
             );
         } catch (Exception e) {
-            log.error("处理日志查询请求失败", e);
+            log.error("å¤„ç†æ—¥å¿—æŸ¥è¯¢è¯·æ±‚å¤±è´¥", e);
             return buildEditMessage(
                     callbackQuery,
-                    "❌ 处理日志查询请求失败: " + e.getMessage()
+                    "âŒ å¤„ç†æ—¥å¿—æŸ¥è¯¢è¯·æ±‚å¤±è´¥: " + e.getMessage()
             );
         }
     }
@@ -118,12 +118,12 @@ public class LogQueryHandler extends AbstractCallbackHandler {
 
             // Convert to bytes with UTF-8 BOM encoding
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            
+
             // Add UTF-8 BOM (EF BB BF) to help text editors recognize the encoding
             baos.write(0xEF);
             baos.write(0xBB);
             baos.write(0xBF);
-            
+
             try (BufferedWriter writer = new BufferedWriter(
                     new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
 
@@ -137,7 +137,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             return baos.toByteArray();
 
         } catch (IOException e) {
-            log.error("读取日志文件失败", e);
+            log.error("è¯»å–æ—¥å¿—æ–‡ä»¶å¤±è´¥", e);
             return null;
         }
     }
