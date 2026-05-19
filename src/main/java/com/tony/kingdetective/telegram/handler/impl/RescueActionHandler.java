@@ -110,6 +110,7 @@ class RescueChooseAccountHandler extends AbstractCallbackHandler {
 /**
  * 救援 - 列出账号下的实例
  */
+@Slf4j
 @Component
 class RescueListInstancesHandler extends AbstractCallbackHandler {
 
