@@ -77,3 +77,9 @@ king-detective:
     cron: ${AUTO_BACKUP_CRON:0 0 3 * * ?}
     # 备份加密密码（建议通过环境变量配置）
     password: ${AUTO_BACKUP_PASSWORD:}
+  # feat: 实例状态监控推送
+  instance-monitor:
+    # 是否开启实例状态变化推送（默认开启，可通过 INSTANCE_MONITOR_ENABLED=false 关闭）
+    enabled: ${INSTANCE_MONITOR_ENABLED:true}
+    # 检查间隔（毫秒），默认 5 分钟
+    interval-ms: ${INSTANCE_MONITOR_INTERVAL_MS:300000}

@@ -330,7 +330,7 @@ if [ -n "$TOKEN" ]; then
     check_api_success "OCI 风险看板" "$(api_get /api/v1/oci/risk?maxConfigs=1 "$TOKEN")"
     check_api_success "运维主机列表" "$(api_get /api/ops/ssh/hosts "$TOKEN")"
     check_api_success "最近操作审计" "$(api_get /api/ops/audit/recent?limit=5 "$TOKEN")"
-    check_api_success "救援中心概览" "$(api_get /api/v1/rescue/overview "$TOKEN")"
+    check_api_success "救援中心概览" "$(api_get /api/rescue/overview "$TOKEN")"
     check_api_success "本地备份列表" "$(api_get /api/v1/backups/local?limit=5 "$TOKEN")"
     check_api_success "定时备份方案" "$(api_get '/api/v1/backups/schedule-plan?cron=0%203%20*%20*%20*' "$TOKEN")"
 

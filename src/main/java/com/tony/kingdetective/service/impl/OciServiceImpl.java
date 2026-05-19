@@ -1063,8 +1063,7 @@ public class OciServiceImpl implements IOciService {
                             .filter(InstanceDetailDTO::isSuccess).collect(Collectors.toList());
                     for (int idx = 0; idx < successList.size(); idx++) {
                         InstanceDetailDTO dto = successList.get(idx);
-                        List<String> ips = dto.getPublicIpList();
-                        String ipStr = (ips != null && !ips.isEmpty()) ? String.join(", ", ips) : "获取中...";
+                        String ipStr = (dto.getPublicIp() != null && !dto.getPublicIp().isEmpty()) ? dto.getPublicIp() : "获取中...";
                         ipMsg.append(String.format("实例 %d\n", idx + 1));
                         ipMsg.append(String.format("  公网IP：%s\n", ipStr));
                         if (dto.getRootPassword() != null && !dto.getRootPassword().isEmpty()) {

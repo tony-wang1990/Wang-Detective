@@ -6,10 +6,12 @@ import com.tony.kingdetective.telegram.factory.CallbackHandlerFactory;
 import com.tony.kingdetective.telegram.handler.CallbackHandler;
 import com.tony.kingdetective.telegram.service.AiChatService;
 import com.tony.kingdetective.telegram.service.SshService;
+import com.tony.kingdetective.telegram.service.TgAccountFlowService;
 import com.tony.kingdetective.telegram.storage.SshConnectionStorage;
 import com.tony.kingdetective.telegram.storage.ConfigSessionStorage;
 import com.tony.kingdetective.telegram.utils.MarkdownFormatter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.botapimethods.BotApiMethod;
@@ -22,6 +24,7 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.springframework.beans.factory.annotation.Value;
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -41,6 +44,7 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     private final String BOT_TOKEN;
     private final String CHAT_ID;
     private final TelegramClient telegramClient;
+    private final TgAccountFlowService accountFlowService;
     
     @Value("${oci-cfg.key-dir-path}")
     private String keyDirPath;
@@ -49,6 +53,8 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         BOT_TOKEN = botToken;
         CHAT_ID = chatId;
         telegramClient = new OkHttpTelegramClient(BOT_TOKEN);
+        // 从 Spring 容器获取 Service（TgBot 由手动 new 创建，非 Spring Bean）
+        accountFlowService = SpringUtil.getBean(TgAccountFlowService.class);
     }
 
     @Override
@@ -700,13 +706,10 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     private void handleAddAccountConfigInput(long chatId, String text) {
         ConfigSessionStorage storage = ConfigSessionStorage.getInstance();
         try {
-            // Simple parsing logic (Validation)
-            String user = getValueFromConfig(text, "user");
-            String fingerprint = getValueFromConfig(text, "fingerprint");
-            String tenancy = getValueFromConfig(text, "tenancy");
-            String region = getValueFromConfig(text, "region");
+            // feat: 委托给 TgAccountFlowService 解析，TgBot 只负责流程路由和消息发送
+            Map<String, String> parsed = accountFlowService.parseConfigText(text);
 
-            if (user == null || fingerprint == null || tenancy == null || region == null) {
+            if (parsed == null) {
                 sendMessage(chatId, 
                     "❌ *配置格式错误*\n\n" +
                     "未检测到必要的字段 (user, fingerprint, tenancy, region)。\n" +
@@ -716,16 +719,8 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                 return;
             }
             
-            // Store parsed data
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("user", user);
-            data.put("fingerprint", fingerprint);
-            data.put("tenancy", tenancy);
-            data.put("region", region);
-            data.put("rawConfig", text); // Keep raw config if needed later
-            
             // Transition to next step
-            storage.startAddAccountKey(chatId, data);
+            storage.startAddAccountKey(chatId, new java.util.HashMap<>(parsed));
             
             sendMessage(chatId, 
                 "✅ *配置已识别*\n\n" +
@@ -745,7 +740,8 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
      * 第二步：处理私钥文本输入
      */
     private void handleAddAccountKeyInput(long chatId, String text) {
-        if (!text.contains("BEGIN") && !text.contains("PRIVATE KEY")) {
+        // feat: 委托校验逻辑给 TgAccountFlowService
+        if (!accountFlowService.isValidPrivateKey(text)) {
             sendMessage(chatId, "❌ *非法的私钥格式*\n\n请确保包含 `-----BEGIN ... PRIVATE KEY-----` 头。", true);
             return;
         }
@@ -758,24 +754,18 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     private void handleAddAccountKeyFile(Update update, long chatId) {
         try {
             org.telegram.telegrambots.meta.api.objects.Document document = update.getMessage().getDocument();
-            
-            // Download file
             String fileId = document.getFileId();
             org.telegram.telegrambots.meta.api.methods.GetFile getFile = new org.telegram.telegrambots.meta.api.methods.GetFile(fileId);
             org.telegram.telegrambots.meta.api.objects.File tgFile = telegramClient.execute(getFile);
             java.io.File downloadedFile = telegramClient.downloadFile(tgFile);
-            
-            // Read content
             String keyContent = cn.hutool.core.io.FileUtil.readUtf8String(downloadedFile);
             
-            // Validate content
-            if (!keyContent.contains("BEGIN") && !keyContent.contains("PRIVATE KEY")) {
+            // feat: 委托校验逻辑给 TgAccountFlowService
+            if (!accountFlowService.isValidPrivateKey(keyContent)) {
                 sendMessage(chatId, "❌ *文件无效*\n\n文件内容不是有效的私钥格式。", true);
                 return;
             }
-            
             processAccountKey(chatId, keyContent);
-            
         } catch (Exception e) {
             log.error("Failed to handle key file", e);
             sendMessage(chatId, "❌ 读取文件失败: " + e.getMessage());
@@ -823,83 +813,23 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         try {
             sendMessage(chatId, "⏳ 正在验证并保存...");
             
-            // Retrieve data
-            java.util.Map<String, Object> data = state.getData();
-            String userOctId = (String) data.get("user");
+            Map<String, Object> data = state.getData();
+            String userOctId   = (String) data.get("user");
             String fingerprint = (String) data.get("fingerprint");
-            String tenancy = (String) data.get("tenancy");
-            String region = (String) data.get("region");
-            String keyContent = (String) data.get("keyContent");
+            String tenancy     = (String) data.get("tenancy");
+            String region      = (String) data.get("region");
+            String keyContent  = (String) data.get("keyContent");
             
-            // Save Key File to persistent volume-mounted directory
-            // Key file naming convention: {configured-dir}/oci_api_key_{username}_{timestamp}.pem
-            // Use configured keyDirPath instead of ~/.oci to ensure persistence across container updates
-            String keyDir = keyDirPath;
-            if (!cn.hutool.core.io.FileUtil.exist(keyDir)) {
-                cn.hutool.core.io.FileUtil.mkdir(keyDir);
-            }
-            
-            // Clean remark to be filename safe
-            String safeRemark = remark.replaceAll("[^a-zA-Z0-9_-]", "_");
-            String keyFileName = String.format("oci_api_key_%s_%d.pem", safeRemark, System.currentTimeMillis());
-            String keyPath = keyDir + java.io.File.separator + keyFileName;
-            
-            cn.hutool.core.io.FileUtil.writeUtf8String(keyContent, keyPath);
-            // Set permissions (600) for security (Linux only, but good practice)
-            try {
-                if (!System.getProperty("os.name").toLowerCase().contains("win")) {
-                    java.nio.file.Files.setPosixFilePermissions(java.nio.file.Paths.get(keyPath), 
-                        java.util.Set.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ, java.nio.file.attribute.PosixFilePermission.OWNER_WRITE));
-                }
-            } catch (Exception ignored) {}
+            sendMessage(chatId, "⏳ 正在验证 OCI API 连通性...");
 
-            // Save User to DB
-            com.tony.kingdetective.service.IOciUserService userService = SpringUtil.getBean(com.tony.kingdetective.service.IOciUserService.class);
-            
-            com.tony.kingdetective.bean.entity.OciUser ociUser = new com.tony.kingdetective.bean.entity.OciUser();
-            ociUser.setId(cn.hutool.core.util.IdUtil.getSnowflakeNextIdStr());
-            ociUser.setUsername(remark);
-            ociUser.setOciTenantId(tenancy);
-            ociUser.setOciUserId(userOctId);
-            ociUser.setOciFingerprint(fingerprint);
-            ociUser.setOciRegion(region);
-            ociUser.setOciKeyPath(keyPath);
-            ociUser.setTenantName(remark); // Default tenant name to remark
-            ociUser.setCreateTime(java.time.LocalDateTime.now());
-            ociUser.setDeleted(0);
-            
-            userService.save(ociUser);
+            // feat: 全部数据操作委托给 TgAccountFlowService，TgBot 只处理消息
+            String errorMsg = accountFlowService.saveAndVerify(remark, userOctId, fingerprint, tenancy, region, keyContent);
 
-            // fix: 添加账号后立即验证 OCI 连通性，Key 无效时立即提示并回滚
-            try {
-                sendMessage(chatId, "⏳ 正在验证 OCI API 连通性...");
-                com.tony.kingdetective.bean.dto.SysUserDTO sysUserDTO =
-                        com.tony.kingdetective.bean.dto.SysUserDTO.builder()
-                        .username(remark)
-                        .ociCfg(com.tony.kingdetective.bean.dto.SysUserDTO.OciCfg.builder()
-                                .tenantId(tenancy)
-                                .userId(userOctId)
-                                .fingerprint(fingerprint)
-                                .region(region)
-                                .privateKey(keyContent)
-                                .build())
-                        .build();
-                com.tony.kingdetective.config.OracleInstanceFetcher fetcher =
-                        new com.tony.kingdetective.config.OracleInstanceFetcher(sysUserDTO);
-                // listAllRegions() 是最轻量的 OCI API 调用，失败则认为 Key 无效
-                java.util.List<?> verifiedRegions = fetcher.listAllRegions();
-                fetcher.close();
-                log.info("OCI connectivity verified for new account: chatId={}, remark={}, regions={}", chatId, remark, verifiedRegions.size());
-            } catch (Exception verifyEx) {
-                // 验证失败：回滚删除刚保存的记录，提示用户
-                log.error("OCI connectivity check failed for chatId={}, remark={}", chatId, remark, verifyEx);
-                try { userService.removeById(ociUser.getId()); } catch (Exception ignored) {}
-                // 清理已保存的 key 文件
-                try { cn.hutool.core.io.FileUtil.del(keyPath); } catch (Exception ignored) {}
+            if (errorMsg != null) {
                 storage.clearSession(chatId);
                 sendMessage(chatId,
                     "❌ *账户添加失败 - OCI 连通性验证不通过*\n\n" +
-                    "错误信息：" + verifyEx.getMessage() + "\n\n" +
+                    "错误信息：" + errorMsg + "\n\n" +
                     "💡 可能原因：\n" +
                     "• API Key 与账户不匹配（指纹错误）\n" +
                     "• 私钥文件内容不完整或格式错误\n" +
@@ -911,6 +841,7 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                 return;
             }
 
+            storage.clearSession(chatId);
             sendMessage(chatId,
                 String.format("🎉 *账户添加成功！*\n\n" +
                               "备注名: %s\n" +
@@ -920,29 +851,19 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                 true
             );
 
-            // Clear session
-            storage.clearSession(chatId);
-            
-            // Show new account list
-            // (We could trigger AccountManagementHandler here, but simple message is safer)
-
         } catch (Exception e) {
             log.error("Failed to save new account", e);
             sendMessage(chatId, "❌ 保存失败: " + e.getMessage());
-            // Don't clear session so user can retry remark or key if needed? No, fail fast.
             storage.clearSession(chatId);
         }
     }
 
+    /**
+     * getValueFromConfig 委托给 TgAccountFlowService
+     * 保留为 private 以兼容其他可能的调用点
+     */
     private String getValueFromConfig(String text, String key) {
-        String[] lines = text.split("\n");
-        for (String line : lines) {
-            line = line.trim();
-            if (line.startsWith(key + "=") || line.startsWith(key + " =")) {
-                return line.split("=", 2)[1].trim();
-            }
-        }
-        return null;
+        return accountFlowService.getValueFromConfig(text, key);
     }
 
     /**

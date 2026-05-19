@@ -35,9 +35,9 @@ async function loadOverview() {
   error.value = '';
   try {
     const [overviewRsp, lightRsp, netbootRsp] = await Promise.all([
-      apiGet<RescueOverview>('/v1/rescue/overview'),
-      apiGet<string>('/v1/rescue/light-script'),
-      apiGet<string>('/v1/rescue/netboot-script?mode=ipxe')
+      apiGet<RescueOverview>('/rescue/overview'),
+      apiGet<string>('/rescue/light-script'),
+      apiGet<string>('/rescue/netboot-script?mode=ipxe')
     ]);
     overview.value = overviewRsp.data || {};
     lightScript.value = lightRsp.data || '';

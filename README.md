@@ -1,6 +1,6 @@
 # Wang-Detective
 
-Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板和 Telegram Bot 运维助手。当前版本已经从原始 King-Detective 升级为“OCI 管理 + Web 运维 + Telegram Bot + 风险诊断 + 备份恢复 + 救援中心”的增强版控制台。
+Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板和 Telegram Bot 运维助手。当前版本已经从原始 King-Detective 升级为"OCI 管理 + Web 运维 + Telegram Bot + 风险诊断 + 备份恢复 + 救援中心"的增强版控制台。
 
 状态更新时间：2026-05-19
 
@@ -27,7 +27,18 @@ bash scripts/server-smoke-test.sh
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change_me_to_strong_password
 TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_BOT_CHAT_ID=your_chat_id
+
+# 支持多个 Chat ID，用英文逗号分隔（新增 #18 多用户支持）
+TELEGRAM_BOT_CHAT_ID=your_chat_id,another_chat_id
+
+# 定时自动备份（可选，#17 新增）
+AUTO_BACKUP_ENABLED=true
+AUTO_BACKUP_CRON=0 0 3 * * ?
+AUTO_BACKUP_PASSWORD=your_backup_password
+
+# 实例状态监控推送（默认开启，新增）
+INSTANCE_MONITOR_ENABLED=true
+INSTANCE_MONITOR_INTERVAL_MS=300000
 ```
 
 修改后重启：
@@ -42,12 +53,12 @@ docker compose up -d --force-recreate
 | 模块 | 完成度 | 当前状态 |
 |---|---:|---|
 | 部署与更新 | 90% | 安装脚本、Compose v2、watcher、自检脚本、低配 JVM、脚本同步和一键更新链路已完成 |
-| Vue 新前端 | 82% | 登录、主框架、首页、配置、任务、日志、系统配置、功能中心、终端、审计、风险、备份、救援中心已原生化 |
+| Vue 新前端 | 84% | 登录、主框架、首页、配置、任务、日志、系统配置、功能中心、终端、审计、风险、备份、救援中心已原生化 |
 | OCI 核心管理 | 82% | 配置、任务、实例详情、实例动作、网络/安全/引导卷等入口已接入真实后端，仍需真机逐项验收 |
 | Web SSH/SFTP | 82% | 主机库、Web SSH、命令模板、会话列表、断线重连、resize、SFTP 基础文件操作已完成 |
-| Telegram Bot | 78% | 运维中心、诊断、任务、日志、风险、备份、版本更新和实例操作向导已接入 |
-| 备份恢复 | 78% | Web 备份统一改为 `backup.sh` 的 tar.gz 格式，恢复计划、定时备份和 Object Storage 归档策略已接入 |
-| 救援中心 | 65% | 轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线为安全向导，自动救砖仍在实验阶段 |
+| Telegram Bot | 85% | 运维中心、诊断、任务、日志、风险、备份、版本更新和实例操作向导已接入；抢机成功主动推 IP、实例状态变化推送、多 Chat ID 支持均已完成 |
+| 备份恢复 | 85% | Web 备份统一改为 `backup.sh` 的 tar.gz 格式，定时自动备份（@Scheduled + 环境变量控制）已接入 |
+| 救援中心 | 68% | API 路径统一为 `/api/rescue/*`，轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线 |
 | CI/测试 | 70% | GitHub Actions 已增加 Java 21、Node 20、前端构建、Maven 构建和前后端接口映射检查 |
 
 ## 已完成
@@ -65,10 +76,21 @@ docker compose up -d --force-recreate
 - 新增 OCI 风险看板 `/api/v1/oci/risk`。
 - 新增备份归档页 `/api/v1/backups/*`，支持本地备份、Object Storage 归档、恢复计划、定时备份方案。
 - 修复 Web 备份格式，统一使用 `scripts/backup.sh` 生成可被 `scripts/restore.sh` 恢复的 `.tar.gz` 备份包。
-- 新增救援中心 `/dashboard/rescue` 和 `/api/v1/rescue/*`，提供轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
+- 新增救援中心 `/dashboard/rescue`，API 路径统一为 `/api/rescue/*`（已去掉 `/v1` 前缀），提供轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
 - Telegram Bot 运维中心已支持系统诊断、任务状态、最近日志、错误日志、审计摘要、主机概览、风险看板、备份归档、版本更新和实例操作向导。
 - Telegram Bot 实例管理新增启动、停止、重启确认执行，并写入操作审计。
 - CI 增强：发布前执行脚本语法检查、前端 API 到后端 Controller 映射检查、前端 build、Maven package、Docker build。
+
+### 最近新增（2026-05-19）
+
+| 编号 | 功能 | 说明 |
+|---|---|---|
+| #9 | **抢机成功主动推 IP** | 抢机成功后自动推送公网 IP、SSH 密码、架构、区域等完整信息到 TG，无需手动刷新 |
+| #15 | **救援中心路径统一** | API 路径 `/api/v1/rescue/*` → `/api/rescue/*`，前端、smoke-test 同步更新 |
+| #17 | **定时自动备份** | 新增 `AutoBackupTask`，通过 `AUTO_BACKUP_ENABLED=true` 开启，支持自定义 Cron、加密密码，成功/失败均推 TG 通知 |
+| #18 | **多 Chat ID 支持** | `TELEGRAM_BOT_CHAT_ID` 支持逗号分隔多个 ID（如 `123456,789012`），兼容旧版单 ID 格式 |
+| - | **实例状态变化推送** | 新增 `InstanceStateMonitorTask`，每 5 分钟轮询实例状态，Running/Stopped/Terminated 等变化主动推 TG |
+| - | **TgBot 架构重构** | 新建 `TgAccountFlowService`，将 key 文件写入、DB 保存、OCI 验证、回滚等业务逻辑从 TgBot 提取到独立 Service |
 
 ## 未完成和后续重点
 
@@ -76,11 +98,14 @@ docker compose up -d --force-recreate
 |---|---|---|
 | P0 | 真实 OCI 全量验收 | 需要在真实账号逐个点配置、任务、实例、网络、安全规则、引导卷、备份相关按钮，确认 OCI SDK 返回和错误提示都正确 |
 | P0 | 低配 VPS 启动体验 | 当前低配机器首次启动约 60-90 秒属正常范围，但登录页等待和启动提示还可以继续优化 |
+| P1 | VNC 内嵌体验优化 | 当前 VNC 功能提供 URL 配置和连接引导，后续可内嵌 noVNC WebSocket 代理实现真正的浏览器内 VNC |
+| P1 | 救援中心一键操作 | 目前救援中心仅提供向导和脚本，"停止实例 / 拆卷 / 挂载到救援机"等高危动作仍需人工在 OCI 控制台操作 |
 | P1 | UI/移动端深度打磨 | 继续检查按钮卡字、窄屏、暗色模式、空状态、失败态和点击反馈 |
 | P1 | 备份恢复执行按钮 | 现在 Web 已生成恢复命令和策略；直接从 Web 执行恢复/回滚仍需更严格的二次确认和权限边界 |
-| P1 | netboot.xyz 自动救砖 | 当前只做安全向导和脚本，不自动改 bootloader；后续需在测试机实测 AMD/ARM、UEFI/BIOS 后再开放一键引导 |
+| P2 | netboot.xyz 自动救砖 | 当前只做安全向导和脚本，不自动改 bootloader；后续需在测试机实测 AMD/ARM、UEFI/BIOS 后再开放一键引导 |
 | P2 | TGBOT 权限模型 | 高危操作后续可增加白名单、管理员确认、操作冷却时间 |
 | P2 | API 契约测试 | 继续补 Controller 层 Mock 测试和 Bot 回调测试，减少上线后才发现接口问题 |
+| P2 | TgBot 进一步拆分 | 已提取 TgAccountFlowService；BackupRestoreFlow、VncConfigFlow 等重复 Session 操作也可继续提取 |
 
 ## 常用命令
 
