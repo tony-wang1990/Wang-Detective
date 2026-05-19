@@ -150,8 +150,10 @@ public class AiChatController {
         // 添加用户消息
         history.add(new UserMessage(message));
 
+        // fix: 用 StringBuilder 收集完整回复，最后整体存一条 AssistantMessage，避免 Token 爆炸
         try {
             List<Message> finalHistory = history;
+            StringBuilder fullResponse = new StringBuilder();
             if (enableInternet != null && enableInternet) {
                 return searchService.searchWithHtml(message)
                         .flatMapMany(results -> {
@@ -168,15 +170,19 @@ public class AiChatController {
                                     .stream()
                                     .content()
                                     .map(chunk -> chunk == null ? "" : chunk)
-                                    .doOnNext(chunk -> {
-                                        // 把 AI 回复追加进历史
-                                        finalHistory.add(new AssistantMessage(chunk));
-                                        customCache.put(sessionId, finalHistory, 30 * 60 * 1000); // 30分钟对话过期
+                                    .doOnNext(fullResponse::append)
+                                    .doOnComplete(() -> {
+                                        // 整个回复完成后，存入一条 AssistantMessage
+                                        finalHistory.add(new AssistantMessage(fullResponse.toString()));
+                                        // 历史超过 20 条时，保留系统提示（若有）+ 最新 20 条，避免 Token 过长
+                                        if (finalHistory.size() > 20) {
+                                            finalHistory.subList(0, finalHistory.size() - 20).clear();
+                                        }
+                                        customCache.put(sessionId, finalHistory, 30 * 60 * 1000);
                                     })
                                     .bufferUntil(chunk -> chunk.endsWith("。") || chunk.endsWith("\n") || chunk.endsWith("."))
                                     .map(list -> String.join("", list))
                                     .onErrorResume(error -> {
-                                        // 错误处理
                                         log.error("Stream error: ", error);
                                         return Flux.just("抱歉，处理您的请求时出现了错误。");
                                     });
@@ -190,10 +196,15 @@ public class AiChatController {
                         .stream()
                         .content()
                         .map(chunk -> chunk == null ? "" : chunk)
-                        .doOnNext(chunk -> {
-                            // 把 AI 回复追加进历史
-                            finalHistory.add(new AssistantMessage(chunk));
-                            customCache.put(sessionId, finalHistory, 30 * 60 * 1000); // 30分钟对话过期
+                        .doOnNext(fullResponse::append)
+                        .doOnComplete(() -> {
+                            // 整个回复完成后，存入一条 AssistantMessage
+                            finalHistory.add(new AssistantMessage(fullResponse.toString()));
+                            // 历史超过 20 条时裁剪，避免 Token 过长
+                            if (finalHistory.size() > 20) {
+                                finalHistory.subList(0, finalHistory.size() - 20).clear();
+                            }
+                            customCache.put(sessionId, finalHistory, 30 * 60 * 1000);
                         })
                         .bufferUntil(chunk -> chunk.endsWith("。") || chunk.endsWith("\n") || chunk.endsWith("."))
                         .map(list -> String.join("", list))

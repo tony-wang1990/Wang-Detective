@@ -18,6 +18,7 @@ import com.tony.kingdetective.service.IInstanceService;
 import com.tony.kingdetective.service.IAuditLogService;
 import com.tony.kingdetective.service.IOciService;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -51,7 +52,7 @@ public class OciController {
     }
 
     @PostMapping(path = "/addCfg")
-    public ResponseData<Void> addCfg(@Validated AddCfgParams params) {
+    public ResponseData<Void> addCfg(@Validated @ModelAttribute AddCfgParams params) {
         audited("OCI_CONFIG_ADD", safe(params.getUsername()), "upload key file and config", () -> ociService.addCfg(params));
         return ResponseData.successData("新增配置成功");
     }

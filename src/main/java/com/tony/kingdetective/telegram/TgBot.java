@@ -869,19 +869,57 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
             ociUser.setDeleted(0);
             
             userService.save(ociUser);
-            
-            // Check connectivity (Optional enhancement: actually test the connection here)
-            // For now, assume success if saved.
-            
-            sendMessage(chatId, 
+
+            // fix: 添加账号后立即验证 OCI 连通性，Key 无效时立即提示并回滚
+            try {
+                sendMessage(chatId, "⏳ 正在验证 OCI API 连通性...");
+                com.tony.kingdetective.bean.dto.SysUserDTO sysUserDTO =
+                        com.tony.kingdetective.bean.dto.SysUserDTO.builder()
+                        .username(remark)
+                        .ociCfg(com.tony.kingdetective.bean.dto.SysUserDTO.OciCfg.builder()
+                                .tenantId(tenancy)
+                                .userId(userOctId)
+                                .fingerprint(fingerprint)
+                                .region(region)
+                                .privateKey(keyContent)
+                                .build())
+                        .build();
+                com.tony.kingdetective.config.OracleInstanceFetcher fetcher =
+                        new com.tony.kingdetective.config.OracleInstanceFetcher(sysUserDTO);
+                // listAllRegions() 是最轻量的 OCI API 调用，失败则认为 Key 无效
+                java.util.List<?> verifiedRegions = fetcher.listAllRegions();
+                fetcher.close();
+                log.info("OCI connectivity verified for new account: chatId={}, remark={}, regions={}", chatId, remark, verifiedRegions.size());
+            } catch (Exception verifyEx) {
+                // 验证失败：回滚删除刚保存的记录，提示用户
+                log.error("OCI connectivity check failed for chatId={}, remark={}", chatId, remark, verifyEx);
+                try { userService.removeById(ociUser.getId()); } catch (Exception ignored) {}
+                // 清理已保存的 key 文件
+                try { cn.hutool.core.io.FileUtil.del(keyPath); } catch (Exception ignored) {}
+                storage.clearSession(chatId);
+                sendMessage(chatId,
+                    "❌ *账户添加失败 - OCI 连通性验证不通过*\n\n" +
+                    "错误信息：" + verifyEx.getMessage() + "\n\n" +
+                    "💡 可能原因：\n" +
+                    "• API Key 与账户不匹配（指纹错误）\n" +
+                    "• 私钥文件内容不完整或格式错误\n" +
+                    "• 区域（Region）填写错误\n" +
+                    "• OCI 账户权限不足\n\n" +
+                    "请检查后重新发送 /start 再试。",
+                    true
+                );
+                return;
+            }
+
+            sendMessage(chatId,
                 String.format("🎉 *账户添加成功！*\n\n" +
                               "备注名: %s\n" +
                               "区域: %s\n" +
-                              "状态: ✅ 已保存\n\n" +
+                              "状态: ✅ 已验证 OCI 连通性\n\n" +
                               "您可以点击下方按钮管理该账户。", remark, region),
                 true
             );
-            
+
             // Clear session
             storage.clearSession(chatId);
             

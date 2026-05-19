@@ -40,6 +40,10 @@ public class AuthInterceptor implements HandlerInterceptor {
             "/api/sys/getGoogleClientId"
     );
 
+    // AI 聊天接口无需 Token（前端携带 Token 时也会正常通过鉴权，此处放行未登录访问的情况）
+    // fix: /chat/** 路径未加 /api 前缀，鉴权拦截器仅拦截 /api/**，故无需特殊处理
+    // 但保留此注释，提示后续维护者：若将 /chat 迁移到 /api/chat 需同步更新 noTokenList
+
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
