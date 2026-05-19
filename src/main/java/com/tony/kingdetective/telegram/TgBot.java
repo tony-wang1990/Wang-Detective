@@ -45,7 +45,8 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     private final String CHAT_ID;
     private final TelegramClient telegramClient;
     private final TgAccountFlowService accountFlowService;
-    
+    private final TgSessionFlowService sessionFlowService;
+
     @Value("${oci-cfg.key-dir-path}")
     private String keyDirPath;
 
@@ -53,8 +54,8 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         BOT_TOKEN = botToken;
         CHAT_ID = chatId;
         telegramClient = new OkHttpTelegramClient(BOT_TOKEN);
-        // 从 Spring 容器获取 Service（TgBot 由手动 new 创建，非 Spring Bean）
         accountFlowService = SpringUtil.getBean(TgAccountFlowService.class);
+        sessionFlowService = SpringUtil.getBean(TgSessionFlowService.class);
     }
 
     @Override
@@ -176,275 +177,99 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     /**
-     * 处理 VNC URL 输入
+     * 处理 VNC URL 输入（委托给 TgSessionFlowService）
      */
     private void handleVncUrlInput(long chatId, String url) {
         ConfigSessionStorage configStorage = ConfigSessionStorage.getInstance();
-        
-        try {
-            // Validate URL format
-            url = url.trim();
-            
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                sendMessage(chatId, 
-                    "❌ URL 格式错误\n\n" +
-                    "必须以 http:// 或 https:// 开头\n\n" +
-                    "示例：\n" +
-                    "• http://192.168.1.100:6080\n" +
-                    "• https://vnc.example.com\n\n" +
-                    "请重新输入或发送 /cancel 取消配置"
-                );
-                return;
-            }
-            
-            // Remove trailing slash
-            if (url.endsWith("/")) {
-                url = url.substring(0, url.length() - 1);
-            }
-            
-            // Save to database
-            com.tony.kingdetective.service.IOciKvService kvService = 
-                SpringUtil.getBean(com.tony.kingdetective.service.IOciKvService.class);
-            
-            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.tony.kingdetective.bean.entity.OciKv> wrapper = 
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-            wrapper.eq(com.tony.kingdetective.bean.entity.OciKv::getCode, 
-                com.tony.kingdetective.enums.SysCfgEnum.SYS_VNC.getCode());
-            
-            com.tony.kingdetective.bean.entity.OciKv vncConfig = kvService.getOne(wrapper);
-            
-            if (vncConfig != null) {
-                // Update existing
-                vncConfig.setValue(url);
-                kvService.updateById(vncConfig);
-            } else {
-                // Create new
-                vncConfig = new com.tony.kingdetective.bean.entity.OciKv();
-                vncConfig.setId(cn.hutool.core.util.IdUtil.getSnowflakeNextIdStr());
-                vncConfig.setCode(com.tony.kingdetective.enums.SysCfgEnum.SYS_VNC.getCode());
-                vncConfig.setValue(url);
-                vncConfig.setType(com.tony.kingdetective.enums.SysCfgTypeEnum.SYS_INIT_CFG.getCode());
-                kvService.save(vncConfig);
-            }
-            
-            // Stop configuring
-            configStorage.clearSession(chatId);
-            
-            // Send success message
+        if (!sessionFlowService.isValidVncUrl(url)) {
             sendMessage(chatId,
-                String.format(
-                    "✅ *VNC URL 配置成功*\n\n" +
-                    "配置的 URL: %s\n\n" +
-                    "💡 使用说明：\n" +
-                    "在实例管理中选择单个实例，\n" +
-                    "点击 \"开启VNC连接\" 按钮即可使用此 URL。\n\n" +
-                    "⚠️ 注意：\n" +
-                    "• 请确保 VNC 代理服务已正确配置\n" +
-                    "• 确保相应端口已开放或配置了反向代理",
-                    url
-                ),
-                true
-            );
-            
+                "❌ URL 格式错误\n\n必须以 http:// 或 https:// 开头\n\n" +
+                "示例：\n• http://192.168.1.100:6080\n• https://vnc.example.com\n\n" +
+                "请重新输入或发送 /cancel 取消配置");
+            return;
+        }
+        url = sessionFlowService.normalizeVncUrl(url);
+        String error = sessionFlowService.saveVncUrl(url);
+        configStorage.clearSession(chatId);
+        if (error != null) {
+            sendMessage(chatId, "❌ 保存 VNC URL 失败: " + error);
+        } else {
+            sendMessage(chatId,
+                String.format("✅ *VNC URL 配置成功*\n\n配置的 URL: %s\n\n" +
+                    "💡 在实例管理中点击 VNC 按钮即可在面板内嵌使用。", url), true);
             log.info("VNC URL configured: chatId={}, url={}", chatId, url);
-            
-        } catch (Exception e) {
-            log.error("Failed to save VNC URL", e);
-            sendMessage(chatId, "❌ 保存 VNC URL 失败: " + e.getMessage());
-            configStorage.clearSession(chatId);
         }
     }
 
     /**
-     * 处理备份密码输入
+     * 处理备份密码输入（委托给 TgSessionFlowService）
      */
     private void handleBackupPasswordInput(long chatId, String password) {
         ConfigSessionStorage configStorage = ConfigSessionStorage.getInstance();
-        
+        password = password.trim();
+        if (!sessionFlowService.isValidBackupPassword(password)) {
+            sendMessage(chatId, "❌ 密码太短\n\n建议密码至少 8 位字符\n\n请重新输入或发送 /cancel 取消操作");
+            return;
+        }
+        sendMessage(chatId, "⏳ 正在创建加密备份，请稍候...");
         try {
-            // Validate password
-            password = password.trim();
-            
-            if (password.length() < 6) {
-                sendMessage(chatId,
-                    "❌ 密码太短\n\n" +
-                    "建议密码至少 8 位字符\n\n" +
-                    "请重新输入或发送 /cancel 取消操作"
-                );
-                return;
-            }
-            
-            // Send processing message
-            sendMessage(chatId, "⏳ 正在创建加密备份...\n\n请稍候，这可能需要几秒钟。");
-            
-            // Execute encrypted backup using the new method
-            com.tony.kingdetective.service.ISysService sysService = 
-                SpringUtil.getBean(com.tony.kingdetective.service.ISysService.class);
-            
-            com.tony.kingdetective.bean.params.sys.BackupParams params = 
-                new com.tony.kingdetective.bean.params.sys.BackupParams();
-            params.setEnableEnc(true);
-            params.setPassword(password);
-            
-            String backupFilePath = sysService.createBackupFile(params);
-            
-            log.info("Encrypted backup created: chatId={}, file={}", chatId, backupFilePath);
-            
-            // Send backup file via Telegram
+            String backupFilePath = sessionFlowService.createEncryptedBackup(password);
             java.io.File backupFile = new java.io.File(backupFilePath);
-            if (backupFile.exists()) {
-                org.telegram.telegrambots.meta.api.methods.send.SendDocument sendDocument = 
-                    org.telegram.telegrambots.meta.api.methods.send.SendDocument.builder()
-                        .chatId(chatId)
-                        .document(new org.telegram.telegrambots.meta.api.objects.InputFile(backupFile))
-                        .caption(
-                            "📦 *备份文件*\n\n" +
-                            "✅ 备份类型：加密备份\n" +
-                            "📅 创建时间：" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n\n" +
-                            "💡 说明：\n" +
-                            "• 此备份文件已加密\n" +
-                            "• 恢复时需要输入密码\n" +
-                            "• 请妥善保管密码和文件\n\n" +
-                            "⚠️ 重要：\n" +
-                            "• 文件已发送到聊天窗口\n" +
-                            "• 服务器副本将在发送后删除\n" +
-                            "• 请牢记您设置的密码"
-                        )
-                        .parseMode("Markdown")
-                        .build();
-                
-                try {
-                    telegramClient.execute(sendDocument);
-                    log.info("Encrypted backup file sent to chatId: {}", chatId);
-                    
-                    // Delete backup file from server after sending
-                    cn.hutool.core.io.FileUtil.del(backupFile);
-                    log.info("Backup file deleted from server: {}", backupFilePath);
-                    
-                    // Send success message
-                    sendMessage(chatId,
-                        "✅ *加密备份创建成功*\n\n" +
-                        "备份文件已发送到聊天窗口。\n\n" +
-                        "💡 提示：\n" +
-                        "• 请保存备份文件到安全位置\n" +
-                        "• 服务器不会保留备份副本\n" +
-                        "• 需要时可随时创建新备份\n" +
-                        "• 请务必记住您的密码",
-                        true
-                    );
-                    
-                } catch (Exception e) {
-                    log.error("Failed to send encrypted backup file", e);
-                    throw new Exception("发送备份文件失败：" + e.getMessage());
-                }
-            } else {
-                throw new Exception("备份文件不存在：" + backupFilePath);
-            }
-            
-            // Clean up session
+            if (!backupFile.exists()) throw new Exception("备份文件不存在：" + backupFilePath);
+            org.telegram.telegrambots.meta.api.methods.send.SendDocument doc =
+                org.telegram.telegrambots.meta.api.methods.send.SendDocument.builder()
+                    .chatId(chatId)
+                    .document(new org.telegram.telegrambots.meta.api.objects.InputFile(backupFile))
+                    .caption("📦 *加密备份*\n创建时间：" +
+                        java.time.LocalDateTime.now().format(
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) +
+                        "\n\n恢复时需要输入密码，请妥善保管。")
+                    .parseMode("Markdown").build();
+            telegramClient.execute(doc);
+            sessionFlowService.deleteBackupFile(backupFilePath);
             configStorage.clearSession(chatId);
-            
+            sendMessage(chatId, "✅ *加密备份创建成功*\n\n备份文件已发送，服务器不保留副本。", true);
+            log.info("Encrypted backup sent: chatId={}, file={}", chatId, backupFilePath);
         } catch (Exception e) {
-            log.error("Failed to create encrypted backup", e);
+            log.error("Failed to create encrypted backup: chatId={}", chatId, e);
             sendMessage(chatId, "❌ 创建加密备份失败: " + e.getMessage());
             configStorage.clearSession(chatId);
         }
     }
 
     /**
-     * 处理恢复密码输入
+     * 处理恢复密码输入（委托给 TgSessionFlowService）
      */
     private void handleRestorePasswordInput(long chatId, String password) {
         ConfigSessionStorage configStorage = ConfigSessionStorage.getInstance();
         ConfigSessionStorage.SessionState state = configStorage.getSessionState(chatId);
-        
         if (state == null || state.getData().get("backupFilePath") == null) {
             sendMessage(chatId, "❌ 会话已过期，请重新上传备份文件");
             configStorage.clearSession(chatId);
             return;
         }
-        
         String backupFilePath = (String) state.getData().get("backupFilePath");
         password = password.trim();
-        
-        // 验证文件是否存在
-        java.io.File backupFile = new java.io.File(backupFilePath);
-        if (!backupFile.exists()) {
-            log.error("Backup file not found: {}", backupFilePath);
-            sendMessage(chatId, 
-                "❌ 备份文件不存在\n\n" +
-                "文件可能已被删除或移动。\n" +
-                "请重新上传备份文件。"
-            );
+        if (!new java.io.File(backupFilePath).exists()) {
+            sendMessage(chatId, "❌ 备份文件不存在，请重新上传备份文件。");
             configStorage.clearSession(chatId);
             return;
         }
-        
+        sendMessage(chatId, "⏳ 正在恢复数据，请稍候...\n\n⚠️ 恢复过程中请勿关闭程序！");
         try {
-            // Send processing message
-            sendMessage(chatId, "⏳ 正在恢复数据...\n\n请稍候，这可能需要几分钟。\n\n⚠️ 恢复过程中请勿关闭程序！");
-            
-            // Execute restore
-            com.tony.kingdetective.service.ISysService sysService = 
-                SpringUtil.getBean(com.tony.kingdetective.service.ISysService.class);
-            
-            // Try with password, if it fails and password is simple, try without password
-            try {
-                log.info("Attempting restore with password: chatId={}, file={}", chatId, backupFilePath);
-                sysService.recoverFromFile(backupFilePath, password);
-            } catch (Exception e) {
-                // If password is empty or very simple, try without password
-                if (password.isEmpty() || password.length() < 3) {
-                    log.info("Retrying restore without password: chatId={}", chatId);
-                    sysService.recoverFromFile(backupFilePath, "");
-                } else {
-                    throw e;
-                }
-            }
-            
-            log.info("Data restored successfully: chatId={}, file={}", chatId, backupFilePath);
-            
-            // Clean up
+            sessionFlowService.restoreFromBackup(backupFilePath, password);
             configStorage.clearSession(chatId);
-            try {
-                cn.hutool.core.io.FileUtil.del(backupFile);
-                log.info("Backup file deleted: {}", backupFilePath);
-            } catch (Exception e) {
-                log.warn("Failed to delete backup file: {}", backupFilePath, e);
-            }
-            
-            // Send success message
+            sessionFlowService.deleteBackupFile(backupFilePath);
             sendMessage(chatId,
-                "✅ *数据恢复成功*\n\n" +
-                "💡 说明：\n" +
-                "数据已成功恢复，系统正在重新初始化。\n\n" +
-                "⚠️ 重要提示：\n" +
-                "• 建议重启服务以确保所有配置生效\n" +
-                "• 恢复后请检查配置是否正常\n" +
-                "• 如有问题，请查看系统日志",
-                true
-            );
-            
+                "✅ *数据恢复成功*\n\n建议重启服务以确保所有配置生效。", true);
+            log.info("Data restored: chatId={}, file={}", chatId, backupFilePath);
         } catch (Exception e) {
-            log.error("Failed to restore data: chatId={}, file={}", chatId, backupFilePath, e);
-            
-            // Clean up file on error
-            try {
-                cn.hutool.core.io.FileUtil.del(backupFile);
-            } catch (Exception ex) {
-                log.warn("Failed to delete backup file after error: {}", backupFilePath, ex);
-            }
-            sendMessage(chatId, 
-                "❌ *数据恢复失败*\n\n" +
-                "错误信息：" + e.getMessage() + "\n\n" +
-                "💡 可能原因：\n" +
-                "• 密码错误（加密备份）\n" +
-                "• 备份文件损坏\n" +
-                "• 备份文件不匹配",
-                true
-            );
+            log.error("Restore failed: chatId={}, file={}", chatId, backupFilePath, e);
+            sessionFlowService.deleteBackupFile(backupFilePath);
             configStorage.clearSession(chatId);
-            cn.hutool.core.io.FileUtil.del(backupFilePath);
+            sendMessage(chatId,
+                "❌ *数据恢复失败*\n\n错误：" + e.getMessage() +
+                "\n\n可能原因：密码错误 / 备份文件损坏 / 版本不匹配", true);
         }
     }
 

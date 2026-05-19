@@ -606,12 +606,27 @@ async function createIpv6(instance: InstanceInfo) {
   });
 }
 
+// VNC 内嵌弹窗状态
+const vncModal = ref<{ show: boolean; url: string; title: string }>({ show: false, url: '', title: '' });
+
 async function startVnc(instance: InstanceInfo) {
   const id = instanceId(instance);
   if (!id) return;
   await runAction('启动 VNC', actionKey('vnc', id), async () => {
-    const res = await apiPost<string>('/oci/startVnc', { ociCfgId: selectedCfgId.value, instanceId: id });
-    notice.value = res.data || res.msg || 'VNC 已开启';
+    // 1. 触发后端建立 SSH 隧道
+    await apiPost<string>('/oci/startVnc', { ociCfgId: selectedCfgId.value, instanceId: id });
+    // 2. 读取用户配置的 noVNC URL（getSysCfg 是 POST 接口）
+    let vncUrl = '';
+    try {
+      const cfgRes = await apiPost<Record<string, string>>('/sys/getSysCfg', {});
+      vncUrl = cfgRes.data?.vncUrl || '';
+    } catch (_) { /* ignore */ }
+    if (vncUrl) {
+      // 3. 打开内嵌弹窗
+      vncModal.value = { show: true, url: vncUrl, title: `VNC - ${instanceLabel(instance)}` };
+    } else {
+      notice.value = 'VNC 隧道已开启，但未配置 noVNC URL，请先在 TG Bot 中使用 VNC配置 功能设置地址。';
+    }
   }, false);
 }
 
@@ -1087,4 +1102,93 @@ onMounted(load);
       </form>
     </div>
   </section>
+
+  <!-- VNC 内嵌弹窗 -->
+  <div v-if="vncModal.show" class="wd-vnc-overlay" @click.self="vncModal.show = false">
+    <div class="wd-vnc-modal">
+      <header class="wd-vnc-header">
+        <span>{{ vncModal.title }}</span>
+        <div class="wd-vnc-actions">
+          <a :href="vncModal.url" target="_blank" class="wd-vnc-btn" title="在新标签页打开">↗ 新标签</a>
+          <button class="wd-vnc-btn" @click="vncModal.show = false">✕ 关闭</button>
+        </div>
+      </header>
+      <iframe
+        :src="vncModal.url"
+        class="wd-vnc-frame"
+        allowfullscreen
+        allow="clipboard-read; clipboard-write"
+        referrerpolicy="no-referrer"
+      />
+    </div>
+  </div>
 </template>
+
+<style scoped>
+/* VNC 内嵌弹窗 */
+.wd-vnc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wd-vnc-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1280px, 96vw);
+  height: min(860px, 92vh);
+  background: #0f1117;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+}
+
+.wd-vnc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 44px;
+  background: #1a1d2e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.wd-vnc-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wd-vnc-btn {
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.wd-vnc-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+}
+
+.wd-vnc-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #000;
+}
+</style>
