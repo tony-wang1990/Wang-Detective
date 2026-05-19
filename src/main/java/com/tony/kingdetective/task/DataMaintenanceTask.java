@@ -3,8 +3,8 @@ package com.tony.kingdetective.task;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tony.kingdetective.bean.entity.AuditLog;
 import com.tony.kingdetective.bean.entity.LoginAttempt;
-import com.tony.kingdetective.service.IAuditLogService;
-import com.tony.kingdetective.service.ILoginAttemptService;
+import com.tony.kingdetective.mapper.AuditLogMapper;
+import com.tony.kingdetective.mapper.LoginAttemptMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,10 +24,10 @@ import java.time.LocalDateTime;
 public class DataMaintenanceTask {
 
     @Autowired
-    private IAuditLogService auditLogService;
+    private AuditLogMapper auditLogMapper;
 
     @Autowired
-    private ILoginAttemptService loginAttemptService;
+    private LoginAttemptMapper loginAttemptMapper;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -44,20 +44,16 @@ public class DataMaintenanceTask {
             LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
 
             // 清理审计日志
-            long auditLogRemoved = auditLogService.count(
+            int auditLogRemoved = auditLogMapper.delete(
                     new LambdaQueryWrapper<AuditLog>().lt(AuditLog::getCreateTime, thirtyDaysAgo));
             if (auditLogRemoved > 0) {
-                auditLogService.remove(
-                        new LambdaQueryWrapper<AuditLog>().lt(AuditLog::getCreateTime, thirtyDaysAgo));
                 log.info("Removed {} old audit log records.", auditLogRemoved);
             }
 
             // 清理登录限制日志
-            long loginAttemptRemoved = loginAttemptService.count(
-                    new LambdaQueryWrapper<LoginAttempt>().lt(LoginAttempt::getAttemptTime, thirtyDaysAgo));
+            int loginAttemptRemoved = loginAttemptMapper.delete(
+                    new LambdaQueryWrapper<LoginAttempt>().lt(LoginAttempt::getLastAttempt, thirtyDaysAgo));
             if (loginAttemptRemoved > 0) {
-                loginAttemptService.remove(
-                        new LambdaQueryWrapper<LoginAttempt>().lt(LoginAttempt::getAttemptTime, thirtyDaysAgo));
                 log.info("Removed {} old login attempt records.", loginAttemptRemoved);
             }
 
