@@ -723,15 +723,15 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         String helpText =
                 "📖 *命令帮助*\n\n" +
                         "*基础命令：*\n" +
-                        "├ `/start` \\\- 显示主菜单\n" +
-                        "├ `/help` \\\- 显示此帮助信息\n\n" +
+                        "├ `/start` - 显示主菜单\n" +
+                        "├ `/help` - 显示此帮助信息\n\n" +
                         "*AI 聊天：*\n" +
                         "├ 直接发送消息即可与 AI 对话\n" +
                         "├ 在主菜单选择 AI 聊天 进行设置\n\n" +
                         "*SSH 管理：*\n" +
-                        "├ `/ssh_config host port user pwd` \\\- 配置连接\n" +
-                        "├ `/ssh 命令` \\\- 执行 SSH 命令\n" +
-                        "└ 示例: `/ssh ls \\\-la`\n\n" +
+                        "├ `/ssh_config host port user pwd` - 配置连接\n" +
+                        "├ `/ssh 命令` - 执行 SSH 命令\n" +
+                        "└ 示例: `/ssh ls -la`\n\n" +
                         "💡 更多功能请点击 /start 查看主菜单";
 
         sendMessage(chatId, helpText, true);
@@ -835,7 +835,7 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         try {
             telegramClient.execute(SendMessage.builder()
                     .chatId(chatId)
-                    .text(MarkdownFormatter.formatMarkdown("🕵️\u200d\u2642️ *W\-探长* 主菜单："))
+                    .text(MarkdownFormatter.formatMarkdown("🕵️ *W-探长* 主菜单："))
                     .parseMode("MarkdownV2")
                     .replyMarkup(InlineKeyboardMarkup.builder()
                             .keyboard(KeyboardBuilder.buildMainMenu())
