@@ -83,6 +83,8 @@ public class DingMessageServiceImpl implements IMessageService {
     private static void sendPostRequest(String url, String jsonPayload) throws Exception {
         URL connectionUrl = new URL(url);
         HttpURLConnection connection = (HttpURLConnection) connectionUrl.openConnection();
+        connection.setConnectTimeout(10_000);
+        connection.setReadTimeout(10_000);
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setDoOutput(true);

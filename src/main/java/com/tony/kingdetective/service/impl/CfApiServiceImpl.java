@@ -40,7 +40,9 @@ public class CfApiServiceImpl implements ICfApiService {
                 .header("Authorization", "Bearer " + params.getApiToken())
                 .header("Content-Type", "application/json")
                 .body(data.toString())
+                .timeout(15_000)
                 .execute();
+
     }
 
     @Override
@@ -50,7 +52,8 @@ public class CfApiServiceImpl implements ICfApiService {
             HttpRequest request = HttpRequest.get(url)
                     .header("Authorization", "Bearer " + params.getApiToken())
                     .header("Content-Type", "application/json");
-            HttpResponse response = request.execute();
+            HttpResponse response = request.timeout(15_000).execute();
+
             String responseBody = response.body();
             JSONArray recordsArray = JSONUtil.parseArray(JSONUtil.parseObj(responseBody).get("result"));
             for (int i = 0; i < recordsArray.size(); i++) {
@@ -59,7 +62,8 @@ public class CfApiServiceImpl implements ICfApiService {
                 HttpRequest deleteRequest = HttpRequest.delete(deleteUrl)
                         .header("Authorization", "Bearer " + params.getApiToken())
                         .header("Content-Type", "application/json");
-                HttpResponse deleteResponse = deleteRequest.execute();
+                HttpResponse deleteResponse = deleteRequest.timeout(15_000).execute();
+
                 if (deleteResponse.getStatus() != 200) {
                     log.error("Error executing delete command");
                     throw new OciException(-1, "清理域名：" + proxyDomain + " 的 DNS 记录失败");
@@ -76,7 +80,8 @@ public class CfApiServiceImpl implements ICfApiService {
             HttpRequest deleteRequest = HttpRequest.delete(deleteUrl)
                     .header("Authorization", "Bearer " + params.getApiToken())
                     .header("Content-Type", "application/json");
-            HttpResponse deleteResponse = deleteRequest.execute();
+            HttpResponse deleteResponse = deleteRequest.timeout(15_000).execute();
+
             if (deleteResponse.getStatus() != 200) {
                 log.error("Error executing delete command");
                 throw new OciException(-1, "删除 DNS 记录失败，接口返回数据：" + deleteResponse.body());
@@ -98,7 +103,9 @@ public class CfApiServiceImpl implements ICfApiService {
                 .header("Authorization", "Bearer " + params.getApiToken())
                 .header("Content-Type", "application/json")
                 .body(data.toString())
+                .timeout(15_000)
                 .execute();
+
     }
 
     @Override
@@ -114,7 +121,8 @@ public class CfApiServiceImpl implements ICfApiService {
         HttpRequest request = HttpRequest.get(url)
                 .header("Authorization", "Bearer " + params.getApiToken())
                 .header("Content-Type", "application/json");
-        HttpResponse response = request.execute();
+        HttpResponse response = request.timeout(15_000).execute();
+
         String responseBody = response.body();
         if (!Boolean.parseBoolean(String.valueOf(JSONUtil.parseObj(responseBody).get("success")))) {
             log.error("获取：[{}] 的 DNS 记录失败，接口返回数据：{}", params.getDomain(), responseBody);
