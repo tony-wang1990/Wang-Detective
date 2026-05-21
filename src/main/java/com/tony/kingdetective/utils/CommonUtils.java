@@ -66,9 +66,10 @@ public class CommonUtils {
     public static final String MFA_QR_PNG_PATH = System.getProperty("user.dir") + File.separator + "mfa.png";
     private static final String DEFAULT_GITHUB_REPOSITORY = "tony-wang1990/Wang-Detective";
     private static final String DEFAULT_GITHUB_BRANCH = "main";
-    private static final long GITHUB_RELEASE_CACHE_MILLIS = TimeUnit.MINUTES.toMillis(15);
+    private static final long GITHUB_RELEASE_CACHE_MILLIS = TimeUnit.HOURS.toMillis(6);
     private static volatile JSONObject latestReleaseCache;
     private static volatile long latestReleaseCacheExpiresAt;
+    private static final java.util.concurrent.atomic.AtomicBoolean githubRefreshing = new java.util.concurrent.atomic.AtomicBoolean(false);
     private static final String CIDR_REGEX =
             "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$";
     private static final Pattern CIDR_PATTERN = Pattern.compile(CIDR_REGEX);
@@ -641,19 +642,38 @@ public class CommonUtils {
     private static JSONObject getLatestGithubRelease() {
         long now = System.currentTimeMillis();
         JSONObject cached = latestReleaseCache;
+        // 缓存有效 → 直接返回
         if (cached != null && now < latestReleaseCacheExpiresAt) {
             return cached;
         }
-
-        synchronized (CommonUtils.class) {
-            now = System.currentTimeMillis();
-            if (latestReleaseCache != null && now < latestReleaseCacheExpiresAt) {
-                return latestReleaseCache;
-            }
-            latestReleaseCache = fetchLatestGithubRelease();
-            latestReleaseCacheExpiresAt = now + GITHUB_RELEASE_CACHE_MILLIS;
-            return latestReleaseCache;
+        // 缓存过期但有旧数据 → 立即返回旧数据，异步刷新，不阻塞当前请求
+        if (cached != null && githubRefreshing.compareAndSet(false, true)) {
+            Thread.ofVirtual().start(() -> {
+                try {
+                    JSONObject fresh = fetchLatestGithubRelease();
+                    if (fresh != null) {
+                        latestReleaseCache = fresh;
+                        latestReleaseCacheExpiresAt = System.currentTimeMillis() + GITHUB_RELEASE_CACHE_MILLIS;
+                    }
+                } finally {
+                    githubRefreshing.set(false);
+                }
+            });
+            return cached;
         }
+        // 首次加载（无缓存）→ 同步等待，但有 3s 超时兜底
+        if (githubRefreshing.compareAndSet(false, true)) {
+            try {
+                JSONObject fresh = fetchLatestGithubRelease();
+                latestReleaseCache = fresh;
+                latestReleaseCacheExpiresAt = System.currentTimeMillis() + GITHUB_RELEASE_CACHE_MILLIS;
+                return fresh;
+            } finally {
+                githubRefreshing.set(false);
+            }
+        }
+        // 并发情况：另一个线程正在刷新，直接返回 null（调用方会回退到当前版本号）
+        return null;
     }
 
     private static JSONObject fetchLatestGithubRelease() {
