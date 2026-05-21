@@ -5,7 +5,6 @@ import {
   Bot,
   ClipboardList,
   DatabaseBackup,
-  ExternalLink,
   FileText,
   Home,
   LifeBuoy,
