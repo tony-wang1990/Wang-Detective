@@ -1060,14 +1060,7 @@ public class OciServiceImpl implements IOciService {
                         sysUserDTO.getArchitecture(), sysUserDTO.getCreateNumbers()));
             }
 
-            if (leftCreateNum > 0) {
-                createTaskService.update(new LambdaUpdateWrapper<OciCreateTask>()
-                        .eq(OciCreateTask::getId, sysUserDTO.getTaskId())
-                        .set(OciCreateTask::getCreateNumbers, leftCreateNum));
-                sysUserDTO.setCreateNumbers((int) leftCreateNum);
-            }
-
-            if (sysUserDTO.getCreateNumbers() == successCounts || leftCreateNum == 0) {
+            if (leftCreateNum <= 0) {
                 stopAndRemoveTask(sysUserDTO, createTaskService);
                 log.warn("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机数量:[{}] 任务结束...",
                         sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(),
@@ -1182,7 +1175,7 @@ public class OciServiceImpl implements IOciService {
             );
             if (currentCount > 5) {
                 log.error("【更换公共IP】用户:[{}],区域:[{}],实例:[{}],执行更换IP任务失败次数达到5次,任务终止",
-                        sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(), tuple2.getSecond().getDisplayName());
+                        sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(), instanceId);
                 stopTask(CommonUtils.CHANGE_IP_TASK_PREFIX + instanceId);
                 TEMP_MAP.remove(CommonUtils.CHANGE_IP_ERROR_COUNTS_PREFIX + instanceId);
             }

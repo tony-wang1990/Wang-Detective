@@ -36,7 +36,6 @@ import com.tony.kingdetective.utils.CommonUtils;
 import com.tony.kingdetective.utils.CustomExpiryGuavaCache;
 import lombok.extern.slf4j.Slf4j;
 
-import com.oracle.bmc.ClientConfiguration;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -70,12 +69,6 @@ public class OracleInstanceFetcher implements AutoCloseable {
     private final ComputeInstanceAgentClient computeInstanceAgentClient;
     private final MonitoringClient monitoringClient;
     private final NetworkLoadBalancerClient networkLoadBalancerClient;
-
-    /** OCI SDK 统一超时配置：连接 10s，读取 15s，避免网络抖动导致请求无限挂起 */
-    private static final ClientConfiguration OCI_CLIENT_CFG = ClientConfiguration.builder()
-            .connectionTimeoutMillis(10_000)
-            .readTimeoutMillis(15_000)
-            .build();
 
     public OracleInstanceFetcher(SysUserDTO user) {
         this.user = user;

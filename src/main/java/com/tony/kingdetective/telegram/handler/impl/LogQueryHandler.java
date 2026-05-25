@@ -37,7 +37,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             // Send loading message
             telegramClient.execute(buildEditMessage(
                     callbackQuery,
-                    "ðŸ“‹ æ­£åœ¨èŽ·å–æ—¥å¿—æ–‡ä»¶ï¼Œè¯·ç¨å€™..."
+                    "📋 正在获取日志文件，请稍候..."
             ));
 
             // Read last 100 lines from log file
@@ -46,7 +46,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             if (!logFile.exists()) {
                 return buildEditMessage(
                         callbackQuery,
-                        "âŒ æ—¥å¿—æ–‡ä»¶ä¸å­˜åœ¨: " + CommonUtils.LOG_FILE_PATH
+                        "❌ 日志文件不存在: " + CommonUtils.LOG_FILE_PATH
                 );
             }
 
@@ -56,7 +56,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             if (logContent == null) {
                 return buildEditMessage(
                         callbackQuery,
-                        "âŒ è¯»å–æ—¥å¿—æ–‡ä»¶å¤±è´¥"
+                        "❌ 读取日志文件失败"
                 );
             }
 
@@ -67,28 +67,28 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             SendDocument sendDocument = SendDocument.builder()
                     .chatId(chatId)
                     .document(new InputFile(new ByteArrayInputStream(logContent), fileName))
-                    .caption("ðŸ“‹ æœ€è¿‘ " + MAX_LINES + " æ¡æ—¥å¿—è®°å½•\n"
-                            + "â° ç”Ÿæˆæ—¶é—´: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .caption("📋 最近 " + MAX_LINES + " 条日志记录\n"
+                            + "⏰ 生成时间: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                     .build();
 
             telegramClient.execute(sendDocument);
 
-                log.info("æ—¥å¿—æ–‡ä»¶å‘é€æˆåŠŸ: {}", fileName);
+            log.info("日志文件发送成功: {}", fileName);
 
             // Return null since we already sent the document
             return null;
 
         } catch (TelegramApiException e) {
-            log.error("å‘é€æ—¥å¿—æ–‡ä»¶å¤±è´¥", e);
+            log.error("发送日志文件失败", e);
             return buildEditMessage(
                     callbackQuery,
-                    "âŒ å‘é€æ—¥å¿—æ–‡ä»¶å¤±è´¥: " + e.getMessage()
+                    "❌ 发送日志文件失败: " + e.getMessage()
             );
         } catch (Exception e) {
-            log.error("å¤„ç†æ—¥å¿—æŸ¥è¯¢è¯·æ±‚å¤±è´¥", e);
+            log.error("处理日志查询请求失败", e);
             return buildEditMessage(
                     callbackQuery,
-                    "âŒ å¤„ç†æ—¥å¿—æŸ¥è¯¢è¯·æ±‚å¤±è´¥: " + e.getMessage()
+                    "❌ 处理日志查询请求失败: " + e.getMessage()
             );
         }
     }
@@ -137,7 +137,7 @@ public class LogQueryHandler extends AbstractCallbackHandler {
             return baos.toByteArray();
 
         } catch (IOException e) {
-            log.error("è¯»å–æ—¥å¿—æ–‡ä»¶å¤±è´¥", e);
+            log.error("读取日志文件失败", e);
             return null;
         }
     }

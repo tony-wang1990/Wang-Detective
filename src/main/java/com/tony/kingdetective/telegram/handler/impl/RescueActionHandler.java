@@ -136,6 +136,7 @@ class RescueListInstancesHandler extends AbstractCallbackHandler {
                             .region(ociUser.getOciRegion())
                             .fingerprint(ociUser.getOciFingerprint())
                             .privateKeyPath(ociUser.getOciKeyPath())
+                            .privateKey(ociUser.getPrivateKey())
                             .build())
                     .build();
 

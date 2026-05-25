@@ -16,7 +16,6 @@ import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * feat: 实例状态变化主动推送 TG 通知
@@ -76,6 +75,7 @@ public class InstanceStateMonitorTask {
                                 .region(ociUser.getOciRegion())
                                 .fingerprint(ociUser.getOciFingerprint())
                                 .privateKeyPath(ociUser.getOciKeyPath())
+                                .privateKey(ociUser.getPrivateKey())
                                 .build())
                         .build();
 

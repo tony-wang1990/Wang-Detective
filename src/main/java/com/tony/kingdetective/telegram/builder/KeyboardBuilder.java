@@ -9,171 +9,171 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Telegram Bot é”®ç›˜æž„å»ºå™¨
+ * Telegram Bot 键盘构建器
  *
  * @author yohann
  */
 public class KeyboardBuilder {
 
     /**
-     * æž„å»ºä¸»èœå•é”®ç›˜ï¼ˆæ¯è¡Œ4ä¸ªæŒ‰é’®å¸ƒå±€ï¼‰
+     * 构建主菜单键盘。
      *
-     * @return é”®ç›˜è¡Œåˆ—è¡¨
+     * @return 键盘行列表
      */
     public static List<InlineKeyboardRow> buildMainMenu() {
         return Arrays.asList(
-                // å¿«æ·åŠŸèƒ½ï¼ˆé¡¶éƒ¨ï¼‰
+                // 快捷功能
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("ðŸš€ ä¸€é”®æŠ¢æœº")
+                                .text("🚀 一键抢机")
                                 .callbackData("config_list")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("ðŸ§­ è¿ç»´ä¸­å¿ƒ")
+                                .text("🧭 运维中心")
                                 .callbackData("ops_center")
                                 .build()
                 ),
 
-                // ========== ðŸ’¼å®žä¾‹ + ðŸŒç½‘ç»œ ==========
+                // 实例 + 网络
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("å¿«æ·å¼€æœº")
+                                .text("快捷开机")
                                 .callbackData("quick_start")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("ä¸€é”®æµ‹æ´»")
+                                .text("一键测活")
                                 .callbackData("check_alive")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("å®žä¾‹å‡é™çº§")
+                                .text("实例升降级")
                                 .callbackData("shape_change_select")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("è´¦æˆ·ç®¡ç†")
+                                .text("账户管理")
                                 .callbackData("account_management")
                                 .build()
                 ),
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("è‡ªåŠ¨æ¢IP")
+                                .text("自动换IP")
                                 .callbackData("auto_ip_change_select")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("å¼€æ”¾ç«¯å£")
+                                .text("开放端口")
                                 .callbackData("open_all_ports_select")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("SSHç®¡ç†")
+                                .text("SSH管理")
                                 .callbackData("ssh_management")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("IPv6ç®¡ç†")
+                                .text("IPv6管理")
                                 .callbackData("ipv6_config_select")
                                 .build()
                 ),
 
-                // ========== ðŸ“Šèµ„æºç›‘æŽ§ ==========
+                // 资源监控
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("é…é¢æŸ¥è¯¢")
+                                .text("配额查询")
                                 .callbackData("quota_query")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("æ¶ˆè´¹æŸ¥è¯¢")
+                                .text("消费查询")
                                 .callbackData("cost_query")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("èµ„æºå ç”¨")
+                                .text("资源占用")
                                 .callbackData("instance_resource_usage_select")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("å†…å­˜å ç”¨")
+                                .text("内存占用")
                                 .callbackData("memory_occupy_select")
                                 .build()
                 ),
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("æµé‡åŽ†å²")
+                                .text("流量历史")
                                 .callbackData("traffic_history")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("æµé‡ç»Ÿè®¡")
+                                .text("流量统计")
                                 .callbackData("traffic_statistics")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("Profileç®¡ç†")
+                                .text("Profile管理")
                                 .callbackData("profile_management")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("åŒºåŸŸæ‹“å±•")
+                                .text("区域拓展")
                                 .callbackData("auto_region_expansion")
                                 .build()
                 ),
 
-                // ========== ðŸ¤–è‡ªåŠ¨åŒ– + ðŸ”å®‰å…¨ ==========
+                // 自动化 + 安全
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("ç›‘æŽ§é€šçŸ¥")
+                                .text("监控通知")
                                 .callbackData("instance_monitoring")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("ç›‘æŽ§è‡ªå¯")
+                                .text("监控自启")
                                 .callbackData("auto_restart_monitoring")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("æ¯æ—¥æ—¥æŠ¥")
+                                .text("每日日报")
                                 .callbackData("daily_report")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("ä»»åŠ¡ç®¡ç†")
+                                .text("任务管理")
                                 .callbackData("task_management")
                                 .build()
                 ),
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("å®‰å…¨ç®¡ç†")
+                                .text("安全管理")
                                 .callbackData("security_management")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("MFAç®¡ç†")
+                                .text("MFA管理")
                                 .callbackData("mfa_management")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("æ¸…é™¤2FA")
+                                .text("清除2FA")
                                 .callbackData("clear_2fa_devices")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("ç¦ç”¨è¢«å°æˆ·")
+                                .text("禁用被封户")
                                 .callbackData("disable_banned_accounts")
                                 .build()
                 ),
 
-                // ========== ðŸ› ï¸ç³»ç»Ÿå·¥å…· ==========
+                // 系统工具
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("æ‰¹é‡æŸ¥é‚®")
+                                .text("批量查邮")
                                 .callbackData("batch_email_query")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("è®¢é˜…ä¿¡æ¯")
+                                .text("订阅信息")
                                 .callbackData("subscription_info")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("ç‰ˆæœ¬ä¿¡æ¯")
+                                .text("版本信息")
                                 .callbackData("version_info")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("æ—¥å¿—æŸ¥è¯¢")
+                                .text("日志查询")
                                 .callbackData("log_query")
                                 .build()
                 ),
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("VNCé… ç½®")
+                                .text("VNC配置")
                                 .callbackData("vnc_config")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("å¤‡ä»½æ ¢å¤ ")
+                                .text("备份恢复")
                                 .callbackData("backup_restore")
                                 .build(),
                         InlineKeyboardButton.builder()
@@ -181,33 +181,33 @@ public class KeyboardBuilder {
                                 .callbackData("rescue_center")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("AIè Šå¤©")
+                                .text("AI聊天")
                                 .callbackData("ai_chat")
                                 .build()
                 ),
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("é€šçŸ¥é¢‘é “")
+                                .text("通知频道")
                                 .url("https://t.me/Woci_detective")
                                 .build()
                 ),
 
-                // ========== 🔗å¤–éƒ¨é“¾æŽ¥ ==========
+                // 外部链接
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("æ”¾è´§æŸ¥è¯¢")
+                                .text("放货查询")
                                 .url("https://check.oci-helper.de5.net")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("å¼€æºåœ°å€ï¼ˆå¸®å¿™ç‚¹ç‚¹starâ­ï¼‰")
+                                .text("开源地址（帮忙点点star⭐）")
                                 .url("https://github.com/tony-wang1990/Wang-Detective")
                                 .build()
                 ),
 
-                // å…³é—­æŒ‰é’®
+                // 关闭按钮
                 new InlineKeyboardRow(
                         InlineKeyboardButton.builder()
-                                .text("âŒ å…³é—­çª—å£")
+                                .text("❌ 关闭窗口")
                                 .callbackData("cancel")
                                 .build()
                 )
@@ -215,9 +215,9 @@ public class KeyboardBuilder {
     }
 
     /**
-     * æž„å»ºè´¦æˆ·é€‰æ‹©é”®ç›˜
+     * 构建账户选择键盘。
      *
-     * @param accounts è´¦æˆ·åˆ—è¡¨
+     * @param accounts 账户列表
      * @return InlineKeyboardMarkup
      */
     public static InlineKeyboardMarkup buildAccountSelectionKeyboard(List<String> accounts) {
@@ -232,10 +232,9 @@ public class KeyboardBuilder {
             keyboard.add(row);
         }
 
-        // æ·»åŠ è¿”å›žæŒ‰é’®
         InlineKeyboardRow backRow = new InlineKeyboardRow();
         backRow.add(InlineKeyboardButton.builder()
-                .text("Â« è¿”å›žä¸»èœå•")
+                .text("« 返回主菜单")
                 .callbackData("back_to_main")
                 .build());
         keyboard.add(backRow);
@@ -244,10 +243,10 @@ public class KeyboardBuilder {
     }
 
     /**
-     * æž„å»ºç¡®è®¤é”®ç›˜
+     * 构建确认键盘。
      *
-     * @param confirmCallback ç¡®è®¤å›žè°ƒæ•°æ®
-     * @param cancelCallback  å–æ¶ˆå›žè°ƒæ•°æ®
+     * @param confirmCallback 确认回调数据
+     * @param cancelCallback  取消回调数据
      * @return InlineKeyboardMarkup
      */
     public static InlineKeyboardMarkup buildConfirmationKeyboard(String confirmCallback, String cancelCallback) {
@@ -255,11 +254,11 @@ public class KeyboardBuilder {
 
         InlineKeyboardRow row = new InlineKeyboardRow();
         row.add(InlineKeyboardButton.builder()
-                .text("âœ… ç¡®è®¤")
+                .text("✅ 确认")
                 .callbackData(confirmCallback)
                 .build());
         row.add(InlineKeyboardButton.builder()
-                .text("âŒ å–æ¶ˆ")
+                .text("❌ 取消")
                 .callbackData(cancelCallback)
                 .build());
 
@@ -268,7 +267,7 @@ public class KeyboardBuilder {
     }
 
     /**
-     * æž„å»ºå¸¦è¿”å›žæŒ‰é’®çš„é”®ç›˜
+     * 构建带返回按钮的键盘。
      *
      * @return InlineKeyboardMarkup
      */
@@ -277,7 +276,7 @@ public class KeyboardBuilder {
 
         InlineKeyboardRow row = new InlineKeyboardRow();
         row.add(InlineKeyboardButton.builder()
-                .text("Â« è¿”å›žä¸»èœå•")
+                .text("« 返回主菜单")
                 .callbackData("back_to_main")
                 .build());
 
@@ -286,7 +285,7 @@ public class KeyboardBuilder {
     }
 
     /**
-     * æž„å»ºç©ºé”®ç›˜ï¼ˆç”¨äºŽç§»é™¤é”®ç›˜ï¼‰
+     * 构建空键盘。
      *
      * @return InlineKeyboardMarkup
      */
@@ -295,9 +294,9 @@ public class KeyboardBuilder {
     }
 
     /**
-     * ä»Žè¡Œåˆ—è¡¨æž„å»ºé”®ç›˜æ ‡è®°
+     * 从行列表构建键盘标记。
      *
-     * @param rows é”®ç›˜è¡Œåˆ—è¡¨
+     * @param rows 键盘行列表
      * @return InlineKeyboardMarkup
      */
     public static InlineKeyboardMarkup fromRows(List<InlineKeyboardRow> rows) {
@@ -305,40 +304,40 @@ public class KeyboardBuilder {
     }
 
     /**
-     * æž„å»ºå–æ¶ˆè¡Œï¼ˆè¿”å›žä¸»èœå•ï¼‰
+     * 构建取消行。
      *
      * @return InlineKeyboardRow
      */
     public static InlineKeyboardRow buildCancelRow() {
         return new InlineKeyboardRow(
                 InlineKeyboardButton.builder()
-                        .text("âŒ å…³é—­çª—å£")
+                        .text("❌ 关闭窗口")
                         .callbackData("cancel")
                         .build()
         );
     }
 
     /**
-     * æž„å»ºè¿”å›žä¸»èœå•è¡Œ
+     * 构建返回主菜单行。
      *
      * @return InlineKeyboardRow
      */
     public static InlineKeyboardRow buildBackToMainMenuRow() {
         return new InlineKeyboardRow(
                 InlineKeyboardButton.builder()
-                        .text("Â« è¿”å›žä¸»èœå•")
+                        .text("« 返回主菜单")
                         .callbackData("cancel")
                         .build()
         );
     }
 
     /**
-     * æž„å»ºåˆ†é¡µè¡Œ
+     * 构建分页行。
      *
-     * @param currentPage å½“å‰é¡µ
-     * @param totalPages æ€»é¡µæ•°
-     * @param prevCallback ä¸Šä¸€é¡µå›žè°ƒ
-     * @param nextCallback ä¸‹ä¸€é¡µå›žè°ƒ
+     * @param currentPage 当前页
+     * @param totalPages 总页数
+     * @param prevCallback 上一页回调
+     * @param nextCallback 下一页回调
      * @return InlineKeyboardRow
      */
     public static InlineKeyboardRow buildPaginationRow(int currentPage, int totalPages, String prevCallback, String nextCallback) {
@@ -346,7 +345,7 @@ public class KeyboardBuilder {
 
         if (currentPage > 1) {
             row.add(InlineKeyboardButton.builder()
-                    .text("â—€ï¸ ä¸Šä¸€é¡µ")
+                    .text("◀️ 上一页")
                     .callbackData(prevCallback)
                     .build());
         }
@@ -358,7 +357,7 @@ public class KeyboardBuilder {
 
         if (currentPage < totalPages) {
             row.add(InlineKeyboardButton.builder()
-                    .text("ä¸‹ä¸€é¡µ â–¶ï¸")
+                    .text("下一页 ▶️")
                     .callbackData(nextCallback)
                     .build());
         }
@@ -367,10 +366,10 @@ public class KeyboardBuilder {
     }
 
     /**
-     * å¿«æ·æ–¹æ³•ï¼šåˆ›å»ºæŒ‰é’®
+     * 快捷方法：创建按钮。
      *
-     * @param text æŒ‰é’®æ–‡æœ¬
-     * @param callbackData å›žè°ƒæ•°æ®
+     * @param text 按钮文本
+     * @param callbackData 回调数据
      * @return InlineKeyboardButton
      */
     public static InlineKeyboardButton button(String text, String callbackData) {
@@ -381,10 +380,10 @@ public class KeyboardBuilder {
     }
 
     /**
-     * å¿«æ·æ–¹æ³•ï¼šåˆ›å»ºURLæŒ‰é’®
+     * 快捷方法：创建URL按钮。
      *
-     * @param text æŒ‰é’®æ–‡æœ¬
-     * @param url URLåœ°å€
+     * @param text 按钮文本
+     * @param url URL地址
      * @return InlineKeyboardButton
      */
     public static InlineKeyboardButton urlButton(String text, String url) {
