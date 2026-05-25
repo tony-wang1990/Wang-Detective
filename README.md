@@ -1,8 +1,8 @@
 # Wang-Detective
 
-Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板和 Telegram Bot 运维助手。当前版本已经从原始 King-Detective 升级为"OCI 管理 + Web 运维 + Telegram Bot + 风险诊断 + 备份恢复 + 救援中心"的增强版控制台。
+Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板和 Telegram Bot 运维助手。当前主线已经从原始 King-Detective 升级为“OCI 管理 + Web 运维 + Telegram Bot + 风险诊断 + 备份恢复 + 救援中心”的增强版控制台。
 
-状态更新时间：2026-05-19
+状态更新时间：2026-05-25
 
 ## 快速部署
 
@@ -21,22 +21,16 @@ cd /app/king-detective
 bash scripts/server-smoke-test.sh
 ```
 
-生产环境请修改 `/app/king-detective/.env`：
+生产环境请至少修改 `/app/king-detective/.env`：
 
 ```env
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change_me_to_strong_password
 TELEGRAM_BOT_TOKEN=your_bot_token
-
-# 支持多个 Chat ID，用英文逗号分隔（新增 #18 多用户支持）
 TELEGRAM_BOT_CHAT_ID=your_chat_id,another_chat_id
-
-# 定时自动备份（可选，#17 新增）
 AUTO_BACKUP_ENABLED=true
 AUTO_BACKUP_CRON=0 0 3 * * ?
 AUTO_BACKUP_PASSWORD=your_backup_password
-
-# 实例状态监控推送（默认开启，新增）
 INSTANCE_MONITOR_ENABLED=true
 INSTANCE_MONITOR_INTERVAL_MS=300000
 ```
@@ -52,60 +46,53 @@ docker compose up -d --force-recreate
 
 | 模块 | 完成度 | 当前状态 |
 |---|---:|---|
-| 部署与更新 | 90% | 安装脚本、Compose v2、watcher、自检脚本、低配 JVM、脚本同步和一键更新链路已完成 |
-| Vue 新前端 | 84% | 登录、主框架、首页、配置、任务、日志、系统配置、功能中心、终端、审计、风险、备份、救援中心已原生化 |
-| OCI 核心管理 | 82% | 配置、任务、实例详情、实例动作、网络/安全/引导卷等入口已接入真实后端，仍需真机逐项验收 |
+| 部署与更新 | 91% | 安装脚本、Compose v2、低配 JVM、脚本同步、体检脚本、一键更新链路已完成 |
+| Vue 新前端 | 87% | 登录、主框架、首页、配置、任务、日志、系统配置、功能中心、终端、审计、风险、备份、救援已原生化，按钮反馈和暗色模式持续打磨 |
+| OCI 核心管理 | 83% | 配置、任务、实例详情、实例动作、网络、安全规则、引导卷等入口已接入真实后端，仍需真实账号逐项验收 |
 | Web SSH/SFTP | 82% | 主机库、Web SSH、命令模板、会话列表、断线重连、resize、SFTP 基础文件操作已完成 |
-| Telegram Bot | 85% | 运维中心、诊断、任务、日志、风险、备份、版本更新和实例操作向导已接入；抢机成功主动推 IP、实例状态变化推送、多 Chat ID 支持均已完成 |
-| 备份恢复 | 85% | Web 备份统一改为 `backup.sh` 的 tar.gz 格式，定时自动备份（@Scheduled + 环境变量控制）已接入 |
-| 救援中心 | 68% | API 路径统一为 `/api/rescue/*`，轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线 |
-| CI/测试 | 70% | GitHub Actions 已增加 Java 21、Node 20、前端构建、Maven 构建和前后端接口映射检查 |
+| Telegram Bot | 86% | 运维中心、诊断、任务、日志、风险、备份、版本更新、实例操作向导、多 Chat ID 和实例状态推送已接入 |
+| 备份恢复 | 85% | Web 备份统一为 `backup.sh` 的 tar.gz 格式，定时自动备份和恢复计划已接入 |
+| 救援中心 | 68% | 轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线，自动救援仍按高危能力保守推进 |
+| CI/测试 | 70% | GitHub Actions 已包含 Java 21、Node 20、前端构建、Maven 构建和前后端接口映射检查 |
 
-## 已完成
+## 最近完成
+
+- 修复 Telegram Bot 源码乱码，恢复中文菜单、日志查询和运维中心文案。
+- 审计并修复抢机剩余数量误判、换 IP 失败日志空指针、实例监控 OCI 初始化、TG 救援列表缺少私钥内容等逻辑问题。
+- 系统诊断改为优先读取环境变量和数据库配置，Telegram 已配置时不再误报未配置；SSH secret 和 AI key 不再作为必须告警项。
+- 配置列表补充“实时 OCI 操作”提示条，展示选中配置、当前操作处理中状态，并统一禁用高危/并发操作入口。
+- 全局按钮强化点击反馈、禁用态、窄屏抗卡字样式；系统配置和功能中心补齐加载中、发送中、刷新中等交互状态。
+- README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
+
+## 已完成能力
 
 - Docker 镜像统一为 `ghcr.io/tony-wang1990/wang-detective:main`。
 - 持久化目录统一为 `data/`、`keys/`、`logs/`、`runtime/`、`backups/`。
 - 修复部署挂载覆盖 JAR、数据库迁移、SQLite 分页、WebSocket 日志、VCN/引导卷分页 total、任务前缀隔离等基础问题。
 - 新增增强健康检查 `/actuator/health` 和系统诊断 `/api/v1/system/diagnostics`。
 - 新增可维护 Vue 前端源码 `frontend/`，生产入口已切到新版 Vue。
-- 全站移除原生 `alert/confirm/prompt`，改为页面内弹窗、toast、loading 和错误提示。
 - 配置列表接入真实 OCI 操作：启动、停止、重启、改名、换 IP、IPv6、VNC、500M、Shape、CPU/内存、引导卷、终止实例等。
 - 新增 Web SSH、SSH 主机库、单命令、批量命令、命令模板、会话列表、断线重连、终端 resize。
 - 新增 SFTP 浏览、读取、写入、上传、下载、重命名和删除确认。
 - 新增操作审计页，支持搜索、筛选、详情和 CSV 导出。
 - 新增 OCI 风险看板 `/api/v1/oci/risk`。
 - 新增备份归档页 `/api/v1/backups/*`，支持本地备份、Object Storage 归档、恢复计划、定时备份方案。
-- 修复 Web 备份格式，统一使用 `scripts/backup.sh` 生成可被 `scripts/restore.sh` 恢复的 `.tar.gz` 备份包。
-- 新增救援中心 `/dashboard/rescue`，API 路径统一为 `/api/rescue/*`（已去掉 `/v1` 前缀），提供轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
-- Telegram Bot 运维中心已支持系统诊断、任务状态、最近日志、错误日志、审计摘要、主机概览、风险看板、备份归档、版本更新和实例操作向导。
-- Telegram Bot 实例管理新增启动、停止、重启确认执行，并写入操作审计。
-- CI 增强：发布前执行脚本语法检查、前端 API 到后端 Controller 映射检查、前端 build、Maven package、Docker build。
-
-### 最近新增（2026-05-19）
-
-| 编号 | 功能 | 说明 |
-|---|---|---|
-| #9 | **抢机成功主动推 IP** | 抢机成功后自动推送公网 IP、SSH 密码、架构、区域等完整信息到 TG，无需手动刷新 |
-| #15 | **救援中心路径统一** | API 路径 `/api/v1/rescue/*` → `/api/rescue/*`，前端、smoke-test 同步更新 |
-| #17 | **定时自动备份** | 新增 `AutoBackupTask`，通过 `AUTO_BACKUP_ENABLED=true` 开启，支持自定义 Cron、加密密码，成功/失败均推 TG 通知 |
-| #18 | **多 Chat ID 支持** | `TELEGRAM_BOT_CHAT_ID` 支持逗号分隔多个 ID（如 `123456,789012`），兼容旧版单 ID 格式 |
-| - | **实例状态变化推送** | 新增 `InstanceStateMonitorTask`，每 5 分钟轮询实例状态，Running/Stopped/Terminated 等变化主动推 TG |
-| - | **TgBot 架构重构** | 新建 `TgAccountFlowService`，将 key 文件写入、DB 保存、OCI 验证、回滚等业务逻辑从 TgBot 提取到独立 Service |
+- 新增救援中心 `/dashboard/rescue`，API 路径统一为 `/api/rescue/*`，提供轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
+- Telegram Bot 运维中心支持系统诊断、任务状态、最近日志、错误日志、审计摘要、主机概览、风险看板、备份归档、版本更新和实例操作向导。
+- CI 发布前执行脚本语法检查、前端 API 到后端 Controller 映射检查、前端 build、Maven package、Docker build。
 
 ## 未完成和后续重点
 
 | 优先级 | 事项 | 说明 |
 |---|---|---|
 | P0 | 真实 OCI 全量验收 | 需要在真实账号逐个点配置、任务、实例、网络、安全规则、引导卷、备份相关按钮，确认 OCI SDK 返回和错误提示都正确 |
-| P0 | 低配 VPS 启动体验 | 当前低配机器首次启动约 60-90 秒属正常范围，但登录页等待和启动提示还可以继续优化 |
-| P1 | VNC 内嵌体验优化 | 当前 VNC 功能提供 URL 配置和连接引导，后续可内嵌 noVNC WebSocket 代理实现真正的浏览器内 VNC |
-| P1 | 救援中心一键操作 | 目前救援中心仅提供向导和脚本，"停止实例 / 拆卷 / 挂载到救援机"等高危动作仍需人工在 OCI 控制台操作 |
-| P1 | UI/移动端深度打磨 | 继续检查按钮卡字、窄屏、暗色模式、空状态、失败态和点击反馈 |
-| P1 | 备份恢复执行按钮 | 现在 Web 已生成恢复命令和策略；直接从 Web 执行恢复/回滚仍需更严格的二次确认和权限边界 |
-| P2 | netboot.xyz 自动救砖 | 当前只做安全向导和脚本，不自动改 bootloader；后续需在测试机实测 AMD/ARM、UEFI/BIOS 后再开放一键引导 |
-| P2 | TGBOT 权限模型 | 高危操作后续可增加白名单、管理员确认、操作冷却时间 |
-| P2 | API 契约测试 | 继续补 Controller 层 Mock 测试和 Bot 回调测试，减少上线后才发现接口问题 |
-| P2 | TgBot 进一步拆分 | 已提取 TgAccountFlowService；BackupRestoreFlow、VncConfigFlow 等重复 Session 操作也可继续提取 |
+| P0 | 前端交互验收 | 继续检查全部页面的按钮卡字、点击反馈、loading、错误提示、暗色模式和移动端布局 |
+| P1 | 低配 VPS 启动体验 | 低配机器首次启动约 60-90 秒属正常范围，但登录等待提示、启动页反馈仍可继续优化 |
+| P1 | 备份恢复闭环 | Web 恢复/回滚按钮需要更严格的二次确认、权限边界和真实恢复验收 |
+| P1 | TGBOT 可控执行 | Bot 已能查看和部分执行实例动作，后续继续补完整权限模型、冷却时间和管理员确认 |
+| P1 | 救援中心一键操作 | 轻量自救和向导已上线，高危的停机、拆卷、挂载、回滚仍需真实机型测试后逐步开放 |
+| P2 | netboot.xyz 自动救砖 | 当前只做安全向导和实验区，不自动改 bootloader；需实测 AMD/ARM、UEFI/BIOS 后再开放一键引导 |
+| P2 | API 契约测试 | 继续补 Controller Mock、Bot 回调和脚本端到端测试，减少上线后才发现接口问题 |
 
 ## 常用命令
 
@@ -127,7 +114,7 @@ bash scripts/restore.sh /app/king-detective/backups/wang-detective-backup-YYYYmm
 bash scripts/support-bundle.sh
 ```
 
-## 重要文档
+## 文档索引
 
 - 部署验收：[docs/DEPLOYMENT_SMOKE_TEST.md](docs/DEPLOYMENT_SMOKE_TEST.md)
 - 代码审计：[docs/CODE_AUDIT_REPORT.md](docs/CODE_AUDIT_REPORT.md)

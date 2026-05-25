@@ -18,9 +18,11 @@ type DiagItem = {
 const health = ref<HealthData>({});
 const checks = ref<DiagItem[]>([]);
 const raw = ref('');
+const loading = ref(false);
 const displayVersion = computed(() => health.value.version || localStorage.getItem('currentVersion') || 'main');
 
 async function refresh() {
+  loading.value = true;
   health.value = await getHealth().catch(() => ({}));
   try {
     const res = await apiGet<Record<string, unknown>>('/v1/system/diagnostics');
@@ -28,12 +30,24 @@ async function refresh() {
     raw.value = JSON.stringify(res.data || res, null, 2);
   } catch (err) {
     raw.value = err instanceof Error ? err.message : '诊断接口读取失败';
+  } finally {
+    loading.value = false;
   }
 }
 
+const diagnosticNames: Record<string, string> = {
+  'database-connectivity': '数据库连接',
+  'database-file': '数据库文件',
+  'key-directory': 'OCI 私钥目录',
+  'log-file': '服务日志文件',
+  'data-directory': '数据目录',
+  'admin-password': '管理员密码',
+  'telegram-bot': 'Telegram Bot'
+};
+
 const cards = [
   { title: '部署稳定性', desc: '安装脚本、低配 JVM、IPv4 监听、健康检查和持久化目录已统一。', icon: ShieldCheck },
-  { title: '系统诊断', desc: '数据库、数据目录、密钥目录、日志、默认密码、Bot Token、磁盘和内存检查。', icon: Activity },
+  { title: '系统诊断', desc: '数据库、数据目录、密钥目录、日志、管理员密码、Telegram 和资源状态检查。', icon: Activity },
   { title: '运维终端', desc: 'Web SSH、命令执行、主机资产库、SFTP 文件操作入口。', icon: Terminal },
   { title: '主机资产库', desc: '保存常用主机，敏感凭据加密存储，后续补权限与审计筛选。', icon: Database }
 ];
@@ -49,7 +63,7 @@ onMounted(refresh);
         <p>这一版已经从 iframe 过渡为 Vue 原生路由，后续新能力继续按当前控制台框架扩展。</p>
       </div>
       <div class="wd-actions">
-        <button type="button" @click="refresh"><Activity :size="16" />刷新诊断</button>
+        <button type="button" :disabled="loading" @click="refresh"><Activity :size="16" :class="{ spinning: loading }" />{{ loading ? '刷新中' : '刷新诊断' }}</button>
       </div>
     </div>
 
@@ -85,7 +99,7 @@ onMounted(refresh);
         <div class="wd-health-list">
           <div v-for="item in checks" :key="item.key || item.name">
             <Activity :size="18" />
-            <b>{{ item.name || item.key }}</b>
+            <b>{{ diagnosticNames[String(item.key || item.name || '')] || item.name || item.key }}</b>
             <em :class="String(item.status || '').toLowerCase()">{{ item.status || 'INFO' }}</em>
             <small>{{ item.message || item.detail }}</small>
           </div>

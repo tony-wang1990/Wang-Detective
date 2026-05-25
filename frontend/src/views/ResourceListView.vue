@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import {
+  AlertTriangle,
   CheckCircle2,
   Cpu,
   ExternalLink,
   HardDrive,
+  Loader2,
   Network,
   Play,
   Power,
@@ -155,6 +157,13 @@ const selectedCfgId = computed(() => selectedDetail.value ? rowId(selectedDetail
 const detailInstances = computed(() => detail.value?.instanceList || []);
 const detailCfCfgs = computed(() => detail.value?.cfCfgList || []);
 const detailNlbs = computed(() => detail.value?.nlbList || []);
+const hasActionBusy = computed(() => Boolean(actionBusy.value));
+const operationHint = computed(() => {
+  if (actionBusy.value) return '正在提交操作，完成后会自动刷新相关数据。';
+  if (selectedDetail.value) return '当前详情页按钮会直接调用 OCI 实时接口，高危动作会再次确认。';
+  if (selectedCount.value) return `已选择 ${selectedCount.value} 个配置，可执行批量创建、测活或删除。`;
+  return '选择配置后可查看实时资源，并执行实例、网络、引导卷和安全规则操作。';
+});
 
 const columns = [
   { key: 'username', label: '配置名称' },
@@ -228,6 +237,7 @@ function isBusy(action: string, id?: string) {
 async function runAction(label: string, key: string, fn: () => Promise<void>, refreshDetail = true) {
   actionBusy.value = key;
   error.value = '';
+  notice.value = `${label} 提交中...`;
   try {
     await fn();
     notice.value = `${label} 已提交`;
@@ -843,14 +853,26 @@ onMounted(load);
         <p>OCI API 配置、租户和实例资源入口，支持从详情页直接执行真实实例操作与运维闭环。</p>
       </div>
       <div class="wd-actions">
-        <button type="button" :disabled="loading" @click="load"><RefreshCw :size="16" />刷新</button>
-        <button type="button" :disabled="isBusy('check-alive')" @click="checkAlive"><CheckCircle2 :size="16" />一键测活</button>
-        <button type="button" class="ghost" @click="showCreateForm = !showCreateForm"><Zap :size="16" />批量开机</button>
-        <button type="button" class="ghost" @click="showAddForm = !showAddForm"><UploadCloud :size="16" />新增配置</button>
-        <button type="button" class="danger" :disabled="selectedCount === 0 || isBusy('delete-selected')" @click="deleteSelected">
+        <button type="button" :disabled="loading" @click="load"><RefreshCw :size="16" :class="{ spinning: loading }" />{{ loading ? '刷新中' : '刷新' }}</button>
+        <button type="button" :disabled="hasActionBusy" @click="checkAlive"><CheckCircle2 :size="16" />一键测活</button>
+        <button type="button" class="ghost" :disabled="hasActionBusy" @click="showCreateForm = !showCreateForm"><Zap :size="16" />批量开机</button>
+        <button type="button" class="ghost" :disabled="hasActionBusy" @click="showAddForm = !showAddForm"><UploadCloud :size="16" />新增配置</button>
+        <button type="button" class="danger" :disabled="selectedCount === 0 || hasActionBusy" @click="deleteSelected">
           <Trash2 :size="16" />删除 {{ selectedCount || '' }}
         </button>
       </div>
+    </div>
+
+    <div class="wd-operation-strip" :class="{ busy: hasActionBusy }">
+      <div>
+        <Loader2 v-if="hasActionBusy" :size="17" class="spinning" />
+        <AlertTriangle v-else :size="17" />
+        <strong>{{ hasActionBusy ? '操作处理中' : '实时 OCI 操作' }}</strong>
+        <span>{{ operationHint }}</span>
+      </div>
+      <em v-if="selectedDetail">{{ displayName(selectedDetail) }}</em>
+      <em v-else-if="selectedCount">已选 {{ selectedCount }} 个配置</em>
+      <em v-else>未选择配置</em>
     </div>
 
     <div v-if="showCreateForm" class="wd-card wd-form-card">
@@ -876,8 +898,8 @@ onMounted(load);
         <label><span>root 密码</span><input v-model="createForm.rootPassword" type="password" autocomplete="new-password" /></label>
       </div>
       <div class="wd-actions compact">
-        <button type="button" :disabled="isBusy('create-instance-batch')" @click="createForSelected">
-          <Play :size="16" />按已选配置创建实例
+        <button type="button" :disabled="hasActionBusy" @click="createForSelected">
+          <Play :size="16" />{{ isBusy('create-instance-batch') ? '提交中' : '按已选配置创建实例' }}
         </button>
         <span class="wd-help-line">未勾选配置时，将使用当前打开详情的配置。</span>
       </div>
@@ -903,7 +925,7 @@ onMounted(load);
         </label>
       </div>
       <div class="wd-actions compact">
-        <button type="button" :disabled="loading" @click="addConfig"><UploadCloud :size="16" />提交并校验</button>
+        <button type="button" :disabled="loading" @click="addConfig"><UploadCloud :size="16" />{{ loading ? '提交中' : '提交并校验' }}</button>
       </div>
     </div>
 
@@ -913,7 +935,7 @@ onMounted(load);
         <div class="wd-table-tools">
           <label class="wd-inline-search">
             <input v-model="keyword" placeholder="搜索配置、用户、租户..." @keyup.enter="resetPageAndLoad" />
-            <button type="button" @click="resetPageAndLoad">查询</button>
+            <button type="button" :disabled="loading" @click="resetPageAndLoad">{{ loading ? '查询中' : '查询' }}</button>
           </label>
           <select v-model="isEnableCreate" @change="resetPageAndLoad">
             <option value="">全部开机状态</option>
@@ -947,10 +969,10 @@ onMounted(load);
             </td>
             <td>
               <div class="wd-row-actions">
-                <button type="button" :disabled="detailLoading" @click="openDetails(row)"><ExternalLink :size="14" />实时资源</button>
-                <button type="button" @click="renameConfig(row)">改名</button>
-                <button type="button" @click="releaseSecurityRule(row)"><ShieldCheck :size="14" />放行</button>
-                <button type="button" :disabled="Number(row.enableCreate || 0) === 0" @click="stopCreate(row)">停止</button>
+                <button type="button" :disabled="detailLoading || hasActionBusy" @click="openDetails(row)"><ExternalLink :size="14" />实时资源</button>
+                <button type="button" :disabled="hasActionBusy" @click="renameConfig(row)">改名</button>
+                <button type="button" :disabled="hasActionBusy" @click="releaseSecurityRule(row)"><ShieldCheck :size="14" />放行</button>
+                <button type="button" :disabled="Number(row.enableCreate || 0) === 0 || hasActionBusy" @click="stopCreate(row)">停止</button>
               </div>
             </td>
           </tr>
@@ -972,10 +994,10 @@ onMounted(load);
       <header>
         <h2>OCI 实时操作台 · {{ displayName(selectedDetail) }}</h2>
         <div class="wd-actions compact">
-          <button type="button" class="ghost" :disabled="detailLoading" @click="loadDetails(true)">
+          <button type="button" class="ghost" :disabled="detailLoading || hasActionBusy" @click="loadDetails(true)">
             <RefreshCw :size="16" />刷新 OCI
           </button>
-          <button type="button" class="ghost" @click="selectedDetail = null">关闭</button>
+          <button type="button" class="ghost" :disabled="hasActionBusy" @click="selectedDetail = null">关闭</button>
         </div>
       </header>
 
@@ -1007,22 +1029,22 @@ onMounted(load);
           </div>
 
           <div class="wd-instance-actions">
-            <button type="button" :disabled="isBusy('START', instanceId(instance))" @click="updateInstanceState(instance, 'START')"><Play :size="14" />启动</button>
-            <button type="button" :disabled="isBusy('STOP', instanceId(instance))" @click="updateInstanceState(instance, 'STOP')"><Square :size="14" />停止</button>
-            <button type="button" :disabled="isBusy('RESET', instanceId(instance))" @click="updateInstanceState(instance, 'RESET')"><RotateCcw :size="14" />重启</button>
-            <button type="button" class="ghost" @click="renameInstance(instance)">改名</button>
-            <button type="button" class="ghost" @click="getInstanceCfg(instance)">配置详情</button>
-            <button type="button" class="ghost" @click="updateInstanceCfg(instance)">CPU/内存</button>
-            <button type="button" class="ghost" @click="updateShape(instance)">Shape</button>
-            <button type="button" class="ghost" @click="updateBootVolume(instance)">引导卷</button>
-            <button type="button" class="ghost" @click="changeIp(instance)">换 IP</button>
-            <button type="button" class="ghost" :disabled="Number(instance.enableChangeIp || 0) === 0" @click="stopChangeIp(instance)">停换 IP</button>
-            <button type="button" class="ghost" @click="createIpv6(instance)">IPv6</button>
-            <button type="button" class="ghost" @click="startVnc(instance)"><Terminal :size="14" />VNC</button>
-            <button type="button" class="ghost" @click="autoRescue(instance)">救援</button>
-            <button type="button" class="ghost" @click="enable500M(instance)">500M</button>
-            <button type="button" class="ghost" @click="close500M(instance)">关 500M</button>
-            <button type="button" class="danger-soft" @click="terminateInstance(instance)"><Power :size="14" />终止</button>
+            <button type="button" :disabled="hasActionBusy" @click="updateInstanceState(instance, 'START')"><Play :size="14" />启动</button>
+            <button type="button" :disabled="hasActionBusy" @click="updateInstanceState(instance, 'STOP')"><Square :size="14" />停止</button>
+            <button type="button" :disabled="hasActionBusy" @click="updateInstanceState(instance, 'RESET')"><RotateCcw :size="14" />重启</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="renameInstance(instance)">改名</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="getInstanceCfg(instance)">配置详情</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="updateInstanceCfg(instance)">CPU/内存</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="updateShape(instance)">Shape</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="updateBootVolume(instance)">引导卷</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="changeIp(instance)">换 IP</button>
+            <button type="button" class="ghost" :disabled="Number(instance.enableChangeIp || 0) === 0 || hasActionBusy" @click="stopChangeIp(instance)">停换 IP</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="createIpv6(instance)">IPv6</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="startVnc(instance)"><Terminal :size="14" />VNC</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="autoRescue(instance)">救援</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="enable500M(instance)">500M</button>
+            <button type="button" class="ghost" :disabled="hasActionBusy" @click="close500M(instance)">关 500M</button>
+            <button type="button" class="danger-soft" :disabled="hasActionBusy" @click="terminateInstance(instance)"><Power :size="14" />终止</button>
           </div>
         </article>
       </div>

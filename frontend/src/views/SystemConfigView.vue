@@ -45,6 +45,8 @@ type SystemConfig = {
 const loading = ref(false);
 const saving = ref(false);
 const diagnosticsLoading = ref(false);
+const testingMessage = ref(false);
+const checkingMfa = ref(false);
 const cfg = reactive<SystemConfig>({
   dingToken: '',
   dingSecret: '',
@@ -87,6 +89,16 @@ const configReadiness = computed(() => [
   { label: 'MFA', value: cfg.enableMfa },
   { label: 'Google 登录', value: cfg.enableGoogleLogin }
 ]);
+
+const diagnosticNames: Record<string, string> = {
+  'database-connectivity': '数据库连接',
+  'database-file': '数据库文件',
+  'key-directory': 'OCI 私钥目录',
+  'log-file': '服务日志文件',
+  'data-directory': '数据目录',
+  'admin-password': '管理员密码',
+  'telegram-bot': 'Telegram Bot'
+};
 
 function assignConfig(next: Partial<SystemConfig>) {
   Object.assign(cfg, {
@@ -155,20 +167,28 @@ async function loadDiagnostics() {
 }
 
 async function sendTestMessage() {
+  testingMessage.value = true;
+  notice.value = '';
   try {
     const res = await apiPost<void>('/sys/sendMsg', { message: msg.value || 'W-探长测试消息' });
     notice.value = res.msg || '测试消息已发送';
   } catch (err) {
     notice.value = err instanceof Error ? err.message : '测试消息发送失败';
+  } finally {
+    testingMessage.value = false;
   }
 }
 
 async function checkMfa() {
+  checkingMfa.value = true;
+  notice.value = '';
   try {
     const res = await apiPost<void>('/sys/checkMfaCode', { mfaCode: mfaCode.value });
     notice.value = res.msg || 'MFA 验证通过';
   } catch (err) {
     notice.value = err instanceof Error ? err.message : 'MFA 验证失败';
+  } finally {
+    checkingMfa.value = false;
   }
 }
 
@@ -177,6 +197,11 @@ function statusClass(status?: string) {
   if (value === 'ok') return 'success';
   if (value === 'error') return 'danger';
   return 'warning';
+}
+
+function diagnosticName(item: DiagItem) {
+  const key = String(item.key || item.name || '');
+  return diagnosticNames[key] || item.name || item.key || '诊断项';
 }
 
 onMounted(() => {
@@ -193,8 +218,12 @@ onMounted(() => {
         <p>通知通道、自动化、安全登录和系统诊断集中管理，保持新版控制台的明暗主题一致性。</p>
       </div>
       <div class="wd-actions">
-        <button type="button" class="ghost" @click="loadCfg"><RefreshCw :size="16" />重载配置</button>
-        <button type="button" @click="loadDiagnostics"><ShieldCheck :size="16" />刷新诊断</button>
+        <button type="button" class="ghost" :disabled="loading" @click="loadCfg">
+          <RefreshCw :size="16" :class="{ spinning: loading }" />{{ loading ? '重载中' : '重载配置' }}
+        </button>
+        <button type="button" :disabled="diagnosticsLoading" @click="loadDiagnostics">
+          <ShieldCheck :size="16" />{{ diagnosticsLoading ? '刷新中' : '刷新诊断' }}
+        </button>
         <button type="button" :disabled="saving" @click="saveCfg"><Save :size="16" />{{ saving ? '保存中' : '保存配置' }}</button>
       </div>
     </div>
@@ -242,12 +271,16 @@ onMounted(() => {
             <span>测试消息</span>
             <textarea v-model="msg" placeholder="输入要发送到 Telegram/钉钉的测试消息" />
           </label>
-          <button type="button" @click="sendTestMessage"><MessageSquareText :size="16" />发送测试消息</button>
+          <button type="button" :disabled="testingMessage" @click="sendTestMessage">
+            <MessageSquareText :size="16" />{{ testingMessage ? '发送中' : '发送测试消息' }}
+          </button>
           <label>
             <span>MFA 验证码</span>
             <input v-model="mfaCode" placeholder="输入 MFA 验证码" />
           </label>
-          <button type="button" class="ghost" @click="checkMfa"><LockKeyhole :size="16" />验证 MFA</button>
+          <button type="button" class="ghost" :disabled="checkingMfa" @click="checkMfa">
+            <LockKeyhole :size="16" />{{ checkingMfa ? '验证中' : '验证 MFA' }}
+          </button>
         </div>
       </div>
     </section>
@@ -320,7 +353,7 @@ onMounted(() => {
         <div class="wd-health-list">
           <div v-for="item in diagnostics" :key="item.key || item.name">
             <Database :size="18" />
-            <b>{{ item.name || item.key }}</b>
+            <b>{{ diagnosticName(item) }}</b>
             <em :class="statusClass(item.status)">{{ item.status || 'INFO' }}</em>
             <small>{{ item.message || item.detail }}</small>
           </div>
