@@ -768,9 +768,20 @@ html.dark .wd-leaflet-map .leaflet-tile {
 
 .wd-error-line,
 .wd-notice,
+.wd-limit-tip,
 .wd-muted-line {
   margin: 12px 16px 0;
   color: var(--wd-muted);
+}
+
+.wd-limit-tip {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--wd-warn) 42%, var(--wd-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wd-warn) 10%, var(--wd-surface));
+  color: var(--wd-text);
+  font-weight: 700;
+  line-height: 1.6;
 }
 
 .wd-error-line {

@@ -53,6 +53,8 @@ type CommandTemplate = {
   riskLevel?: string;
 };
 
+const SFTP_TRANSFER_LIMIT_BYTES = 50 * 1024 * 1024;
+const SFTP_TEXT_PREVIEW_LIMIT_BYTES = 1024 * 1024;
 const hosts = ref<Host[]>([]);
 const selectedHostId = ref('');
 const status = ref('');
@@ -107,6 +109,21 @@ let resizeTimer: number | undefined;
 const currentHost = computed(() => hosts.value.find((host) => host.id === selectedHostId.value));
 const hostGroups = computed(() => Array.from(new Set(hosts.value.map((item) => item.hostGroup || '默认分组'))));
 const terminalConnected = ref(false);
+const selectedSftpEntry = computed(() => {
+  const path = selectedSftpPath.value || editorPath.value;
+  return sftpEntries.value.find((item) => (item.path || item.name) === path);
+});
+const selectedSftpWarning = computed(() => {
+  const entry = selectedSftpEntry.value;
+  if (!entry || entry.directory || !entry.size) return '';
+  if (entry.size > SFTP_TRANSFER_LIMIT_BYTES) {
+    return `当前文件 ${formatBytes(entry.size)}，超过 ${formatBytes(SFTP_TRANSFER_LIMIT_BYTES)} 下载保护阈值，请改用 Web SSH 执行 scp/rsync 或分片处理。`;
+  }
+  if (entry.size > SFTP_TEXT_PREVIEW_LIMIT_BYTES) {
+    return `当前文件 ${formatBytes(entry.size)}，超过 ${formatBytes(SFTP_TEXT_PREVIEW_LIMIT_BYTES)} 文本预览阈值，建议直接下载或用 SSH 查看。`;
+  }
+  return '';
+});
 const transferText = computed(() => {
   if (!transfer.filename) return '暂无传输任务';
   const loaded = formatBytes(transfer.loaded);
@@ -130,7 +147,20 @@ function credential() {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : '操作失败';
+  const message = error instanceof Error ? error.message : '操作失败';
+  if (message.includes('File is larger than 50MB') || message.includes('Maximum upload size exceeded')) {
+    return `文件超过 ${formatBytes(SFTP_TRANSFER_LIMIT_BYTES)} 传输保护阈值，当前已阻止。请改用 Web SSH、scp/rsync 或分片压缩后处理。`;
+  }
+  if (message.includes('File is larger than 1MB')) {
+    return `文件超过 ${formatBytes(SFTP_TEXT_PREVIEW_LIMIT_BYTES)} 文本预览阈值，请直接下载或用 Web SSH 查看。`;
+  }
+  if (message.includes('Cannot download a directory')) {
+    return '不能直接下载目录，请先打包目录或选择具体文件。';
+  }
+  if (message.includes('Cannot read a directory')) {
+    return '不能按文本读取目录，请选择具体文件。';
+  }
+  return message;
 }
 
 function formatBytes(bytes?: number) {
@@ -550,6 +580,10 @@ async function downloadSftpFile(path = selectedSftpPath.value || editorPath.valu
   }
   status.value = '下载准备中';
   const entry = sftpEntries.value.find((item) => (item.path || item.name) === path);
+  if (entry?.size && entry.size > SFTP_TRANSFER_LIMIT_BYTES) {
+    status.value = `文件大小 ${formatBytes(entry.size)}，超过 ${formatBytes(SFTP_TRANSFER_LIMIT_BYTES)} 下载保护阈值；请使用 Web SSH 执行 scp/rsync、tar 分片或压缩后处理。`;
+    return;
+  }
   beginTransfer('下载', downloadName(path), entry?.size || 0);
   try {
     const result = await opsDownloadWithProgress('/sftp/download', {
@@ -578,6 +612,10 @@ async function uploadSftpFile() {
   }
   if (!file) {
     status.value = '请选择要上传的文件';
+    return;
+  }
+  if (file.size > SFTP_TRANSFER_LIMIT_BYTES) {
+    status.value = `上传文件 ${formatBytes(file.size)}，超过 ${formatBytes(SFTP_TRANSFER_LIMIT_BYTES)} 表单上传限制；请使用 Web SSH、scp/rsync 或分片上传。`;
     return;
   }
   const targetPath = uploadTargetPath.value || joinRemotePath(sftpPath.value, file.name);
@@ -835,6 +873,7 @@ onBeforeUnmount(() => {
             <input v-model="deleteConfirm" placeholder="输入 DELETE 后允许删除选中路径" />
             <small>{{ selectedSftpPath || editorPath || '未选择路径' }}</small>
           </div>
+          <p v-if="selectedSftpWarning" class="wd-limit-tip">{{ selectedSftpWarning }}</p>
           <table class="wd-table">
             <thead><tr><th>名称</th><th>类型</th><th>大小</th><th>路径</th><th>操作</th></tr></thead>
             <tbody>
@@ -879,7 +918,7 @@ onBeforeUnmount(() => {
               <i :style="{ width: `${transfer.percent || 0}%` }"></i>
             </div>
           </div>
-          <p class="wd-muted-line">提示：上传接口目前需要选择“保存的主机”，临时手动主机可先保存后再上传。</p>
+          <p class="wd-muted-line">提示：单文件上传/下载保护阈值为 {{ formatBytes(SFTP_TRANSFER_LIMIT_BYTES) }}；上传接口目前需要选择“保存的主机”，临时手动主机可先保存后再上传。</p>
         </div>
       </main>
     </section>
