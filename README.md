@@ -68,6 +68,7 @@ docker compose up -d --force-recreate
 - 备份归档页修复 Bucket 为空时的交互：没有 Object Storage Bucket 时自动禁用云端上传，只创建本地备份并给出明确提示。
 - 配置列表新增“规则明细”只读入口，可查看 VCN 入站/出站安全规则，不触发放行或修改动作。
 - 风险看板新增公网端口明细和收敛建议，展示 VCN、来源 CIDR、协议/端口、风险等级和建议处理方式。
+- Telegram Bot 风险看板同步展示公网高危端口 Top 明细和收敛建议。
 - 后端安全规则接口补充 type 参数校验，并修复缓存命中后安全规则列表可能为空的问题。
 - 前端 API 请求新增统一超时机制，源站或 Cloudflare 长时间无响应时会给出明确错误，不再让登录页和按钮无限卡住。
 - 登录页新增连接等待提示，引导优先检查容器健康、反向代理和 Cloudflare 源站连接。
@@ -95,6 +96,7 @@ docker compose up -d --force-recreate
 - 配置列表新增安全规则只读明细入口，支持按 VCN 查看入站/出站安全列表。
 - 新增救援中心 `/dashboard/rescue`，API 路径统一为 `/api/rescue/*`，提供轻量自救、boot volume 拆卷救援、netboot.xyz 实验区。
 - Telegram Bot 运维中心支持系统诊断、任务状态、最近日志、错误日志、审计摘要、主机概览、风险看板、备份归档、版本更新和实例操作向导。
+- Telegram Bot 风险看板已同步 Web 风险接口，可展示高危公网端口、来源 CIDR、VCN 和收敛建议。
 - CI 发布前执行脚本语法检查、前端 API 到后端 Controller 映射检查、前端 build、Maven package、Docker build。
 
 ## 未完成和后续重点

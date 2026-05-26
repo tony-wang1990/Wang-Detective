@@ -617,6 +617,7 @@ class OpsRiskSummaryHandler extends AbstractCallbackHandler {
                         .append(OpsCenterSupport.shorten(risk.getMessage(), 150))
                         .append('\n'));
             }
+            appendPortExposureSummary(message, report);
 
             List<InlineKeyboardRow> rows = new ArrayList<>();
             rows.add(new InlineKeyboardRow(
@@ -635,6 +636,48 @@ class OpsRiskSummaryHandler extends AbstractCallbackHandler {
     @Override
     public String getCallbackPattern() {
         return "ops_risk_summary";
+    }
+
+    private void appendPortExposureSummary(StringBuilder message, OciRiskReportRsp report) {
+        if (CollectionUtil.isEmpty(report.getConfigs())) {
+            return;
+        }
+        int count = 0;
+        StringBuilder details = new StringBuilder();
+        for (OciRiskReportRsp.ConfigRisk config : report.getConfigs()) {
+            if (CollectionUtil.isEmpty(config.getPortExposures())) {
+                continue;
+            }
+            for (OciRiskReportRsp.PortExposure exposure : config.getPortExposures()) {
+                if (count >= 5) {
+                    break;
+                }
+                if (!Boolean.TRUE.equals(exposure.getHighRisk())) {
+                    continue;
+                }
+                details.append("- ")
+                        .append(OpsCenterSupport.blankToDash(config.getConfigName()))
+                        .append(" / ")
+                        .append(OpsCenterSupport.blankToDash(config.getRegion()))
+                        .append(" / ")
+                        .append(OpsCenterSupport.blankToDash(exposure.getVcnName()))
+                        .append('\n')
+                        .append("  ")
+                        .append(OpsCenterSupport.blankToDash(exposure.getProtocol()))
+                        .append(' ')
+                        .append(OpsCenterSupport.blankToDash(exposure.getPortRange()))
+                        .append(" <- ")
+                        .append(OpsCenterSupport.blankToDash(exposure.getSource()))
+                        .append('\n')
+                        .append("  建议: ")
+                        .append(OpsCenterSupport.shorten(exposure.getRecommendation(), 90))
+                        .append('\n');
+                count++;
+            }
+        }
+        if (count > 0) {
+            message.append("\n公网高危端口明细 Top ").append(count).append(":\n").append(details);
+        }
     }
 }
 
