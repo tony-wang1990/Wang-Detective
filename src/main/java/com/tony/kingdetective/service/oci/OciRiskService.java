@@ -17,7 +17,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -84,6 +87,7 @@ public class OciRiskService {
         long bootVolumeGb = 0;
         int publicIngressRuleCount = 0;
         int highRiskPortRuleCount = 0;
+        List<OciRiskReportRsp.PortExposure> portExposures = new ArrayList<>();
 
         try (OracleInstanceFetcher fetcher = new OracleInstanceFetcher(config)) {
             List<Instance> instances = fetcher.listInstances();
@@ -133,11 +137,12 @@ public class OciRiskService {
                     if (isHighRiskPublicPort(rule)) {
                         highRiskPortRuleCount++;
                     }
+                    portExposures.add(buildPortExposure(vcn, rule));
                 }
             }
 
             addThresholdRisks(risks, configId, configName, region, armOcpus, armMemoryGb, bootVolumeGb,
-                    publicIngressRuleCount, highRiskPortRuleCount);
+                    publicIngressRuleCount, highRiskPortRuleCount, portExposures);
 
             return OciRiskReportRsp.ConfigRisk.builder()
                     .configId(configId)
@@ -150,6 +155,7 @@ public class OciRiskService {
                     .bootVolumeGb(bootVolumeGb)
                     .publicIngressRuleCount(publicIngressRuleCount)
                     .highRiskPortRuleCount(highRiskPortRuleCount)
+                    .portExposures(portExposures)
                     .status(highRiskPortRuleCount > 0 ? "HIGH" : publicIngressRuleCount > 0 ? "WARN" : "OK")
                     .message("扫描完成")
                     .build();
@@ -169,6 +175,7 @@ public class OciRiskService {
                     .bootVolumeGb(bootVolumeGb)
                     .publicIngressRuleCount(publicIngressRuleCount)
                     .highRiskPortRuleCount(highRiskPortRuleCount)
+                    .portExposures(portExposures)
                     .status("ERROR")
                     .message(e.getMessage())
                     .build();
@@ -193,7 +200,8 @@ public class OciRiskService {
                                    double armMemoryGb,
                                    long bootVolumeGb,
                                    int publicIngressRuleCount,
-                                   int highRiskPortRuleCount) {
+                                   int highRiskPortRuleCount,
+                                   List<OciRiskReportRsp.PortExposure> portExposures) {
         if (armOcpus > 4 || armMemoryGb > 24) {
             risks.add(risk("WARN", "QUOTA", "ARM 免费资源可能超额",
                     "ARM 当前合计 " + round(armOcpus) + " OCPU / " + round(armMemoryGb) + " GB，请确认是否仍在免费额度内。",
@@ -205,13 +213,14 @@ public class OciRiskService {
                     configId, configName, region));
         }
         if (highRiskPortRuleCount > 0) {
+            String ports = highRiskPortSummary(portExposures);
             risks.add(risk("HIGH", "NETWORK", "公网高危端口开放",
-                    "检测到 " + highRiskPortRuleCount + " 条面向公网的高危端口规则，请优先收敛 SSH/RDP/数据库端口。",
-                    configId, configName, region));
+                    "检测到 " + highRiskPortRuleCount + " 条面向公网的高危端口规则" + ports + "，请优先限制来源 IP 或关闭非必要端口。",
+                    configId, configName, region, portExposures.stream().filter(item -> Boolean.TRUE.equals(item.getHighRisk())).limit(10).toList()));
         } else if (publicIngressRuleCount > 0) {
             risks.add(risk("WARN", "NETWORK", "公网入站规则较开放",
                     "检测到 " + publicIngressRuleCount + " 条面向公网的入站规则，请确认来源网段是否必要。",
-                    configId, configName, region));
+                    configId, configName, region, portExposures.stream().limit(10).toList()));
         }
     }
 
@@ -222,6 +231,17 @@ public class OciRiskService {
                                            String configId,
                                            String configName,
                                            String region) {
+        return risk(level, category, title, message, configId, configName, region, List.of());
+    }
+
+    private OciRiskReportRsp.RiskItem risk(String level,
+                                           String category,
+                                           String title,
+                                           String message,
+                                           String configId,
+                                           String configName,
+                                           String region,
+                                           List<OciRiskReportRsp.PortExposure> portExposures) {
         return OciRiskReportRsp.RiskItem.builder()
                 .level(level)
                 .category(category)
@@ -230,6 +250,7 @@ public class OciRiskService {
                 .configId(configId)
                 .configName(configName)
                 .region(region)
+                .portExposures(portExposures)
                 .build();
     }
 
@@ -260,6 +281,80 @@ public class OciRiskService {
             }
         }
         return false;
+    }
+
+    private OciRiskReportRsp.PortExposure buildPortExposure(Vcn vcn, IngressSecurityRule rule) {
+        boolean highRisk = isHighRiskPublicPort(rule);
+        return OciRiskReportRsp.PortExposure.builder()
+                .vcnName(StrUtil.blankToDefault(vcn.getDisplayName(), vcn.getId()))
+                .source(StrUtil.blankToDefault(rule.getSource(), "-"))
+                .protocol(protocolName(rule.getProtocol()))
+                .portRange(portRangeText(rule))
+                .description(StrUtil.blankToDefault(rule.getDescription(), "-"))
+                .highRisk(highRisk)
+                .recommendation(recommendationFor(rule, highRisk))
+                .build();
+    }
+
+    private String protocolName(String protocol) {
+        if ("6".equals(protocol)) {
+            return "TCP";
+        }
+        if ("17".equals(protocol)) {
+            return "UDP";
+        }
+        if ("1".equals(protocol)) {
+            return "ICMP";
+        }
+        if ("all".equalsIgnoreCase(protocol)) {
+            return "全部协议";
+        }
+        return StrUtil.blankToDefault(protocol, "未知");
+    }
+
+    private String portRangeText(IngressSecurityRule rule) {
+        if ("all".equalsIgnoreCase(rule.getProtocol())) {
+            return "全部端口";
+        }
+        PortRange range = null;
+        if ("6".equals(rule.getProtocol()) && rule.getTcpOptions() != null) {
+            range = rule.getTcpOptions().getDestinationPortRange();
+        } else if ("17".equals(rule.getProtocol()) && rule.getUdpOptions() != null) {
+            range = rule.getUdpOptions().getDestinationPortRange();
+        } else if ("1".equals(rule.getProtocol())) {
+            if (rule.getIcmpOptions() == null) {
+                return "全部 ICMP";
+            }
+            Integer type = rule.getIcmpOptions().getType();
+            Integer code = rule.getIcmpOptions().getCode();
+            return code == null ? "ICMP type " + type : "ICMP type " + type + ", code " + code;
+        }
+        if (range == null || range.getMin() == null || range.getMax() == null) {
+            return "全部端口";
+        }
+        return range.getMin().equals(range.getMax()) ? String.valueOf(range.getMin()) : range.getMin() + "-" + range.getMax();
+    }
+
+    private String recommendationFor(IngressSecurityRule rule, boolean highRisk) {
+        if ("all".equalsIgnoreCase(rule.getProtocol())) {
+            return "规则开放全部协议，建议拆分为必要端口并限制来源 CIDR。";
+        }
+        if (highRisk) {
+            return "建议只允许固定管理 IP/CIDR 访问，SSH/RDP/数据库端口不要直接面向公网。";
+        }
+        return "确认业务确实需要公网访问；若只用于管理，请收敛到固定来源 IP。";
+    }
+
+    private String highRiskPortSummary(List<OciRiskReportRsp.PortExposure> portExposures) {
+        Set<String> ports = portExposures.stream()
+                .filter(item -> Boolean.TRUE.equals(item.getHighRisk()))
+                .map(OciRiskReportRsp.PortExposure::getPortRange)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (ports.isEmpty()) {
+            return "";
+        }
+        return "，涉及 " + ports.stream().limit(6).collect(Collectors.joining("、"));
     }
 
     private double toDouble(Number value) {

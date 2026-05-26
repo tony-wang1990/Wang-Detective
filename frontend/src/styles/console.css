@@ -1261,6 +1261,10 @@ html.dark .wd-leaflet-map .leaflet-tile {
   accent-color: var(--wd-accent);
 }
 
+.wd-switch-row.disabled {
+  opacity: .62;
+}
+
 .wd-mfa-preview {
   grid-column: 1 / -1;
   display: flex;
@@ -1384,6 +1388,22 @@ html.dark .wd-leaflet-map .leaflet-tile {
   color: var(--wd-muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.wd-risk-mini-list {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: var(--wd-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.wd-port-suggestion {
+  min-width: 220px;
+  color: var(--wd-text);
+  line-height: 1.6;
 }
 
 .wd-risk-empty {
@@ -2078,6 +2098,12 @@ html.dark .wd-leaflet-map .leaflet-tile {
   box-shadow: 0 30px 90px rgba(15, 23, 42, .28);
 }
 
+.wd-dialog.wide {
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
 .wd-dialog.danger {
   border-color: color-mix(in srgb, var(--wd-danger) 42%, var(--wd-line));
 }
@@ -2197,6 +2223,78 @@ html.dark .wd-leaflet-map .leaflet-tile {
   border-color: var(--wd-danger);
   background: var(--wd-danger);
   color: #fff;
+}
+
+.wd-security-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wd-security-toolbar label {
+  flex: 1 1 320px;
+  display: grid;
+  gap: 7px;
+  color: var(--wd-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wd-security-toolbar select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  padding: 0 11px;
+  background: var(--wd-surface-2);
+  color: var(--wd-text);
+}
+
+.wd-security-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wd-security-summary div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: var(--wd-surface-2);
+}
+
+.wd-security-summary span {
+  color: var(--wd-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wd-security-summary strong {
+  word-break: break-all;
+}
+
+.wd-security-rule-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.wd-security-rule-grid article {
+  display: grid;
+  gap: 10px;
+}
+
+.wd-security-rule-grid h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.wd-table.compact th,
+.wd-table.compact td {
+  padding: 9px 10px;
+  font-size: 12px;
 }
 
 .wd-toast {

@@ -44,6 +44,9 @@ public class SecurityRuleServiceImpl implements ISecurityRuleService {
 
     @Override
     public Page<SecurityRuleListRsp.SecurityRuleInfo> page(GetSecurityRuleListPageParams params) {
+        if (!Integer.valueOf(0).equals(params.getType()) && !Integer.valueOf(1).equals(params.getType())) {
+            throw new OciException(-1, "安全规则类型不能为空，请选择入站或出站规则");
+        }
         if (params.isCleanReLaunch()) {
             customCache.remove(CacheConstant.PREFIX_INGRESS_SECURITY_RULE_PAGE + params.getOciCfgId());
             customCache.remove(CacheConstant.PREFIX_EGRESS_SECURITY_RULE_PAGE + params.getOciCfgId());
@@ -57,127 +60,29 @@ public class SecurityRuleServiceImpl implements ISecurityRuleService {
         Map<String, EgressSecurityRule> egressMap = (Map<String, EgressSecurityRule>) customCache.get(CacheConstant.PREFIX_EGRESS_SECURITY_RULE_MAP + params.getVcnId());
 
         SysUserDTO sysUserDTO = sysService.getOciUser(params.getOciCfgId());
-        List<SecurityRuleListRsp.SecurityRuleInfo> rspRuleList = Collections.emptyList();
+        List<SecurityRuleListRsp.SecurityRuleInfo> rspRuleList;
 
         if (CollectionUtil.isEmpty(ingressSecurityRuleList) || CollectionUtil.isEmpty(egressSecurityRuleList) ||
                 CollectionUtil.isEmpty(ingressMap) || CollectionUtil.isEmpty(egressMap)) {
             try (OracleInstanceFetcher fetcher = new OracleInstanceFetcher(sysUserDTO)) {
                 SecurityList securityList = fetcher.listSecurityRule(fetcher.getVcnById(params.getVcnId()));
-                ingressSecurityRuleList = securityList.getIngressSecurityRules();
-                egressSecurityRuleList = securityList.getEgressSecurityRules();
+                ingressSecurityRuleList = securityList.getIngressSecurityRules() == null ? Collections.emptyList() : securityList.getIngressSecurityRules();
+                egressSecurityRuleList = securityList.getEgressSecurityRules() == null ? Collections.emptyList() : securityList.getEgressSecurityRules();
 
                 ingressMap = new HashMap<>();
                 egressMap = new HashMap<>();
-
-                if (params.getType().equals(0)) {
-                    Map<String, IngressSecurityRule> finalIngressMap = ingressMap;
-                    rspRuleList = ingressSecurityRuleList.parallelStream().map(ingressSecurityRule -> {
-                        SecurityRuleListRsp.SecurityRuleInfo info = new SecurityRuleListRsp.SecurityRuleInfo();
-                        String ruleId = IdUtil.getSnowflakeNextIdStr();
-                        info.setId(ruleId);
-                        info.setIsStateless(ingressSecurityRule.getIsStateless());
-                        info.setProtocol(SecurityRuleProtocolEnum.fromCode(ingressSecurityRule.getProtocol()).getDesc());
-                        info.setSourceOrDestination(ingressSecurityRule.getSource());
-                        info.setTypeAndCode(ingressSecurityRule.getProtocol().equals("1") ? (null == ingressSecurityRule.getIcmpOptions() ? "全部" :
-                                ingressSecurityRule.getIcmpOptions().getType() +
-                                        (null == ingressSecurityRule.getIcmpOptions().getCode() ? "" :
-                                                ", " + ingressSecurityRule.getIcmpOptions().getCode())) : null);
-                        info.setDescription(ingressSecurityRule.getDescription());
-                        List<String> protocolList = Arrays.asList("6", "17");
-                        String sourcePort = protocolList.contains(ingressSecurityRule.getProtocol()) ? "全部" : null;
-                        String destinationPort = protocolList.contains(ingressSecurityRule.getProtocol()) ? "全部" : null;
-                        if ("6".equals(ingressSecurityRule.getProtocol())) {
-                            if (null != ingressSecurityRule.getTcpOptions()) {
-                                if (null != ingressSecurityRule.getTcpOptions().getSourcePortRange()) {
-                                    Integer sourceMin = ingressSecurityRule.getTcpOptions().getSourcePortRange().getMin();
-                                    Integer sourceMax = ingressSecurityRule.getTcpOptions().getSourcePortRange().getMax();
-                                    sourcePort = sourceMin.equals(sourceMax) ? String.valueOf(sourceMin) : sourceMin + "-" + sourceMax;
-                                }
-                                if (null != ingressSecurityRule.getTcpOptions().getDestinationPortRange()) {
-                                    Integer dstMin = ingressSecurityRule.getTcpOptions().getDestinationPortRange().getMin();
-                                    Integer dstMax = ingressSecurityRule.getTcpOptions().getDestinationPortRange().getMax();
-                                    destinationPort = dstMin.equals(dstMax) ? String.valueOf(dstMin) : dstMin + "-" + dstMax;
-                                }
-                            }
-                        }
-                        if ("17".equals(ingressSecurityRule.getProtocol())) {
-                            if (null != ingressSecurityRule.getUdpOptions()) {
-                                if (null != ingressSecurityRule.getUdpOptions().getSourcePortRange()) {
-                                    Integer sourceMin = ingressSecurityRule.getUdpOptions().getSourcePortRange().getMin();
-                                    Integer sourceMax = ingressSecurityRule.getUdpOptions().getSourcePortRange().getMax();
-                                    sourcePort = sourceMin.equals(sourceMax) ? String.valueOf(sourceMin) : sourceMin + "-" + sourceMax;
-                                }
-                                if (null != ingressSecurityRule.getUdpOptions().getDestinationPortRange()) {
-                                    Integer dstMin = ingressSecurityRule.getUdpOptions().getDestinationPortRange().getMin();
-                                    Integer dstMax = ingressSecurityRule.getUdpOptions().getDestinationPortRange().getMax();
-                                    destinationPort = dstMin.equals(dstMax) ? String.valueOf(dstMin) : dstMin + "-" + dstMax;
-                                }
-                            }
-                        }
-                        info.setSourcePort(sourcePort);
-                        info.setDestinationPort(destinationPort);
-
-                        finalIngressMap.put(ruleId, ingressSecurityRule);
-                        return info;
-                    }).collect(Collectors.toList());
-                }
-
-                if (params.getType().equals(1)) {
-                    Map<String, EgressSecurityRule> finalEgressMap = egressMap;
-                    rspRuleList = egressSecurityRuleList.parallelStream().map(egressSecurityRule -> {
-                        SecurityRuleListRsp.SecurityRuleInfo info = new SecurityRuleListRsp.SecurityRuleInfo();
-                        String ruleId = IdUtil.getSnowflakeNextIdStr();
-                        info.setId(ruleId);
-                        info.setIsStateless(egressSecurityRule.getIsStateless());
-                        info.setProtocol(SecurityRuleProtocolEnum.fromCode(egressSecurityRule.getProtocol()).getDesc());
-                        info.setSourceOrDestination(egressSecurityRule.getDestination());
-                        info.setTypeAndCode(egressSecurityRule.getProtocol().equals("1") ? (null == egressSecurityRule.getIcmpOptions() ? "全部" :
-                                egressSecurityRule.getIcmpOptions().getType() +
-                                        (null == egressSecurityRule.getIcmpOptions().getCode() ? "" :
-                                                ", " + egressSecurityRule.getIcmpOptions().getCode())) : null);
-                        info.setDescription(egressSecurityRule.getDescription());
-                        List<String> protocolList = Arrays.asList("6", "17");
-                        String sourcePort = protocolList.contains(egressSecurityRule.getProtocol()) ? "全部" : null;
-                        String destinationPort = protocolList.contains(egressSecurityRule.getProtocol()) ? "全部" : null;
-                        if ("6".equals(egressSecurityRule.getProtocol())) {
-                            if (null != egressSecurityRule.getTcpOptions()) {
-                                if (null != egressSecurityRule.getTcpOptions().getSourcePortRange()) {
-                                    Integer sourceMin = egressSecurityRule.getTcpOptions().getSourcePortRange().getMin();
-                                    Integer sourceMax = egressSecurityRule.getTcpOptions().getSourcePortRange().getMax();
-                                    sourcePort = sourceMin.equals(sourceMax) ? String.valueOf(sourceMin) : sourceMin + "-" + sourceMax;
-                                }
-                                if (null != egressSecurityRule.getTcpOptions().getDestinationPortRange()) {
-                                    Integer dstMin = egressSecurityRule.getTcpOptions().getDestinationPortRange().getMin();
-                                    Integer dstMax = egressSecurityRule.getTcpOptions().getDestinationPortRange().getMax();
-                                    destinationPort = dstMin.equals(dstMax) ? String.valueOf(dstMin) : dstMin + "-" + dstMax;
-                                }
-                            }
-                        }
-                        if ("17".equals(egressSecurityRule.getProtocol())) {
-                            if (null != egressSecurityRule.getUdpOptions()) {
-                                if (null != egressSecurityRule.getUdpOptions().getSourcePortRange()) {
-                                    Integer sourceMin = egressSecurityRule.getUdpOptions().getSourcePortRange().getMin();
-                                    Integer sourceMax = egressSecurityRule.getUdpOptions().getSourcePortRange().getMax();
-                                    sourcePort = sourceMin.equals(sourceMax) ? String.valueOf(sourceMin) : sourceMin + "-" + sourceMax;
-                                }
-                                if (null != egressSecurityRule.getUdpOptions().getDestinationPortRange()) {
-                                    Integer dstMin = egressSecurityRule.getUdpOptions().getDestinationPortRange().getMin();
-                                    Integer dstMax = egressSecurityRule.getUdpOptions().getDestinationPortRange().getMax();
-                                    destinationPort = dstMin.equals(dstMax) ? String.valueOf(dstMin) : dstMin + "-" + dstMax;
-                                }
-                            }
-                        }
-                        info.setSourcePort(sourcePort);
-                        info.setDestinationPort(destinationPort);
-
-                        finalEgressMap.put(ruleId, egressSecurityRule);
-                        return info;
-                    }).collect(Collectors.toList());
-                }
             } catch (Exception e) {
                 log.error("获取安全列表规则失败", e);
                 throw new OciException(-1, "获取安全列表规则失败");
             }
+        }
+
+        if (Integer.valueOf(0).equals(params.getType())) {
+            ingressMap = new HashMap<>();
+            rspRuleList = buildIngressRuleInfoList(ingressSecurityRuleList, ingressMap);
+        } else {
+            egressMap = new HashMap<>();
+            rspRuleList = buildEgressRuleInfoList(egressSecurityRuleList, egressMap);
         }
 
         customCache.put(CacheConstant.PREFIX_INGRESS_SECURITY_RULE_PAGE + params.getOciCfgId(), ingressSecurityRuleList, 10 * 60 * 1000);
@@ -194,6 +99,85 @@ public class SecurityRuleServiceImpl implements ISecurityRuleService {
                 .collect(Collectors.toList());
         List<SecurityRuleListRsp.SecurityRuleInfo> pageList = CommonUtils.getPage(resList, params.getCurrentPage(), params.getPageSize());
         return VcnPageRsp.buildPage(pageList, params.getPageSize(), params.getCurrentPage(), resList.size());
+    }
+
+    private List<SecurityRuleListRsp.SecurityRuleInfo> buildIngressRuleInfoList(List<IngressSecurityRule> ruleList,
+                                                                                Map<String, IngressSecurityRule> ruleMap) {
+        return ruleList.parallelStream().map(ingressSecurityRule -> {
+            SecurityRuleListRsp.SecurityRuleInfo info = new SecurityRuleListRsp.SecurityRuleInfo();
+            String ruleId = IdUtil.getSnowflakeNextIdStr();
+            info.setId(ruleId);
+            info.setIsStateless(ingressSecurityRule.getIsStateless());
+            info.setProtocol(SecurityRuleProtocolEnum.fromCode(ingressSecurityRule.getProtocol()).getDesc());
+            info.setSourceOrDestination(ingressSecurityRule.getSource());
+            info.setTypeAndCode(buildIcmpText(ingressSecurityRule.getProtocol(), ingressSecurityRule.getIcmpOptions()));
+            info.setDescription(ingressSecurityRule.getDescription());
+            info.setSourcePort(buildSourcePort(ingressSecurityRule.getProtocol(), ingressSecurityRule.getTcpOptions(), ingressSecurityRule.getUdpOptions()));
+            info.setDestinationPort(buildDestinationPort(ingressSecurityRule.getProtocol(), ingressSecurityRule.getTcpOptions(), ingressSecurityRule.getUdpOptions()));
+            ruleMap.put(ruleId, ingressSecurityRule);
+            return info;
+        }).collect(Collectors.toList());
+    }
+
+    private List<SecurityRuleListRsp.SecurityRuleInfo> buildEgressRuleInfoList(List<EgressSecurityRule> ruleList,
+                                                                               Map<String, EgressSecurityRule> ruleMap) {
+        return ruleList.parallelStream().map(egressSecurityRule -> {
+            SecurityRuleListRsp.SecurityRuleInfo info = new SecurityRuleListRsp.SecurityRuleInfo();
+            String ruleId = IdUtil.getSnowflakeNextIdStr();
+            info.setId(ruleId);
+            info.setIsStateless(egressSecurityRule.getIsStateless());
+            info.setProtocol(SecurityRuleProtocolEnum.fromCode(egressSecurityRule.getProtocol()).getDesc());
+            info.setSourceOrDestination(egressSecurityRule.getDestination());
+            info.setTypeAndCode(buildIcmpText(egressSecurityRule.getProtocol(), egressSecurityRule.getIcmpOptions()));
+            info.setDescription(egressSecurityRule.getDescription());
+            info.setSourcePort(buildSourcePort(egressSecurityRule.getProtocol(), egressSecurityRule.getTcpOptions(), egressSecurityRule.getUdpOptions()));
+            info.setDestinationPort(buildDestinationPort(egressSecurityRule.getProtocol(), egressSecurityRule.getTcpOptions(), egressSecurityRule.getUdpOptions()));
+            ruleMap.put(ruleId, egressSecurityRule);
+            return info;
+        }).collect(Collectors.toList());
+    }
+
+    private String buildIcmpText(String protocol, IcmpOptions icmpOptions) {
+        if (!"1".equals(protocol)) {
+            return null;
+        }
+        if (icmpOptions == null) {
+            return "全部";
+        }
+        return icmpOptions.getType() + (icmpOptions.getCode() == null ? "" : ", " + icmpOptions.getCode());
+    }
+
+    private String buildSourcePort(String protocol, TcpOptions tcpOptions, UdpOptions udpOptions) {
+        if (!Arrays.asList("6", "17").contains(protocol)) {
+            return null;
+        }
+        if ("6".equals(protocol) && tcpOptions != null) {
+            return portRangeText(tcpOptions.getSourcePortRange());
+        }
+        if ("17".equals(protocol) && udpOptions != null) {
+            return portRangeText(udpOptions.getSourcePortRange());
+        }
+        return "全部";
+    }
+
+    private String buildDestinationPort(String protocol, TcpOptions tcpOptions, UdpOptions udpOptions) {
+        if (!Arrays.asList("6", "17").contains(protocol)) {
+            return null;
+        }
+        if ("6".equals(protocol) && tcpOptions != null) {
+            return portRangeText(tcpOptions.getDestinationPortRange());
+        }
+        if ("17".equals(protocol) && udpOptions != null) {
+            return portRangeText(udpOptions.getDestinationPortRange());
+        }
+        return "全部";
+    }
+
+    private String portRangeText(PortRange range) {
+        if (range == null || range.getMin() == null || range.getMax() == null) {
+            return "全部";
+        }
+        return range.getMin().equals(range.getMax()) ? String.valueOf(range.getMin()) : range.getMin() + "-" + range.getMax();
     }
 
     @Override

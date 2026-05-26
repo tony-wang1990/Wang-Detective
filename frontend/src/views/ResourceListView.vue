@@ -12,6 +12,7 @@ import {
   Power,
   RefreshCw,
   RotateCcw,
+  ShieldAlert,
   ShieldCheck,
   Square,
   Terminal,
@@ -115,6 +116,25 @@ type ActionDialog = {
   afterSuccess?: () => void;
 };
 
+type VcnInfo = {
+  id?: string;
+  displayName?: string;
+  status?: string;
+  visibility?: boolean;
+  createTime?: string;
+};
+
+type SecurityRuleInfo = {
+  id?: string;
+  isStateless?: boolean;
+  protocol?: string;
+  sourceOrDestination?: string;
+  sourcePort?: string;
+  destinationPort?: string;
+  typeAndCode?: string;
+  description?: string;
+};
+
 const loading = ref(false);
 const keyword = ref('');
 const rows = ref<Row[]>([]);
@@ -134,6 +154,16 @@ const showAddForm = ref(false);
 const showCreateForm = ref(false);
 const keyFile = ref<File | null>(null);
 const actionDialog = ref<ActionDialog | null>(null);
+const securityRules = reactive({
+  show: false,
+  loading: false,
+  error: '',
+  cfg: null as Row | null,
+  vcns: [] as VcnInfo[],
+  selectedVcnId: '',
+  ingress: [] as SecurityRuleInfo[],
+  egress: [] as SecurityRuleInfo[]
+});
 
 const addForm = reactive({
   username: '',
@@ -158,6 +188,7 @@ const detailInstances = computed(() => detail.value?.instanceList || []);
 const detailCfCfgs = computed(() => detail.value?.cfCfgList || []);
 const detailNlbs = computed(() => detail.value?.nlbList || []);
 const hasActionBusy = computed(() => Boolean(actionBusy.value));
+const selectedSecurityVcn = computed(() => securityRules.vcns.find((item) => item.id === securityRules.selectedVcnId));
 const operationHint = computed(() => {
   if (actionBusy.value) return '正在提交操作，完成后会自动刷新相关数据。';
   if (selectedDetail.value) return '当前详情页按钮会直接调用 OCI 实时接口，高危动作会再次确认。';
@@ -461,6 +492,77 @@ async function releaseSecurityRule(row: Row) {
       await apiPost('/oci/releaseSecurityRule', { ociCfgId: id });
     }
   });
+}
+
+async function openSecurityRules(row: Row) {
+  const id = rowId(row);
+  if (!id) return;
+  securityRules.show = true;
+  securityRules.cfg = row;
+  securityRules.error = '';
+  securityRules.vcns = [];
+  securityRules.ingress = [];
+  securityRules.egress = [];
+  securityRules.selectedVcnId = '';
+  securityRules.loading = true;
+  try {
+    const res = await apiPost<PageResult<VcnInfo>>('/vcn/page', {
+      ociCfgId: id,
+      keyword: '',
+      currentPage: 1,
+      pageSize: 100,
+      cleanReLaunch: true
+    });
+    securityRules.vcns = res.data?.records || [];
+    securityRules.selectedVcnId = securityRules.vcns[0]?.id || '';
+    if (!securityRules.selectedVcnId) {
+      securityRules.error = '当前配置没有可展示的 VCN。';
+      return;
+    }
+    await loadSecurityRules(false);
+  } catch (err) {
+    securityRules.error = err instanceof Error ? err.message : '读取安全规则失败';
+  } finally {
+    securityRules.loading = false;
+  }
+}
+
+async function loadSecurityRules(cleanReLaunch = false) {
+  const cfgId = securityRules.cfg ? rowId(securityRules.cfg) : '';
+  if (!cfgId || !securityRules.selectedVcnId) return;
+  securityRules.loading = true;
+  securityRules.error = '';
+  try {
+    const baseParams = {
+      ociCfgId: cfgId,
+      vcnId: securityRules.selectedVcnId,
+      keyword: '',
+      currentPage: 1,
+      pageSize: 200,
+      cleanReLaunch
+    };
+    const [ingress, egress] = await Promise.all([
+      apiPost<PageResult<SecurityRuleInfo>>('/securityRule/page', { ...baseParams, type: 0 }),
+      apiPost<PageResult<SecurityRuleInfo>>('/securityRule/page', { ...baseParams, type: 1 })
+    ]);
+    securityRules.ingress = ingress.data?.records || [];
+    securityRules.egress = egress.data?.records || [];
+  } catch (err) {
+    securityRules.error = err instanceof Error ? err.message : '读取安全规则失败';
+  } finally {
+    securityRules.loading = false;
+  }
+}
+
+function closeSecurityRules() {
+  if (securityRules.loading) return;
+  securityRules.show = false;
+}
+
+function rulePortText(rule: SecurityRuleInfo) {
+  const source = rule.sourcePort || '全部';
+  const destination = rule.destinationPort || '全部';
+  return `源 ${source} / 目标 ${destination}`;
 }
 
 async function loadDetails(force: boolean) {
@@ -971,6 +1073,7 @@ onMounted(load);
               <div class="wd-row-actions">
                 <button type="button" :disabled="detailLoading || hasActionBusy" @click="openDetails(row)"><ExternalLink :size="14" />实时资源</button>
                 <button type="button" :disabled="hasActionBusy" @click="renameConfig(row)">改名</button>
+                <button type="button" class="ghost" :disabled="hasActionBusy" @click="openSecurityRules(row)"><ShieldAlert :size="14" />规则明细</button>
                 <button type="button" :disabled="hasActionBusy" @click="releaseSecurityRule(row)"><ShieldCheck :size="14" />放行</button>
                 <button type="button" :disabled="Number(row.enableCreate || 0) === 0 || hasActionBusy" @click="stopCreate(row)">停止</button>
               </div>
@@ -1068,6 +1171,102 @@ onMounted(load);
           <ul v-else>
             <li v-for="nlb in detailNlbs" :key="`${nlb.name}-${nlb.publicIp}`">{{ nlb.name }} · {{ nlb.status }} · {{ nlb.publicIp || '-' }}</li>
           </ul>
+        </section>
+      </div>
+    </div>
+
+    <div v-if="securityRules.show" class="wd-dialog-backdrop" @click.self="closeSecurityRules">
+      <div class="wd-dialog wide">
+        <header>
+          <div>
+            <span>只读实时数据</span>
+            <h3>安全规则明细 · {{ securityRules.cfg ? displayName(securityRules.cfg) : '-' }}</h3>
+          </div>
+          <button type="button" class="ghost" @click="closeSecurityRules">关闭</button>
+        </header>
+
+        <p>这里仅展示 OCI 安全列表入站/出站规则，不会修改任何网络配置。需要变更规则时请先在风险看板确认收敛方案。</p>
+
+        <div class="wd-security-toolbar">
+          <label>
+            <span>VCN</span>
+            <select v-model="securityRules.selectedVcnId" :disabled="securityRules.loading || !securityRules.vcns.length" @change="loadSecurityRules(false)">
+              <option value="">请选择 VCN</option>
+              <option v-for="vcn in securityRules.vcns" :key="vcn.id" :value="vcn.id">
+                {{ vcn.displayName || vcn.id }} / {{ vcn.status || '-' }}
+              </option>
+            </select>
+          </label>
+          <button type="button" :disabled="securityRules.loading || !securityRules.selectedVcnId" @click="loadSecurityRules(true)">
+            <RefreshCw :size="16" />{{ securityRules.loading ? '读取中...' : '刷新规则' }}
+          </button>
+        </div>
+
+        <p v-if="securityRules.error" class="wd-error-line">{{ securityRules.error }}</p>
+        <div v-else class="wd-security-summary">
+          <div><span>当前 VCN</span><strong>{{ selectedSecurityVcn?.displayName || selectedSecurityVcn?.id || '-' }}</strong></div>
+          <div><span>入站规则</span><strong>{{ securityRules.ingress.length }}</strong></div>
+          <div><span>出站规则</span><strong>{{ securityRules.egress.length }}</strong></div>
+        </div>
+
+        <section class="wd-security-rule-grid">
+          <article>
+            <h4>入站规则</h4>
+            <div class="wd-table-scroll">
+              <table class="wd-table compact">
+                <thead>
+                  <tr>
+                    <th>来源</th>
+                    <th>协议</th>
+                    <th>端口</th>
+                    <th>ICMP</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="rule in securityRules.ingress" :key="rule.id">
+                    <td>{{ rule.sourceOrDestination || '-' }}</td>
+                    <td>{{ rule.protocol || '-' }}</td>
+                    <td>{{ rulePortText(rule) }}</td>
+                    <td>{{ rule.typeAndCode || '-' }}</td>
+                    <td>{{ rule.description || '-' }}</td>
+                  </tr>
+                  <tr v-if="!securityRules.ingress.length">
+                    <td colspan="5" class="wd-empty">暂无入站规则。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article>
+            <h4>出站规则</h4>
+            <div class="wd-table-scroll">
+              <table class="wd-table compact">
+                <thead>
+                  <tr>
+                    <th>目标</th>
+                    <th>协议</th>
+                    <th>端口</th>
+                    <th>ICMP</th>
+                    <th>说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="rule in securityRules.egress" :key="rule.id">
+                    <td>{{ rule.sourceOrDestination || '-' }}</td>
+                    <td>{{ rule.protocol || '-' }}</td>
+                    <td>{{ rulePortText(rule) }}</td>
+                    <td>{{ rule.typeAndCode || '-' }}</td>
+                    <td>{{ rule.description || '-' }}</td>
+                  </tr>
+                  <tr v-if="!securityRules.egress.length">
+                    <td colspan="5" class="wd-empty">暂无出站规则。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
         </section>
       </div>
     </div>

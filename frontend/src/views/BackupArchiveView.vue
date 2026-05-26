@@ -90,6 +90,8 @@ const deleteConfirm = ref<DeleteConfirm | null>(null);
 const selectedConfig = computed(() => configs.value.find((item) => item.id === selectedConfigId.value));
 const objectCount = computed(() => objects.value.length);
 const totalSize = computed(() => objects.value.reduce((sum, item) => sum + Number(item.sizeBytes || 0), 0));
+const canUploadToObjectStorage = computed(() => Boolean(selectedConfigId.value && selectedBucket.value && buckets.value.length));
+const createArchiveDisabled = computed(() => Boolean(loading.value) || !selectedConfigId.value);
 
 function formatBytes(bytes?: number) {
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -138,8 +140,15 @@ async function loadBuckets() {
   try {
     const res = await apiGet<BucketInfo[]>(`/v1/backups/buckets?ociCfgId=${encodeURIComponent(selectedConfigId.value)}`);
     buckets.value = res.data || [];
-    if (!selectedBucket.value && buckets.value[0]?.name) {
-      selectedBucket.value = buckets.value[0].name;
+    if (!buckets.value.length) {
+      selectedBucket.value = '';
+      objects.value = [];
+      uploadToObjectStorage.value = false;
+      notice.value = '当前 OCI 配置没有可用 Bucket，可先创建本地备份；需要云端归档时请先在 OCI Object Storage 创建 Bucket。';
+      return;
+    }
+    if (!selectedBucket.value || !buckets.value.some((bucket) => bucket.name === selectedBucket.value)) {
+      selectedBucket.value = buckets.value[0]?.name || '';
     }
     await loadObjects();
   } catch (err) {
@@ -173,25 +182,32 @@ async function loadObjects() {
 }
 
 async function createArchive() {
-  if (uploadToObjectStorage.value && !selectedBucket.value) {
-    error.value = '上传对象存储时必须选择 Bucket';
+  if (!selectedConfigId.value) {
+    error.value = '请先选择 OCI 配置';
     return;
+  }
+  const shouldUpload = uploadToObjectStorage.value && canUploadToObjectStorage.value;
+  if (uploadToObjectStorage.value && !shouldUpload) {
+    uploadToObjectStorage.value = false;
+    notice.value = '未发现可用 Bucket，本次将只创建本地备份。';
   }
   loading.value = 'archive';
   error.value = '';
   try {
     const res = await apiPost<BackupResult>('/v1/backups/archive', {
       ociCfgId: selectedConfigId.value,
-      bucketName: selectedBucket.value,
+      bucketName: shouldUpload ? selectedBucket.value : '',
       prefix: prefix.value,
       includeLogs: includeLogs.value,
-      uploadToObjectStorage: uploadToObjectStorage.value
+      uploadToObjectStorage: shouldUpload
     });
     lastBackup.value = res.data || null;
-    notice.value = uploadToObjectStorage.value ? '备份已生成并上传对象存储' : '本地备份包已生成';
+    notice.value = shouldUpload ? '备份已生成并上传对象存储' : '本地备份包已生成';
     notifyGlobal(notice.value, 'success');
     await loadLocalBackups();
-    await loadObjects();
+    if (selectedBucket.value) {
+      await loadObjects();
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '创建备份失败';
     notifyGlobal(error.value, 'error');
@@ -301,7 +317,7 @@ onMounted(() => {
         <button type="button" @click="loadConfigs" :disabled="Boolean(loading)">
           <RefreshCw :size="16" />刷新配置
         </button>
-        <button type="button" @click="createArchive" :disabled="Boolean(loading) || (uploadToObjectStorage && !selectedConfigId)">
+        <button type="button" @click="createArchive" :disabled="createArchiveDisabled">
           <CloudUpload :size="16" />{{ loading === 'archive' ? '备份中...' : '创建备份' }}
         </button>
       </div>
@@ -344,12 +360,13 @@ onMounted(() => {
           </label>
           <label>
             <span>Bucket</span>
-            <select v-model="selectedBucket" @change="loadObjects">
-              <option value="">请选择 Bucket</option>
+            <select v-model="selectedBucket" :disabled="!buckets.length" @change="loadObjects">
+              <option value="">{{ buckets.length ? '请选择 Bucket' : '当前配置暂无 Bucket' }}</option>
               <option v-for="bucket in buckets" :key="bucket.name" :value="bucket.name">
                 {{ bucket.name }} / {{ bucket.storageTier || 'Standard' }}
               </option>
             </select>
+            <small v-if="selectedConfigId && !buckets.length">没有 Bucket 时仍可创建本地备份；云端归档需要先创建 Object Storage Bucket。</small>
           </label>
           <label>
             <span>归档前缀</span>
@@ -359,8 +376,8 @@ onMounted(() => {
             <input v-model="includeLogs" type="checkbox" />
             <span>包含日志目录</span>
           </label>
-          <label class="wd-switch-row">
-            <input v-model="uploadToObjectStorage" type="checkbox" />
+          <label class="wd-switch-row" :class="{ disabled: !canUploadToObjectStorage }">
+            <input v-model="uploadToObjectStorage" type="checkbox" :disabled="!canUploadToObjectStorage" />
             <span>上传到对象存储</span>
           </label>
           <div class="wd-actions compact">

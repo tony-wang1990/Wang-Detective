@@ -29,8 +29,21 @@ type ConfigRisk = {
   bootVolumeGb?: number;
   publicIngressRuleCount?: number;
   highRiskPortRuleCount?: number;
+  portExposures?: PortExposure[];
   status?: string;
   message?: string;
+};
+
+type PortExposure = {
+  configName?: string;
+  region?: string;
+  vcnName?: string;
+  source?: string;
+  protocol?: string;
+  portRange?: string;
+  description?: string;
+  highRisk?: boolean;
+  recommendation?: string;
 };
 
 type RiskItem = {
@@ -40,6 +53,7 @@ type RiskItem = {
   message?: string;
   configName?: string;
   region?: string;
+  portExposures?: PortExposure[];
 };
 
 type RiskReport = {
@@ -60,6 +74,16 @@ const risks = computed(() => report.value?.risks || []);
 const highRisks = computed(() => risks.value.filter((item) => item.level === 'HIGH'));
 const warnRisks = computed(() => risks.value.filter((item) => item.level === 'WARN'));
 const errorRisks = computed(() => risks.value.filter((item) => item.level === 'ERROR'));
+const portExposures = computed<PortExposure[]>(() =>
+  configs.value.flatMap((cfg) =>
+    (cfg.portExposures || []).map((item) => ({
+      ...item,
+      configName: cfg.configName || cfg.configId,
+      region: cfg.region
+    }))
+  )
+);
+const highRiskPortExposures = computed(() => portExposures.value.filter((item) => item.highRisk));
 
 function levelClass(level?: string) {
   if (level === 'HIGH' || level === 'ERROR') return 'danger';
@@ -77,6 +101,10 @@ function statusText(status?: string) {
 function formatTime(value?: string) {
   if (!value) return '-';
   return value.replace('T', ' ').slice(0, 19);
+}
+
+function exposureLabel(item: PortExposure) {
+  return item.highRisk ? '高危' : '公开';
 }
 
 async function loadReport() {
@@ -149,6 +177,11 @@ onMounted(loadReport);
               <b>{{ item.title }}</b>
               <p>{{ item.message }}</p>
               <small>{{ item.configName || '-' }} / {{ item.region || '-' }} / {{ item.category || '-' }}</small>
+              <ul v-if="item.portExposures?.length" class="wd-risk-mini-list">
+                <li v-for="exposure in item.portExposures.slice(0, 3)" :key="`${exposure.vcnName}-${exposure.source}-${exposure.portRange}`">
+                  {{ exposure.protocol }} {{ exposure.portRange }} · {{ exposure.source }} · {{ exposure.recommendation }}
+                </li>
+              </ul>
             </div>
           </div>
           <div v-if="!risks.length" class="wd-risk-empty">
@@ -163,8 +196,8 @@ onMounted(loadReport);
         <div class="wd-health-list">
           <div>
             <ShieldAlert :size="18" />
-            <span>高风险</span>
-            <em class="error">{{ highRisks.length }}</em>
+            <span>高危端口</span>
+            <em class="error">{{ highRiskPortExposures.length }}</em>
           </div>
           <div>
             <AlertTriangle :size="18" />
@@ -184,6 +217,40 @@ onMounted(loadReport);
         </div>
       </article>
     </section>
+
+    <article class="wd-card wd-table-card">
+      <header>
+        <h2><ShieldAlert :size="17" /> 公网端口明细与收敛建议</h2>
+        <span class="wd-help-line">来自 OCI 安全列表入站规则，只读展示，不在这里直接修改。</span>
+      </header>
+      <div class="wd-table-scroll">
+        <table class="wd-table">
+          <thead>
+            <tr>
+              <th>配置</th>
+              <th>VCN</th>
+              <th>来源</th>
+              <th>协议/端口</th>
+              <th>风险</th>
+              <th>收敛建议</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in portExposures" :key="`${item.configName}-${item.vcnName}-${item.source}-${item.protocol}-${item.portRange}`">
+              <td><b>{{ item.configName || '-' }}</b><small>{{ item.region || '-' }}</small></td>
+              <td>{{ item.vcnName || '-' }}</td>
+              <td>{{ item.source || '-' }}</td>
+              <td><b>{{ item.protocol || '-' }}</b><small>{{ item.portRange || '-' }} · {{ item.description || '-' }}</small></td>
+              <td><span class="wd-badge" :class="item.highRisk ? 'danger' : 'warning'">{{ exposureLabel(item) }}</span></td>
+              <td class="wd-port-suggestion">{{ item.recommendation || '确认业务必要性，尽量收敛公网来源。' }}</td>
+            </tr>
+            <tr v-if="!portExposures.length">
+              <td colspan="6" class="wd-empty">暂无公网入站端口暴露。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
 
     <article class="wd-card wd-table-card">
       <header><h2><ShieldAlert :size="17" /> 配置风险明细</h2></header>
@@ -207,7 +274,10 @@ onMounted(loadReport);
               <td>{{ cfg.runningInstanceCount || 0 }} / {{ cfg.instanceCount || 0 }}</td>
               <td>{{ cfg.armOcpus || 0 }} OCPU / {{ cfg.armMemoryGb || 0 }} GB</td>
               <td>{{ cfg.bootVolumeGb || 0 }} GB</td>
-              <td>{{ cfg.publicIngressRuleCount || 0 }} 条，其中高危 {{ cfg.highRiskPortRuleCount || 0 }} 条</td>
+              <td>
+                {{ cfg.publicIngressRuleCount || 0 }} 条，其中高危 {{ cfg.highRiskPortRuleCount || 0 }} 条
+                <small>端口明细 {{ cfg.portExposures?.length || 0 }} 条</small>
+              </td>
               <td><span class="wd-badge" :class="levelClass(cfg.status)">{{ statusText(cfg.status) }}</span></td>
             </tr>
             <tr v-if="!configs.length">
