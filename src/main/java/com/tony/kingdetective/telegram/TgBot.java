@@ -168,7 +168,7 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                 } else if ("/rescue".equals(command)) {
                     sendRescueMenu(chatId);
                 } else if ("/terminal".equals(command)) {
-                    sendMessage(chatId, "🔗 运维终端暂未提供内联快捷操作，请前往 Web 面板体验全功能终端。");
+                    sendTerminalMenu(chatId);
                 } else if ("/backup".equals(command)) {
                     sendBackupMenu(chatId);
                 } else if (command.startsWith("/ssh_config ")) {
@@ -725,6 +725,10 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                         "*基础命令：*\n" +
                         "├ `/start` - 显示主菜单\n" +
                         "├ `/help` - 显示此帮助信息\n\n" +
+                        "*运维入口：*\n" +
+                        "├ `/terminal` - 打开 SSH/日志/诊断快捷入口\n" +
+                        "├ `/rescue` - 打开救援中心\n" +
+                        "├ `/backup` - 打开备份恢复\n\n" +
                         "*AI 聊天：*\n" +
                         "├ 直接发送消息即可与 AI 对话\n" +
                         "├ 在主菜单选择 AI 聊天 进行设置\n\n" +
@@ -843,6 +847,44 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                     .build());
         } catch (TelegramApiException e) {
             log.error("发送主菜单失败", e);
+        }
+    }
+
+    private void sendTerminalMenu(long chatId) {
+        try {
+            String text = "🧰 *运维终端*\n\n" +
+                    "这里提供 Telegram 侧的常用运维入口。Web SSH/SFTP 完整交互仍在 Web 面板内执行，Bot 侧可快速查看主机、日志、诊断和任务状态。\n\n" +
+                    "请选择要打开的入口：";
+
+            List<org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow> keyboard = new java.util.ArrayList<>();
+            keyboard.add(new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow(
+                    KeyboardBuilder.button("SSH 管理", "ssh_management"),
+                    KeyboardBuilder.button("主机概览", "ops_host_list")
+            ));
+            keyboard.add(new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow(
+                    KeyboardBuilder.button("最近日志", "ops_recent_logs"),
+                    KeyboardBuilder.button("错误日志", "ops_error_logs")
+            ));
+            keyboard.add(new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow(
+                    KeyboardBuilder.button("系统诊断", "ops_diagnostics"),
+                    KeyboardBuilder.button("任务状态", "ops_task_status")
+            ));
+            keyboard.add(new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow(
+                    KeyboardBuilder.button("运维中心", "ops_center")
+            ));
+            keyboard.add(KeyboardBuilder.buildBackToMainMenuRow());
+            keyboard.add(KeyboardBuilder.buildCancelRow());
+
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(chatId)
+                    .text(MarkdownFormatter.formatMarkdown(text))
+                    .parseMode("MarkdownV2")
+                    .replyMarkup(InlineKeyboardMarkup.builder()
+                            .keyboard(keyboard)
+                            .build())
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("发送运维终端菜单失败", e);
         }
     }
 
