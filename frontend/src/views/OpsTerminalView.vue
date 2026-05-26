@@ -14,6 +14,12 @@ type Host = {
   hostGroup?: string;
 };
 
+type HostImportPayload = Host & {
+  password?: string;
+  privateKey?: string;
+  passphrase?: string;
+};
+
 type SshSession = {
   sessionId?: string;
   host?: string;
@@ -80,6 +86,7 @@ const commandTemplates = ref<CommandTemplate[]>([]);
 const templateName = ref('');
 const templateCategory = ref('常用');
 const dangerConfirm = ref('');
+const bulkHostText = ref('');
 const sftpPath = ref('.');
 const sftpEntries = ref<SftpEntry[]>([]);
 const selectedSftpPath = ref('');
@@ -425,6 +432,89 @@ async function deleteSelectedHost() {
   } catch (error) {
     status.value = errorMessage(error);
   }
+}
+
+function hostPayloadFromLine(line: string, index: number): HostImportPayload {
+  const parts = line.split(',').map((item) => item.trim());
+  if (parts.length < 2 || !parts[1]) {
+    throw new Error(`第 ${index + 1} 行格式错误`);
+  }
+  const authType = parts[4] || 'password';
+  return {
+    name: parts[0] || parts[1],
+    host: parts[1],
+    port: Number(parts[2] || 22),
+    username: parts[3] || 'root',
+    authType,
+    password: authType === 'password' ? parts[5] || '' : '',
+    privateKey: authType === 'privateKey' ? parts[5] || '' : '',
+    tags: parts[6] || '',
+    hostGroup: parts[7] || '默认分组'
+  };
+}
+
+function normalizeHostPayload(item: HostImportPayload, index: number): HostImportPayload {
+  if (!item.host) {
+    throw new Error(`第 ${index + 1} 条缺少 host`);
+  }
+  return {
+    name: item.name || item.host,
+    host: item.host,
+    port: Number(item.port || 22),
+    username: item.username || 'root',
+    authType: item.authType || 'password',
+    password: item.password || '',
+    privateKey: item.privateKey || '',
+    passphrase: item.passphrase || '',
+    tags: item.tags || '',
+    hostGroup: item.hostGroup || '默认分组'
+  };
+}
+
+function parseHostImportText(): HostImportPayload[] {
+  const raw = bulkHostText.value.trim();
+  if (!raw) return [];
+  if (raw.startsWith('{') || raw.startsWith('[')) {
+    const parsed = JSON.parse(raw);
+    const rows = Array.isArray(parsed) ? parsed : [parsed];
+    return rows.map((item, index) => normalizeHostPayload(item, index));
+  }
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => normalizeHostPayload(hostPayloadFromLine(line, index), index));
+}
+
+async function importHosts() {
+  let rows: HostImportPayload[] = [];
+  try {
+    rows = parseHostImportText();
+  } catch (error) {
+    status.value = errorMessage(error);
+    return;
+  }
+  if (rows.length === 0) {
+    status.value = '请先粘贴要导入的主机';
+    return;
+  }
+  status.value = `批量导入中，共 ${rows.length} 台`;
+  const errors: string[] = [];
+  let success = 0;
+  for (const [index, row] of rows.entries()) {
+    try {
+      await opsPost<Host>('/ssh/hosts', row);
+      success += 1;
+    } catch (error) {
+      errors.push(`第 ${index + 1} 条 ${row.name || row.host}: ${errorMessage(error)}`);
+    }
+  }
+  await loadHosts();
+  if (errors.length === 0) {
+    bulkHostText.value = '';
+  }
+  output.value = errors.length ? errors.join('\n') : `已导入 ${success} 台 SSH 主机`;
+  status.value = `批量导入完成：成功 ${success}，失败 ${errors.length}`;
 }
 
 async function testConnection() {
@@ -889,6 +979,14 @@ onBeforeUnmount(() => {
             <button type="button" @click="createSession"><Terminal :size="16" />Web SSH</button>
             <button type="button" class="danger-soft" :disabled="!selectedHostId" @click="deleteSelectedHost"><Trash2 :size="16" />删除</button>
           </div>
+          <details class="wd-import-box">
+            <summary>批量导入主机</summary>
+            <textarea
+              v-model="bulkHostText"
+              placeholder="CSV: 名称,主机,端口,用户,认证,password/privateKey,标签,分组&#10;JSON: [{&quot;name&quot;:&quot;tokyo&quot;,&quot;host&quot;:&quot;1.2.3.4&quot;,&quot;username&quot;:&quot;root&quot;}]"
+            ></textarea>
+            <button type="button" class="ghost" @click="importHosts"><Upload :size="15" />导入</button>
+          </details>
         </div>
       </aside>
 

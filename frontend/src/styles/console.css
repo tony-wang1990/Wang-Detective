@@ -757,6 +757,37 @@ html.dark .wd-leaflet-map .leaflet-tile {
   resize: vertical;
 }
 
+.wd-import-box {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 10px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wd-surface) 92%, var(--wd-accent));
+}
+
+.wd-import-box summary {
+  cursor: pointer;
+  color: var(--wd-text);
+  font-weight: 900;
+}
+
+.wd-import-box textarea {
+  width: 100%;
+  min-height: 118px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--wd-surface);
+  color: var(--wd-text);
+  resize: vertical;
+}
+
+.wd-import-box button {
+  justify-self: start;
+}
+
 .wd-inline-search input:focus,
 .wd-command-row input:focus,
 .wd-inline-field input:focus,
