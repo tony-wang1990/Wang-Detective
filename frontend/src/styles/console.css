@@ -7,6 +7,8 @@
   --wd-muted: #64748b;
   --wd-accent: #0f9fb3;
   --wd-accent-2: #0f766e;
+  --wd-brand: #0f9fb3;
+  --wd-warn: #f59e0b;
   --wd-danger: #dc2626;
   --wd-sidebar: #0f172a;
   --wd-sidebar-2: #111827;
@@ -22,6 +24,8 @@ html.dark {
   --wd-muted: #94a3b8;
   --wd-accent: #22d3ee;
   --wd-accent-2: #2dd4bf;
+  --wd-brand: #22d3ee;
+  --wd-warn: #f59e0b;
   --wd-sidebar: #07111f;
   --wd-sidebar-2: #0f172a;
 }
@@ -228,6 +232,10 @@ textarea:focus-visible {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.wd-mobile-nav {
+  display: none;
 }
 
 .wd-icon-button,
@@ -873,6 +881,10 @@ html.dark .wd-leaflet-map .leaflet-tile {
 .wd-table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.wd-table-card {
+  overflow-x: auto;
 }
 
 .wd-table th,
@@ -2507,6 +2519,56 @@ html.dark .wd-leaflet-map .leaflet-tile {
     display: none;
   }
 
+  .wd-topbar {
+    height: auto;
+    min-height: 58px;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .wd-icon-button {
+    display: none;
+  }
+
+  .wd-mobile-nav {
+    position: sticky;
+    top: 58px;
+    z-index: 9;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--wd-line);
+    background: color-mix(in srgb, var(--wd-surface) 96%, transparent);
+    backdrop-filter: blur(14px);
+    scrollbar-width: thin;
+  }
+
+  .wd-mobile-nav button {
+    flex: 0 0 auto;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--wd-line);
+    border-radius: 8px;
+    padding: 0 11px;
+    background: var(--wd-surface);
+    color: var(--wd-text);
+    font-weight: 900;
+  }
+
+  .wd-mobile-nav button.active {
+    border-color: color-mix(in srgb, var(--wd-accent) 48%, var(--wd-line));
+    background: color-mix(in srgb, var(--wd-accent) 12%, var(--wd-surface));
+    color: var(--wd-accent-2);
+  }
+
+  .wd-content {
+    padding: 16px;
+  }
+
   .wd-home-grid,
   .wd-charts-grid,
   .wd-chart-row,
@@ -2527,14 +2589,27 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-search,
   .wd-top-status,
   .wd-network-indicator,
-  .wd-version,
-  .wd-update {
+  .wd-version {
     display: none;
+  }
+
+  .wd-theme {
+    margin-left: auto;
   }
 
   .wd-page-title {
     align-items: flex-start;
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .wd-page-title .wd-actions,
+  .wd-actions {
+    width: 100%;
+  }
+
+  .wd-actions button {
+    flex: 1 1 132px;
   }
 
   .wd-operation-strip,
@@ -2561,6 +2636,44 @@ html.dark .wd-leaflet-map .leaflet-tile {
     width: 100%;
   }
 
+  .wd-table {
+    min-width: 720px;
+  }
+
+  .wd-table.compact {
+    min-width: 640px;
+  }
+
+  .wd-card header {
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: auto;
+    padding-block: 12px;
+  }
+
+  .wd-card header .wd-actions,
+  .wd-card header button {
+    width: 100%;
+  }
+
+  .wd-kpi {
+    min-height: 92px;
+    padding: 16px;
+  }
+
+  .wd-kpi svg {
+    width: 42px;
+    height: 42px;
+  }
+
+  .wd-kpi strong {
+    font-size: 26px;
+  }
+
+  .wd-map-body {
+    min-height: 320px;
+  }
+
   .wd-bubble {
     max-width: 100%;
   }
@@ -2571,5 +2684,221 @@ html.dark .wd-leaflet-map .leaflet-tile {
 
   .wd-login-feature-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .wd-content {
+    padding: 12px;
+  }
+
+  .wd-topbar {
+    min-height: 54px;
+    padding-inline: 10px;
+  }
+
+  .wd-mobile-nav {
+    top: 54px;
+    padding-inline: 10px;
+  }
+
+  .wd-update,
+  .wd-theme,
+  .wd-logout {
+    min-width: 42px;
+    padding-inline: 10px;
+  }
+
+  .wd-update {
+    max-width: 128px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .wd-logout {
+    font-size: 0;
+    gap: 0;
+  }
+
+  .wd-page {
+    gap: 14px;
+  }
+
+  .wd-page-title h1 {
+    font-size: 22px;
+  }
+
+  .wd-page-title p {
+    font-size: 13px;
+  }
+
+  .wd-actions,
+  .wd-actions.compact,
+  .wd-table-tools,
+  .wd-inline-search,
+  .wd-security-toolbar,
+  .wd-terminal-controls,
+  .wd-template-bar,
+  .wd-row-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wd-actions button,
+  .wd-inline-search button,
+  .wd-table-tools button,
+  .wd-row-actions button,
+  .wd-card header button,
+  .wd-terminal-controls button,
+  .wd-template-bar button,
+  .wd-template-save button,
+  .wd-sftp-toolbar button,
+  .wd-upload-row button,
+  .wd-editor button {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .wd-inline-search,
+  .wd-table-tools select,
+  .wd-pager select {
+    min-width: 0;
+  }
+
+  .wd-table th,
+  .wd-table td {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .wd-pager {
+    gap: 8px;
+  }
+
+  .wd-pager span {
+    margin-right: 0;
+  }
+
+  .wd-command-row,
+  .wd-command-row.terminal-input-row,
+  .wd-template-save,
+  .wd-sftp-toolbar,
+  .wd-danger-confirm,
+  .wd-inline-field,
+  .wd-upload-row,
+  .wd-security-summary,
+  .wd-dialog footer {
+    grid-template-columns: 1fr;
+  }
+
+  .wd-session-title,
+  .wd-session-card,
+  .wd-transfer-progress > div:first-child,
+  .wd-dialog header,
+  .wd-table-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wd-transfer-progress span {
+    text-align: left;
+  }
+
+  .wd-terminal {
+    max-width: 100%;
+    font-size: 12px;
+  }
+
+  .wd-map-body {
+    min-height: 280px;
+  }
+
+  .wd-chart,
+  .wd-chart.wide {
+    min-height: 240px;
+  }
+
+  .wd-dialog-backdrop {
+    padding: 12px;
+    align-items: end;
+  }
+
+  .wd-dialog {
+    max-height: calc(100svh - 24px);
+    overflow: auto;
+    padding: 16px;
+  }
+
+  .wd-dialog.wide {
+    max-height: calc(100svh - 24px);
+  }
+
+  .wd-login {
+    min-height: 100svh;
+  }
+
+  .wd-login-brand {
+    gap: 18px;
+    padding: 26px 20px;
+  }
+
+  .wd-login-logo.xl {
+    width: 82px;
+    height: 82px;
+    font-size: 44px;
+  }
+
+  .wd-login-brand h1 {
+    font-size: 34px;
+  }
+
+  .wd-login-hero-copy strong {
+    font-size: 20px;
+  }
+
+  .wd-login-feature-grid {
+    display: none;
+  }
+
+  .wd-login-panel {
+    padding: 20px;
+  }
+
+  .wd-login-card {
+    padding: 24px;
+  }
+
+  .wd-login-panel footer {
+    position: static;
+    justify-content: center;
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 460px) {
+  .wd-mobile-nav span,
+  .wd-theme {
+    font-size: 12px;
+  }
+
+  .wd-update {
+    max-width: 96px;
+  }
+
+  .wd-kpi {
+    gap: 12px;
+  }
+
+  .wd-kpi strong {
+    font-size: 24px;
+  }
+
+  .wd-login-mark {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

@@ -291,6 +291,19 @@ onBeforeUnmount(() => {
         </button>
       </header>
 
+      <nav class="wd-mobile-nav" aria-label="移动端导航">
+        <button
+          v-for="item in navItems"
+          :key="`mobile-${item.path}`"
+          type="button"
+          :class="{ active: isActive(item) }"
+          @click="router.push(item.path)"
+        >
+          <component :is="item.icon" :size="17" />
+          <span>{{ item.label }}</span>
+        </button>
+      </nav>
+
       <main class="wd-content">
         <RouterView />
       </main>
