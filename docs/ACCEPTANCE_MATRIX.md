@@ -79,7 +79,7 @@
 | `scripts/update.sh` | 拉取镜像、重启、保留数据、失败提示 | 待复验 |
 | `scripts/rollback.sh` | 指定镜像回滚、失败保护、健康检查 | 待复验 |
 | `scripts/server-smoke-test.sh` | 容器、健康、日志、资源、域名提示 | 待复验 |
-| `scripts/remote-smoke-test.sh` | 无 Node 环境可跑，40 项页面和只读接口验收 | 已验收一期 |
+| `scripts/remote-smoke-test.sh` | 无 Node 环境可跑，40 项页面和只读接口验收；路由名会安全转换为临时文件名 | 已验收一期 |
 | `scripts/remote-smoke-test.mjs` | Windows/Node 环境可跑，curl 回退，40 项页面和只读接口验收 | 已验收一期 |
 | `scripts/backup.sh` | 备份 data/keys/logs/config/scripts，生成校验信息 | 待复验 |
 | `scripts/restore.sh` | 恢复前确认、备份包校验、失败保护 | 待专用环境验收 |

@@ -61,8 +61,9 @@ request() {
   local path="$3"
   local body="${4:-}"
   local expect="${5:-}"
-  local out="$TMP_DIR/${name}.json"
-  local err="$TMP_DIR/${name}.err"
+  local safe_name="${name//[^A-Za-z0-9_.-]/_}"
+  local out="$TMP_DIR/${safe_name}.json"
+  local err="$TMP_DIR/${safe_name}.err"
   local status
   local headers=(-H "Accept: application/json")
 
