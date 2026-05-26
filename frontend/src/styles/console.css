@@ -238,6 +238,10 @@ textarea:focus-visible {
   display: none;
 }
 
+.wd-mobile-nav::-webkit-scrollbar {
+  display: none;
+}
+
 .wd-icon-button,
 .wd-update,
 .wd-theme,
@@ -1521,6 +1525,12 @@ html.dark .wd-leaflet-map .leaflet-tile {
   min-width: 0;
 }
 
+.wd-ops-grid > *,
+.wd-ops-workspace > *,
+.wd-card {
+  min-width: 0;
+}
+
 .wd-command-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2542,7 +2552,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
     border-bottom: 1px solid var(--wd-line);
     background: color-mix(in srgb, var(--wd-surface) 96%, transparent);
     backdrop-filter: blur(14px);
-    scrollbar-width: thin;
+    scrollbar-width: none;
   }
 
   .wd-mobile-nav button {
@@ -2759,6 +2769,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-sftp-toolbar button,
   .wd-upload-row button,
   .wd-editor button {
+    flex: 0 0 auto;
     width: 100%;
     min-height: 40px;
   }
@@ -2793,6 +2804,22 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-security-summary,
   .wd-dialog footer {
     grid-template-columns: 1fr;
+  }
+
+  .wd-ops-workspace,
+  .wd-ops-workspace > .wd-card,
+  .wd-log-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .wd-ops-workspace > .wd-card {
+    overflow-x: auto;
+  }
+
+  .wd-inline-code {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .wd-session-title,
