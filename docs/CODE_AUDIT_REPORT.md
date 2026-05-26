@@ -1,6 +1,6 @@
 # Wang-Detective 代码审计与优化报告
 
-审计日期：2026-05-17
+审计日期：2026-05-26
 
 ## 审计结论
 
@@ -12,7 +12,7 @@
 
 | 范围 | 结果 |
 |---|---|
-| Vue 路由 | `/dashboard/home`、`/dashboard/user`、`/dashboard/createTask`、`/dashboard/ociLog`、`/dashboard/sysCfg`、`/dashboard/ai-chat`、`/dashboard/features`、`/dashboard/ops-terminal` 均为原生 Vue 路由 |
+| Vue 路由 | `/dashboard/home`、`/dashboard/user`、`/dashboard/createTask`、`/dashboard/ociLog`、`/dashboard/sysCfg`、`/dashboard/ai-chat`、`/dashboard/features`、`/dashboard/ops-terminal`、`/dashboard/ops-audit`、`/dashboard/risk`、`/dashboard/backups`、`/dashboard/rescue` 均为原生 Vue 路由 |
 | 前端 API 映射 | 当前 Vue 源码使用的 `/api/*` 调用均能匹配后端 Controller |
 | WebSocket | 日志 `/logs`、SSH `/ops/ssh/terminal/{sessionId}`、指标 `/metrics/{token}` 均有后端处理器 |
 | TGBOT 回调 | 静态扫描按钮回调，当前入口均有处理器或明确的 no-op 处理 |
@@ -31,6 +31,8 @@
 8. 增强配置详情：从本地行预览改为调用 `/api/oci/details`，并使用 `cleanReLaunchDetails: true` 强制刷新 OCI 实时详情。
 9. 新增前端 `apiForm` 封装，统一 multipart 表单提交和 token 注入。
 10. 清理本次构建产生的旧 Vue hash 资源，避免生产 dist 中堆积无引用 JS 文件。
+11. 旧静态入口 `/ip-map.html`、`/wang-features.html`、`/ops-terminal.html` 已停止展示旧 UI 或模拟数据，统一跳转新版 Vue 路由。
+12. 远程冒烟脚本补充旧入口迁移、VCN 和安全规则只读检查，用于部署后验证真实线上状态。
 
 ## 功能真实性说明
 
@@ -49,12 +51,11 @@
 
 ## 当前仍需后续专项审计
 
-1. 旧版完整控制台仍保留在 dist 的旧 bundle 中，后续要逐步清理或迁移旧版高级实例操作。
+1. 旧版完整控制台仍保留为 `/legacy-dashboard.html` 降级入口，后续可继续清理无引用静态资源。
 2. Google 一键登录后端能力存在，但新版登录页还未原生接入 Google Identity 流程。
-3. 前端操作审计页尚未完成，当前审计可通过 TGBOT 和 `/api/ops/audit/recent` 查询。
-4. Web SSH 还缺终端 resize、断线重连、会话列表和命令模板。
-5. SFTP 还缺大文件进度、断点/失败重试和更细的危险操作确认。
-6. 本地 Windows 环境缺少 Java 21、Maven 和 Docker，后端 Maven 编译需在 GitHub Actions 或服务器环境继续验证。
+3. SFTP 还缺大文件进度、断点/失败重试和更细的危险操作确认。
+4. 高危 OCI 动作仍需专用测试资源逐项验收，包括终止实例、改安全规则、拆卷救援和恢复回滚。
+5. 本地 Windows 环境缺少 Java 21、Maven 和 Docker，后端 Maven 编译需在 GitHub Actions 或服务器环境继续验证。
 
 ## 验证记录
 
@@ -64,4 +65,4 @@ npm --prefix frontend run build
 
 结果：通过。`vue-tsc --noEmit` 和 Vite 生产构建均成功。
 
-后端静态审计已完成；由于当前本地环境没有 `java`、`mvn`、`docker` 命令，本轮未在本机完成 Maven 编译。后续部署后应优先检查 GitHub Actions 构建、容器启动日志、`/actuator/health`、登录/MFA、配置详情、TGBOT 运维中心和 Web SSH/SFTP。
+后端静态审计已完成；由于当前本地环境没有 `java`、`mvn`、`docker` 命令，本轮未在本机完成 Maven 编译。后续部署后应优先检查 GitHub Actions 构建、容器启动日志、`/actuator/health`、登录/MFA、配置详情、TGBOT 运维中心、Web SSH/SFTP、风险看板和备份恢复。
