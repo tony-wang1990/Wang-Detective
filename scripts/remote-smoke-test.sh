@@ -137,6 +137,7 @@ if [[ -n "$TOKEN" ]]; then
   request "audit-recent" "GET" "/api/ops/audit/recent?limit=5" "" "" || true
   request "audit-search" "GET" "/api/ops/audit/search?limit=5" "" "" || true
   request "audit-export" "GET" "/api/ops/audit/export?limit=5" "" "" || true
+  request "logs-recent" "GET" "/api/v1/logs/recent?limit=20" "" '"lines"[[:space:]]*:' || true
   request "ops-ssh-hosts" "GET" "/api/ops/ssh/hosts" "" "" || true
   request "ops-ssh-sessions" "GET" "/api/ops/ssh/sessions" "" "" || true
   request "ops-templates" "GET" "/api/ops/templates" "" "" || true

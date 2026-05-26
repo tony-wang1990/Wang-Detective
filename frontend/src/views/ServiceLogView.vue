@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FileText, Pause, Play, RefreshCw, Search, Trash2 } from 'lucide-vue-next';
+import { apiGet, notifyGlobal } from '../api/http';
 
 const lines = ref<string[]>([]);
 const status = ref<'idle' | 'connecting' | 'open' | 'closed' | 'error'>('idle');
@@ -10,6 +11,7 @@ const keyword = ref('');
 const level = ref('');
 const lineLimit = ref(500);
 const lastMessageAt = ref('');
+const loadingHistory = ref(false);
 const terminalRef = ref<HTMLElement | null>(null);
 let ws: WebSocket | null = null;
 
@@ -103,9 +105,35 @@ function connect() {
   };
 }
 
-function reconnect() {
+async function loadRecentLogs(announce = false) {
+  loadingHistory.value = true;
+  try {
+    const params = new URLSearchParams({
+      limit: String(lineLimit.value || 500)
+    });
+    if (level.value) params.set('level', level.value);
+    if (keyword.value.trim()) params.set('keyword', keyword.value.trim());
+    const res = await apiGet<{ lines?: string[] }>(`/v1/logs/recent?${params.toString()}`);
+    const history = res.data?.lines || [];
+    lines.value = history;
+    lastMessageAt.value = new Date().toLocaleTimeString();
+    await scrollToBottom();
+    if (announce) {
+      notifyGlobal(history.length ? `已加载最近 ${history.length} 行日志` : '没有读取到匹配的历史日志', 'info');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '读取历史日志失败';
+    lines.value.push(`读取历史日志失败：${message}`);
+    notifyGlobal(message, 'error');
+  } finally {
+    loadingHistory.value = false;
+  }
+}
+
+async function reconnect() {
   lines.value = [];
   paused.value = false;
+  await loadRecentLogs(false);
   connect();
 }
 
@@ -126,7 +154,10 @@ function togglePause() {
   paused.value = !paused.value;
 }
 
-onMounted(connect);
+onMounted(async () => {
+  await loadRecentLogs(false);
+  connect();
+});
 onBeforeUnmount(close);
 </script>
 
@@ -142,7 +173,9 @@ onBeforeUnmount(close);
         <button type="button" class="ghost" @click="togglePause">
           <Pause :size="16" />{{ paused ? '继续' : '暂停' }}
         </button>
-        <button type="button" class="ghost" @click="reconnect"><RefreshCw :size="16" />重载历史</button>
+        <button type="button" class="ghost" :disabled="loadingHistory" @click="reconnect">
+          <RefreshCw :size="16" :class="{ spinning: loadingHistory }" />{{ loadingHistory ? '加载中' : '重载历史' }}
+        </button>
         <button type="button" class="danger" @click="clear"><Trash2 :size="16" />清空</button>
       </div>
     </div>
@@ -174,13 +207,13 @@ onBeforeUnmount(close);
             <Search :size="15" />
             <input v-model="keyword" placeholder="搜索日志内容..." />
           </label>
-          <select v-model="level">
+          <select v-model="level" @change="loadRecentLogs(true)">
             <option value="">全部级别</option>
             <option value="INFO">INFO</option>
             <option value="WARN">WARN</option>
             <option value="ERROR">ERROR</option>
           </select>
-          <select v-model.number="lineLimit" @change="trimLines">
+          <select v-model.number="lineLimit" @change="loadRecentLogs(true)">
             <option :value="200">保留 200 行</option>
             <option :value="500">保留 500 行</option>
             <option :value="1000">保留 1000 行</option>

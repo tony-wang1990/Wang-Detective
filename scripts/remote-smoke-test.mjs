@@ -242,6 +242,7 @@ async function main() {
     await check('audit-recent', 'GET', '/api/ops/audit/recent?limit=5', undefined, (payload) => Array.isArray(envelopeData(payload)));
     await check('audit-search', 'GET', '/api/ops/audit/search?limit=5', undefined, (payload) => Array.isArray(envelopeData(payload)));
     await check('audit-export', 'GET', '/api/ops/audit/export?limit=5', undefined, (payload) => typeof payload === 'string');
+    await check('logs-recent', 'GET', '/api/v1/logs/recent?limit=20', undefined, (payload) => Array.isArray(envelopeData(payload)?.lines));
     await check('ops-ssh-hosts', 'GET', '/api/ops/ssh/hosts', undefined, (payload) => Array.isArray(envelopeData(payload)));
     await check('ops-ssh-sessions', 'GET', '/api/ops/ssh/sessions', undefined, (payload) => Array.isArray(envelopeData(payload)));
     await check('ops-templates', 'GET', '/api/ops/templates', undefined, (payload) => Array.isArray(envelopeData(payload)));
