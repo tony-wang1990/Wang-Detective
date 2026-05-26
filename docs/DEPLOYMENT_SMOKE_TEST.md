@@ -38,6 +38,65 @@ APP_DIR=/app/king-detective BASE_URL=http://127.0.0.1:9527 bash scripts/server-s
 OCI_CFG_ID=1 bash scripts/server-smoke-test.sh
 ```
 
+## 远程线上验收
+
+如果要从服务器或另一台机器验证公网域名、反向代理、Cloudflare 和后端 API 是否整体可用，使用远程验收脚本：
+
+```bash
+cd /app/king-detective
+bash scripts/remote-smoke-test.sh https://your-domain.example admin 'your-password'
+```
+
+脚本也支持环境变量，避免密码进入 shell 历史：
+
+```bash
+cd /app/king-detective
+WANG_DETECTIVE_BASE_URL=https://your-domain.example \
+WANG_DETECTIVE_USERNAME=admin \
+WANG_DETECTIVE_PASSWORD='your-password' \
+bash scripts/remote-smoke-test.sh
+```
+
+当前远程脚本会检查 14 个安全读接口：
+
+| 检查项 | 说明 |
+| --- | --- |
+| `health` | `/actuator/health` 必须返回 `UP` |
+| `login` | 使用真实账号登录并提取 Bearer token |
+| `diagnostics` | 系统诊断接口返回检查项 |
+| `version-info` | 版本检查接口返回当前版本 |
+| `glance` | 首页资源概览接口可访问 |
+| `oci-user-page` | OCI 配置分页可访问 |
+| `task-page` | 任务分页可访问 |
+| `audit-recent` | 最近操作审计可访问 |
+| `backup-local` | 本地备份列表可访问 |
+| `rescue-overview` | 救援中心概览可访问 |
+| `oci-risk` | 风险看板接口可访问，并返回风险配置结构 |
+| `vcn-page` | 根据第一个 OCI 配置读取 VCN 分页 |
+| `security-rules-ingress` | 根据第一个 VCN 读取入站安全规则 |
+| `security-rules-egress` | 根据第一个 VCN 读取出站安全规则 |
+
+如果服务器安装了 Node 20+，也可以使用 JS 版。JS 版默认 `--transport auto`，当 Node fetch 直连 Cloudflare 超时时会自动回退到 `curl`：
+
+```bash
+node scripts/remote-smoke-test.mjs \
+  --base https://your-domain.example \
+  --username admin \
+  --password 'your-password' \
+  --timeout 60000
+```
+
+也可以强制使用 curl：
+
+```bash
+node scripts/remote-smoke-test.mjs \
+  --base https://your-domain.example \
+  --username admin \
+  --password 'your-password' \
+  --transport curl \
+  --timeout 60000
+```
+
 ## 脚本检查内容
 
 | 检查项 | 说明 |
@@ -115,6 +174,24 @@ ls -l /app/king-detective/runtime/watcher_heartbeat
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/scripts/install.sh)
 ```
+
+### 公网 IP 正常但域名 504
+
+如果 `http://服务器IP:9527/actuator/health` 正常，但 `https://域名/actuator/health` 返回 502/504，说明应用本身大概率已经启动，问题通常在 Nginx Proxy Manager、Cloudflare 或源站回源链路：
+
+```bash
+curl -i http://127.0.0.1:9527/actuator/health
+curl -i http://服务器IP:9527/actuator/health
+curl -i https://你的域名/actuator/health
+docker logs --tail 100 npm_app
+```
+
+重点检查：
+
+- Nginx Proxy Manager 的 Forward Host/IP 是否指向服务器内网或公网可达地址。
+- Forward Port 是否为 `9527`。
+- Cloudflare 是否启用了代理，以及 DNS 记录是否指向当前服务器 IP。
+- 防火墙或安全组是否放行 80/443 和 9527。
 
 ### Telegram 已配置但仍提示未配置
 

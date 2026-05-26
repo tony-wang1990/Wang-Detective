@@ -10,6 +10,8 @@
 | --- | --- | --- |
 | `scripts/install.sh` | 一键安装/刷新 compose、配置和运维脚本 | 会创建/更新部署文件，不覆盖 `.env` |
 | `scripts/server-smoke-test.sh` | 部署后体检，检查容器、登录、健康、watcher、关键 API | 只读 |
+| `scripts/remote-smoke-test.sh` | 公网/域名远程验收，检查健康、登录、诊断、风险、VCN 和安全规则读接口 | 只读 |
+| `scripts/remote-smoke-test.mjs` | Node 版远程验收，支持 fetch/curl 自动回退 | 只读 |
 | `scripts/backup.sh` | 备份 `.env`、配置、数据库、keys、scripts | 只创建备份 |
 | `scripts/restore.sh` | 从备份恢复配置、数据库、keys、scripts | 会覆盖当前部署文件 |
 | `scripts/update.sh` | 手动拉取镜像并重建服务 | 会重建容器 |
@@ -215,6 +217,33 @@ bash scripts/verify-release.sh
 - `mvn -DskipTests package`
 
 如果环境没有 `npm` 或 `mvn`，会提示跳过，不会伪造验证结果。
+
+## 远程线上验收
+
+部署完成并确认公网或域名可访问后，执行：
+
+```bash
+cd /app/king-detective
+bash scripts/remote-smoke-test.sh https://your-domain.example admin 'your-password'
+```
+
+这条命令只做安全读检查，不会启动、停止、删除或修改 OCI 资源。当前覆盖：
+
+- 健康检查、登录、系统诊断、版本信息。
+- 首页概览、OCI 配置分页、任务分页、最近审计。
+- 本地备份、救援中心、风险看板。
+- VCN 分页和入站/出站安全规则只读明细。
+
+本机有 Node 20+ 时可使用 JS 版；默认会在 `fetch` 不稳定时自动回退到 `curl`：
+
+```bash
+node scripts/remote-smoke-test.mjs \
+  --base https://your-domain.example \
+  --username admin \
+  --password 'your-password' \
+  --transport auto \
+  --timeout 60000
+```
 
 ## 后续脚本方向
 
