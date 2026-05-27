@@ -49,6 +49,29 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function findBash() {
+  const candidates = ['bash'];
+  if (process.platform === 'win32') {
+    candidates.push(
+      'C:\\Program Files\\Git\\bin\\bash.exe',
+      'C:\\Program Files\\Git\\usr\\bin\\bash.exe'
+    );
+  }
+
+  for (const candidate of candidates) {
+    const result = spawnSync(candidate, ['--version'], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    });
+    if (!result.error && result.status === 0) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 check('acceptance matrix exists and covers current routes', () => {
   const matrixPath = 'docs/ACCEPTANCE_MATRIX.md';
   assert(fs.existsSync(file(matrixPath)), `${matrixPath} is missing`);
@@ -88,12 +111,8 @@ check('shell scripts use LF line endings', () => {
 });
 
 check('shell scripts parse with bash when available', () => {
-  const bashVersion = spawnSync('bash', ['--version'], {
-    cwd: root,
-    encoding: 'utf8',
-    stdio: 'pipe'
-  });
-  if (bashVersion.error) {
+  const bashPath = findBash();
+  if (!bashPath) {
     console.log('SKIP bash is not available in this environment');
     return;
   }
@@ -101,7 +120,7 @@ check('shell scripts parse with bash when available', () => {
   const scripts = walk('scripts', (full) => full.endsWith('.sh'));
   const bad = [];
   for (const script of scripts) {
-    const result = spawnSync('bash', ['-n', script], {
+    const result = spawnSync(bashPath, ['-n', script], {
       cwd: root,
       encoding: 'utf8',
       stdio: 'pipe'
