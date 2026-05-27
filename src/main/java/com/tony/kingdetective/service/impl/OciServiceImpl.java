@@ -1024,10 +1024,10 @@ public class OciServiceImpl implements IOciService {
 
             if (dieCounts > 0) {
                 stopAndRemoveTask(sysUserDTO, createTaskService);
-                log.error("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机数量:[{}] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号已封禁\uD83D\uDC7B),请自行登录官方控制台检查。",
+                log.error("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机数量:[{}] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号异常或受限),请自行登录官方控制台检查。",
                         sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(),
                         sysUserDTO.getArchitecture(), sysUserDTO.getCreateNumbers());
-                sysService.sendMessage(String.format("【开机任务】用户:[%s],区域:[%s],系统架构:[%s],开机数量:[%s] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号已封禁\uD83D\uDC7B),请自行登录官方控制台检查。",
+                sysService.sendMessage(String.format("【开机任务】用户:[%s],区域:[%s],系统架构:[%s],开机数量:[%s] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号异常或受限),请自行登录官方控制台检查。",
                         sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(),
                         sysUserDTO.getArchitecture(), sysUserDTO.getCreateNumbers()));
             }
@@ -1112,10 +1112,10 @@ public class OciServiceImpl implements IOciService {
                 BmcException error = (BmcException) e;
                 if (error.getStatusCode() == 401 || error.getMessage().contains(ErrorEnum.NOT_AUTHENTICATED.getErrorType())) {
                     stopAndRemoveTask(sysUserDTO, createTaskService);
-                    log.error("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机数量:[{}] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号已封禁\uD83D\uDC7B),请自行登录官方控制台检查。",
+                    log.error("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机数量:[{}] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号异常或受限),请自行登录官方控制台检查。",
                             sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(),
                             sysUserDTO.getArchitecture(), sysUserDTO.getCreateNumbers());
-                    sysService.sendMessage(String.format("【开机任务】用户:[%s],区域:[%s],系统架构:[%s],开机数量:[%s] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号已封禁\uD83D\uDC7B),请自行登录官方控制台检查。",
+                    sysService.sendMessage(String.format("【开机任务】用户:[%s],区域:[%s],系统架构:[%s],开机数量:[%s] 开机失败,可能的原因:(新生成的API暂未生效|账号已无权|账号异常或受限),请自行登录官方控制台检查。",
                             sysUserDTO.getUsername(), sysUserDTO.getOciCfg().getRegion(),
                             sysUserDTO.getArchitecture(), sysUserDTO.getCreateNumbers()));
                 }

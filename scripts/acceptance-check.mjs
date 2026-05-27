@@ -159,6 +159,18 @@ check('key text files do not contain common mojibake markers', () => {
   assert(!bad.length, `common mojibake marker found in: ${bad.join(', ')}`);
 });
 
+check('user-visible failure copy stays professional', () => {
+  const targets = [
+    ...walk('src/main/java', (full) => full.endsWith('.java')),
+    ...walk('frontend/src', (full) => full.endsWith('.vue') || full.endsWith('.ts'))
+  ];
+  const blocked = ['账号已封禁\\uD83D\\uDC7B', '\\uD83D\\uDC7B'];
+  const bad = targets
+    .filter((target) => blocked.some((marker) => fs.readFileSync(target, 'utf8').includes(marker)))
+    .map(rel);
+  assert(!bad.length, `unprofessional failure markers found in: ${bad.join(', ')}`);
+});
+
 check('README local links and images exist', () => {
   const readme = read('README.md');
   const links = [...readme.matchAll(/!?\[[^\]]*]\(([^)]+)\)/g)]

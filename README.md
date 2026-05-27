@@ -110,6 +110,7 @@ docker compose up -d --force-recreate
 - 本地 acceptance 已增加 README 本地链接和截图断链检查，避免首页展示图或文档索引失效。
 - 本地 acceptance 已增加排障支持包守卫，要求敏感配置/日志脱敏、tar 可读校验和 600 权限保护。
 - 本地 acceptance 在 Windows 环境会自动寻找 Git Bash，脚本语法检查不再轻易跳过。
+- 开机任务 401 失败通知文案已清理为“账号异常或受限”，避免日志和通知里出现不专业的异常提示。
 - README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
 
 ## 已完成能力

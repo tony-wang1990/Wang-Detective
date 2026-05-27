@@ -277,7 +277,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
                             return instanceDetailDTO;
                         } else if (error.getStatusCode() == 401 || error.getMessage().contains(ErrorEnum.NOT_AUTHENTICATED.getErrorType())) {
                             instanceDetailDTO.setDie(true);
-                            log.error("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机失败,可能的原因：(新生成的API暂未生效|账号已无权|账号已封禁\uD83D\uDC7B)",
+                            log.error("【开机任务】用户:[{}],区域:[{}],系统架构:[{}],开机失败,可能的原因：(新生成的API暂未生效|账号已无权|账号异常或受限)",
                                     user.getUsername(), user.getOciCfg().getRegion(), user.getArchitecture());
                             return instanceDetailDTO;
                         } else {
