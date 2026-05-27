@@ -197,9 +197,10 @@ for script_name in \
     rollback.sh \
     support-bundle.sh \
     maintenance.sh \
-    setup-backup-cron.sh \
-    verify-release.sh \
-    remote-smoke-test.sh
+	    setup-backup-cron.sh \
+	    verify-release.sh \
+	    remote-smoke-test.sh \
+	    remote-smoke-test.mjs
 do
     download_script "$script_name"
 done

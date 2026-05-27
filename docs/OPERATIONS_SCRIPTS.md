@@ -30,6 +30,8 @@
 /app/king-detective/scripts/
 ```
 
+同步内容包括安装后体检、备份恢复、更新回滚、支持包、统一维护入口，以及 shell/Node 两版远程 smoke 脚本。
+
 因此部署后可以直接执行：
 
 ```bash
