@@ -181,6 +181,17 @@ check('remote smoke test script parses', () => {
   assert(result.status === 0, `remote-smoke-test syntax check exited ${result.status}`);
 });
 
+check('telegram callback buttons map to handlers', () => {
+  const result = spawnSync(process.execPath, ['scripts/verify-telegram-callbacks.mjs'], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: 'pipe'
+  });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  assert(result.status === 0, `verify-telegram-callbacks exited ${result.status}`);
+});
+
 check('shell remote smoke uses safe temp file names', () => {
   const script = read('scripts/remote-smoke-test.sh');
   assert(script.includes('safe_name='), 'scripts/remote-smoke-test.sh must sanitize check names before using them as temp filenames');

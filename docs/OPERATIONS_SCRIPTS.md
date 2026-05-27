@@ -246,6 +246,11 @@ bash scripts/verify-release.sh
 
 - `git diff --check`
 - `bash -n scripts/*.sh`
+- shell 脚本 CR 字节检查
+- 前端原生 `alert/confirm/prompt` 检查
+- 前端 API 到后端 Controller 映射检查
+- Telegram Bot 按钮 callback 到处理器映射检查
+- `scripts/acceptance-check.mjs`
 - `npm --prefix frontend run build`
 - `mvn -DskipTests package`
 
