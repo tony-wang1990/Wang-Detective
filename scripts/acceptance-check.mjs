@@ -104,6 +104,19 @@ check('frontend route components exist', () => {
   assert(!missing.length, `missing route components: ${missing.map(rel).join(', ')}`);
 });
 
+check('dashboard navigation points to real routes', () => {
+  const router = read('frontend/src/router/index.ts');
+  const layout = read('frontend/src/layout/DashboardLayout.vue');
+  const childRoutes = [...router.matchAll(/\{\s*path:\s*'([^']+)'/g)]
+    .map((match) => match[1])
+    .filter((route) => route && !route.includes(':') && !route.startsWith('/'))
+    .map((route) => `/dashboard/${route}`);
+  const knownRoutes = new Set(['/login', '/dashboard', ...childRoutes]);
+  const navPaths = [...layout.matchAll(/path:\s*'([^']+)'/g)].map((match) => match[1]);
+  const missing = navPaths.filter((route) => !knownRoutes.has(route));
+  assert(!missing.length, `dashboard nav paths missing from router: ${missing.join(', ')}`);
+});
+
 check('shell scripts use LF line endings', () => {
   const scripts = walk('scripts', (full) => full.endsWith('.sh'));
   const cr = scripts.filter((script) => fs.readFileSync(script, 'utf8').includes('\r')).map(rel);
