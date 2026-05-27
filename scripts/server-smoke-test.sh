@@ -199,6 +199,28 @@ for script_name in $EXPECTED_SCRIPTS; do
     fi
 done
 
+EXPECTED_NODE_HELPERS="
+remote-smoke-test.mjs
+"
+
+for helper_name in $EXPECTED_NODE_HELPERS; do
+    helper_path="scripts/${helper_name}"
+    if [ -f "$helper_path" ]; then
+        pass "Node 辅助脚本存在: $helper_path"
+        if command -v node >/dev/null 2>&1; then
+            if node --check "$helper_path" >/dev/null 2>&1; then
+                pass "Node 辅助脚本语法通过: $helper_path"
+            else
+                fail "Node 辅助脚本语法失败: $helper_path"
+            fi
+        else
+            warn "node 不可用，已跳过 Node 辅助脚本语法检查: $helper_path"
+        fi
+    else
+        warn "Node 辅助脚本缺失: $helper_path，服务器仍可使用 shell 版远程 smoke"
+    fi
+done
+
 if [ -f src/main/resources/dist/index.html ] || [ -f dist/index.html ]; then
     pass "前端生产入口存在"
 else

@@ -105,6 +105,7 @@ docker compose up -d --force-recreate
 - 新增 `scripts/verify-telegram-callbacks.mjs`，自动检查 Telegram 按钮 callback 是否能匹配到处理器，避免菜单按钮失效。
 - 服务器体检脚本的 CR 字节检查改为 `od` 字节级判断，避免不同 grep 环境下把正常 LF 脚本误报为 CRLF。
 - 一键安装脚本同步运维脚本时会同时下发 shell 版和 Node 版远程 smoke，方便服务器有 Node 时使用自动 fetch/curl 回退版本。
+- 服务器体检脚本会检查 Node 版远程 smoke 是否同步；服务器没有 Node 时会提示跳过语法检查，不影响 shell 版验收。
 - README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
 
 ## 已完成能力
