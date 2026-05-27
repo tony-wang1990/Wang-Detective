@@ -26,7 +26,7 @@
 | Telegram Bot | 88% | 运维中心、诊断、任务、日志、风险、备份、版本、实例向导全菜单可用；静态回调映射无缺口 | Bot 菜单逐项点击 + 日志检查 + `verify-telegram-callbacks.mjs` | 进行中 |
 | 备份恢复 | 92% | 本地备份、恢复计划、定时备份、Bucket 为空、Object Storage 边界提示全部稳定 | Web + 脚本 + 测试备份包 + 只读接口 smoke | 进行中 |
 | 救援中心 | 72% | 当前定义为安全向导、脚本入口、风险提示 100%；高危自动救援继续保留实验区 | Web 页面 + 文档边界 + 只读接口 smoke + 专用机型测试 | 进行中 |
-| CI/测试 | 85% | 发布前能发现构建、脚本换行、脚本语法、API 映射、Telegram 回调映射、生产包资产、路由验收遗漏、乱码标记、原生弹窗、README 断链、恢复保护缺失和 smoke 临时文件命名回归 | `verify-release.sh` + `acceptance-check.mjs` + `remote-smoke-test` | 进行中 |
+| CI/测试 | 86% | 发布前能发现构建、脚本换行、脚本语法、API 映射、Telegram 回调映射、生产包资产、路由验收遗漏、乱码标记、原生弹窗、README 断链、排障包脱敏、恢复保护缺失和 smoke 临时文件命名回归 | `verify-release.sh` + `acceptance-check.mjs` + `remote-smoke-test` | 进行中 |
 
 ## Web 路由验收矩阵
 
@@ -84,7 +84,7 @@
 | `scripts/remote-smoke-test.mjs` | Windows/Node 环境可跑，curl 回退，40 项页面和只读接口验收 | 已验收一期 |
 | `scripts/backup.sh` | 备份 data/keys/logs/config/scripts，生成 sha256，并校验 tar/payload/meta | 待复验 |
 | `scripts/restore.sh` | 恢复前确认、备份包校验、sha256 校验、`RESTORE_VERIFY_ONLY=1` 只校验模式、维护入口 `verify-backup`、失败保护 | 待专用环境验收 |
-| `scripts/support-bundle.sh` | 生成排障包、脱敏配置和日志尾部，并校验 tar 可读 | 待复验 |
+| `scripts/support-bundle.sh` | 生成排障包、脱敏配置和日志尾部，并校验 tar 可读 | 静态守卫已接入，待服务器复验 |
 | `scripts/verify-release.sh` | 发布前静态检查、乱码/原生弹窗检查、前端构建、Maven 构建、验收检查；Docker 和自动 Release 工作流均已接入 | 进行中 |
 
 ## 当前第一阶段执行清单

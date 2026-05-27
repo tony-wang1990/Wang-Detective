@@ -226,6 +226,7 @@ check('maintenance scripts expose recovery guardrails', () => {
   const update = read('scripts/update.sh');
   const verifyRelease = read('scripts/verify-release.sh');
   const rollback = read('scripts/rollback.sh');
+  const supportBundle = read('scripts/support-bundle.sh');
 
   assert(!/tar -tzf "\$BACKUP_FILE"\s*\|\s*grep -q/.test(backup), 'backup.sh should not use tar | grep -q with pipefail');
   assert(!/tar -tzf "\$BACKUP_FILE"\s*\|\s*grep -q/.test(restore), 'restore.sh should not use tar | grep -q with pipefail');
@@ -236,6 +237,11 @@ check('maintenance scripts expose recovery guardrails', () => {
   assert(update.includes('runtime/last_successful_update'), 'update.sh must record successful update metadata');
   assert(rollback.includes('runtime/last_image_before_rollback'), 'rollback.sh must record pre-rollback metadata');
   assert(rollback.includes('RUN_SMOKE_AFTER_ROLLBACK'), 'rollback.sh must support optional post-rollback smoke test');
+  assert(supportBundle.includes('redact_stream'), 'support-bundle.sh must redact sensitive output');
+  assert(supportBundle.includes('ADMIN_PASSWORD=') && supportBundle.includes('TELEGRAM[^=]*TOKEN='), 'support-bundle.sh must redact common credential keys');
+  assert(supportBundle.includes('docker logs --tail') && supportBundle.includes('redact_stream'), 'support-bundle.sh must redact collected logs');
+  assert(supportBundle.includes('tar -tzf "$BUNDLE_FILE"'), 'support-bundle.sh must verify generated tar bundle');
+  assert(supportBundle.includes('chmod 600 "$BUNDLE_FILE"'), 'support-bundle.sh must restrict support bundle permissions');
 });
 
 if (failures.length) {
