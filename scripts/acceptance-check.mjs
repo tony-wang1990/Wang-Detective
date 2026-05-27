@@ -340,6 +340,7 @@ check('maintenance scripts expose recovery guardrails', () => {
   assert(rollback.includes('RUN_SMOKE_AFTER_ROLLBACK'), 'rollback.sh must support optional post-rollback smoke test');
   assert(supportBundle.includes('redact_stream'), 'support-bundle.sh must redact sensitive output');
   assert(supportBundle.includes('ADMIN_PASSWORD=') && supportBundle.includes('TELEGRAM[^=]*TOKEN='), 'support-bundle.sh must redact common credential keys');
+  assert(supportBundle.includes('TELEGRAM[^=]*CHAT_ID=') && supportBundle.includes('TG_CHAT_ID='), 'support-bundle.sh must redact Telegram chat identifiers');
   assert(supportBundle.includes('docker logs --tail') && supportBundle.includes('redact_stream'), 'support-bundle.sh must redact collected logs');
   assert(supportBundle.includes('tar -tzf "$BUNDLE_FILE"'), 'support-bundle.sh must verify generated tar bundle');
   assert(supportBundle.includes('chmod 600 "$BUNDLE_FILE"'), 'support-bundle.sh must restrict support bundle permissions');

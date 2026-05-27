@@ -59,7 +59,7 @@ docker compose up -d --force-recreate
 | Telegram Bot | 88% | 运维中心、诊断、任务、日志、风险、备份、版本更新、实例操作向导、多 Chat ID 和实例状态推送已接入；按钮回调到处理器的静态映射已纳入验收 |
 | 备份恢复 | 92% | Web 备份统一为 `backup.sh` 的 tar.gz 格式，定时自动备份和恢复计划已接入，Bucket 为空时自动退回本地备份；本地备份和计划接口已纳入线上 smoke；备份包创建后会立即校验 tar 和核心目录；恢复脚本和维护入口均支持只校验不覆盖 |
 | 救援中心 | 72% | 轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线；概览、轻量自救脚本和 netboot 脚本只读接口已通过线上 smoke |
-| CI/测试 | 89% | GitHub Actions 已包含 Java 21、Node 20、前端构建、Maven 构建、脚本换行/语法、前端导航路由、前后端接口映射、Telegram 回调映射、乱码/原生弹窗扫描、README 断链检查、排障包脱敏守卫和远程 smoke 覆盖守卫；Windows 本地 acceptance 会自动识别 Git Bash；自动 Release 创建前也会跑发布验证 |
+| CI/测试 | 90% | GitHub Actions 已包含 Java 21、Node 20、前端构建、Maven 构建、脚本换行/语法、前端导航路由、前后端接口映射、Telegram 回调映射、乱码/原生弹窗扫描、README 断链检查、排障包脱敏守卫和远程 smoke 覆盖守卫；Windows 本地 acceptance 会自动识别 Git Bash；自动 Release 创建前也会跑发布验证 |
 
 ## 最近完成
 
@@ -114,6 +114,7 @@ docker compose up -d --force-recreate
 - 本地 acceptance 已增加 shell/Node 两版远程 smoke 覆盖守卫，防止后续只改一边导致线上验收缺项。
 - 服务器体检脚本会比对 `/actuator/health` 版本和运行镜像提交，辅助排查镜像更新后版本不一致问题。
 - 本地 acceptance 已增加前端侧边栏导航到 Vue Router 的一致性检查，避免菜单入口失效。
+- 排障支持包脱敏范围扩展到 Telegram Chat ID，降低分享支持包时暴露个人标识的风险。
 - README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
 
 ## 已完成能力

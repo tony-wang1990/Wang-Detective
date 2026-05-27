@@ -39,6 +39,8 @@ redact_stream() {
         -e 's#(WEB_PASSWORD=)[^",[:space:]]+#\1***REDACTED***#g' \
         -e 's#(OPS_SSH_SECRET_KEY=)[^",[:space:]]+#\1***REDACTED***#g' \
         -e 's#(TELEGRAM[^=]*TOKEN=)[^",[:space:]]+#\1***REDACTED***#g' \
+        -e 's#(TELEGRAM[^=]*CHAT_ID=)[^",[:space:]]+#\1***REDACTED***#g' \
+        -e 's#(TG_CHAT_ID=)[^",[:space:]]+#\1***REDACTED***#g' \
         -e 's#(BOT_TOKEN=)[^",[:space:]]+#\1***REDACTED***#g' \
         -e 's#(OPENAI_API_KEY=)[^",[:space:]]+#\1***REDACTED***#g' \
         -e 's#([Tt]oken[" ]*[:=][" ]*)[^",[:space:]]+#\1***REDACTED***#g' \
