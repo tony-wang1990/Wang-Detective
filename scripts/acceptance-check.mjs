@@ -83,8 +83,8 @@ check('frontend route components exist', () => {
 
 check('shell scripts use LF line endings', () => {
   const scripts = walk('scripts', (full) => full.endsWith('.sh'));
-  const crlf = scripts.filter((script) => fs.readFileSync(script, 'utf8').includes('\r\n')).map(rel);
-  assert(!crlf.length, `CRLF found in shell scripts: ${crlf.join(', ')}`);
+  const cr = scripts.filter((script) => fs.readFileSync(script, 'utf8').includes('\r')).map(rel);
+  assert(!cr.length, `CR bytes found in shell scripts: ${cr.join(', ')}`);
 });
 
 check('shell scripts parse with bash when available', () => {

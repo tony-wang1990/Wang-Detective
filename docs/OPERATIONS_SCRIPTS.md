@@ -251,6 +251,8 @@ bash scripts/verify-release.sh
 
 如果环境没有 `npm` 或 `mvn`，会提示跳过，不会伪造验证结果。
 
+GitHub Actions 中 Docker 镜像构建和自动 Release 都会先执行该脚本；验证失败时不会继续发镜像或创建 Release。
+
 ## 远程线上验收
 
 部署完成并确认公网或域名可访问后，执行：

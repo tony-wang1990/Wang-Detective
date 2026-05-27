@@ -95,6 +95,8 @@ const editorContent = ref('');
 const newDirName = ref('');
 const renameTarget = ref('');
 const deleteConfirm = ref('');
+const hostDeleteConfirmId = ref('');
+const hostDeleteConfirmLabel = ref('');
 const uploadTargetPath = ref('');
 const uploadFileInput = ref<HTMLInputElement | null>(null);
 const transfer = reactive({
@@ -257,6 +259,7 @@ function chooseEntry(entry: SftpEntry) {
 }
 
 function fillHost(host: Host) {
+  clearHostDeleteConfirm();
   selectedHostId.value = host.id || '';
   form.name = host.name || '';
   form.tags = host.tags || '';
@@ -390,6 +393,7 @@ async function saveHost() {
 }
 
 function newHostForm() {
+  clearHostDeleteConfirm();
   selectedHostId.value = '';
   form.name = '';
   form.tags = '';
@@ -424,20 +428,32 @@ function duplicateSelectedHost() {
   status.value = '已复制主机基本信息，请补充密码或私钥后保存';
 }
 
-async function deleteSelectedHost() {
+function clearHostDeleteConfirm() {
+  hostDeleteConfirmId.value = '';
+  hostDeleteConfirmLabel.value = '';
+}
+
+function requestDeleteSelectedHost() {
   const host = currentHost.value;
   if (!selectedHostId.value || !host) {
     status.value = '请先选择要删除的主机';
     return;
   }
   const label = host.name || host.host || selectedHostId.value;
-  if (!window.confirm(`确认删除 SSH 主机：${label}？`)) {
-    status.value = '已取消删除';
+  hostDeleteConfirmId.value = selectedHostId.value;
+  hostDeleteConfirmLabel.value = label;
+  status.value = `请确认删除 SSH 主机：${label}`;
+}
+
+async function confirmDeleteSelectedHost() {
+  if (!hostDeleteConfirmId.value) {
+    status.value = '请先点击删除并确认主机';
     return;
   }
   status.value = '删除主机中';
   try {
-    await opsDelete(`/ssh/hosts/${selectedHostId.value}`);
+    await opsDelete(`/ssh/hosts/${hostDeleteConfirmId.value}`);
+    clearHostDeleteConfirm();
     newHostForm();
     await loadHosts();
     status.value = '主机已删除';
@@ -1000,7 +1016,15 @@ onBeforeUnmount(() => {
             <button type="button" class="ghost" :disabled="!selectedHostId" @click="duplicateSelectedHost"><Copy :size="16" />复制</button>
             <button type="button" @click="saveHost"><Save :size="16" />保存</button>
             <button type="button" @click="createSession"><Terminal :size="16" />Web SSH</button>
-            <button type="button" class="danger-soft" :disabled="!selectedHostId" @click="deleteSelectedHost"><Trash2 :size="16" />删除</button>
+            <button type="button" class="danger-soft" :disabled="!selectedHostId" @click="requestDeleteSelectedHost"><Trash2 :size="16" />删除</button>
+          </div>
+          <div v-if="hostDeleteConfirmId" class="wd-inline-confirm">
+            <div>
+              <strong>确认删除 SSH 主机</strong>
+              <span>{{ hostDeleteConfirmLabel }}</span>
+            </div>
+            <button type="button" class="danger-soft" @click="confirmDeleteSelectedHost">确认删除</button>
+            <button type="button" class="ghost" @click="clearHostDeleteConfirm">取消</button>
           </div>
           <details class="wd-import-box">
             <summary>批量导入主机</summary>

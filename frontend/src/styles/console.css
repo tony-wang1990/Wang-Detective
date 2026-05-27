@@ -1785,6 +1785,33 @@ html.dark .wd-leaflet-map .leaflet-tile {
   outline: 0;
 }
 
+.wd-inline-confirm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--wd-danger) 34%, var(--wd-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wd-danger) 8%, var(--wd-surface));
+}
+
+.wd-inline-confirm div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.wd-inline-confirm strong {
+  font-size: 13px;
+}
+
+.wd-inline-confirm span {
+  color: var(--wd-muted);
+  font-size: 12px;
+  word-break: break-all;
+}
+
 .wd-inline-field,
 .wd-upload-row {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2773,6 +2800,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-template-bar button,
   .wd-template-save button,
   .wd-sftp-toolbar button,
+  .wd-inline-confirm button,
   .wd-upload-row button,
   .wd-editor button {
     flex: 0 0 auto;
@@ -2805,6 +2833,7 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-template-save,
   .wd-sftp-toolbar,
   .wd-danger-confirm,
+  .wd-inline-confirm,
   .wd-inline-field,
   .wd-upload-row,
   .wd-security-summary,

@@ -37,10 +37,18 @@ if command -v bash >/dev/null 2>&1; then
     done
 fi
 
-if command -v grep >/dev/null 2>&1; then
-    crlf_files="$(grep -Il $'\r' scripts/*.sh 2>/dev/null || true)"
+if command -v od >/dev/null 2>&1; then
+    crlf_files=""
+    for script in scripts/*.sh; do
+        [ -f "$script" ] || continue
+        hex_bytes="$(od -An -t x1 "$script")"
+        case " $hex_bytes " in
+            *" 0d "*) crlf_files="${crlf_files}${script}
+" ;;
+        esac
+    done
     if [ -n "$crlf_files" ]; then
-        printf '%s\n' "$crlf_files"
+        printf '%s' "$crlf_files"
         echo "脚本包含 CRLF 换行，请先转换为 LF"
         exit 1
     fi
