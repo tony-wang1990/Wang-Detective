@@ -19,7 +19,7 @@
 
 | 模块 | 当前完成度 | 100% 收口条件 | 验收方式 | 状态 |
 | --- | ---: | --- | --- | --- |
-| 部署与更新 | 94% | 全新安装、重复安装、更新、回滚、watcher、一键更新、低配 JVM 全部通过 | `install.sh`、`update.sh`、`rollback.sh`、`server-smoke-test.sh` | 进行中 |
+| 部署与更新 | 95% | 全新安装、重复安装、更新、回滚、watcher、一键更新、低配 JVM、健康版本和镜像提交比对全部通过 | `install.sh`、`update.sh`、`rollback.sh`、`server-smoke-test.sh` | 进行中 |
 | Vue 新前端 | 93% | 全路由桌面/手机/明暗主题无明显溢出，按钮和表格交互自然 | 浏览器真实验收 + `npm --prefix frontend run build` + 远程路由 smoke | 进行中 |
 | OCI 核心管理 | 85% | 配置、任务、实例、VCN、安全规则、引导卷、换 IP、开停机都有真实返回和错误提示 | 线上非破坏性验收 + 专用资源高危验收 | 进行中 |
 | Web SSH/SFTP | 89% | 主机库、连接测试、Web SSH、resize、重连、会话列表、SFTP 文件操作闭环 | Web 页面实测 + 操作审计检查 + 只读接口 smoke | 进行中 |
@@ -79,7 +79,7 @@
 | `scripts/install.sh` | 全新安装、重复安装、同步脚本、保留 `.env`、健康等待 | 已验收一期 |
 | `scripts/update.sh` | 拉取镜像、重启、保留数据、健康等待、成功状态留痕、可选体检 | 待复验 |
 | `scripts/rollback.sh` | 指定镜像回滚、更新前镜像自动读取、回滚前后状态留痕、健康检查、可选体检 | 待复验 |
-| `scripts/server-smoke-test.sh` | 容器、健康、日志、脚本语法、最近日志接口、资源、域名提示 | 待复验 |
+| `scripts/server-smoke-test.sh` | 容器、健康、版本与镜像提交比对、日志、脚本语法、最近日志接口、资源、域名提示 | 待服务器复验 |
 | `scripts/remote-smoke-test.sh` | 无 Node 环境可跑，40 项页面和只读接口验收；路由名会安全转换为临时文件名 | 已验收一期 |
 | `scripts/remote-smoke-test.mjs` | Windows/Node 环境可跑，curl 回退，40 项页面和只读接口验收 | 已验收一期 |
 | `scripts/backup.sh` | 备份 data/keys/logs/config/scripts，生成 sha256，并校验 tar/payload/meta | 待复验 |

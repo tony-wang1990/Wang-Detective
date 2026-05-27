@@ -318,6 +318,7 @@ check('maintenance scripts expose recovery guardrails', () => {
   assert(!/tar -tzf "\$BACKUP_FILE"\s*\|\s*grep -q/.test(backup), 'backup.sh should not use tar | grep -q with pipefail');
   assert(!/tar -tzf "\$BACKUP_FILE"\s*\|\s*grep -q/.test(restore), 'restore.sh should not use tar | grep -q with pipefail');
   assert(!serverSmoke.includes("grep -q $'\\r'"), 'server-smoke-test.sh should use byte-level CR checks instead of grep CR checks');
+  assert(serverSmoke.includes('HEALTH_SHORT_REVISION'), 'server-smoke-test.sh must compare health version with image revision');
   assert(!verifyRelease.includes("grep -Il $'\\r'"), 'verify-release.sh should use byte-level CR checks instead of grep CR checks');
   assert(restore.includes('RESTORE_VERIFY_ONLY'), 'restore.sh must support RESTORE_VERIFY_ONLY');
   assert(maintenance.includes('verify-backup'), 'maintenance.sh must expose verify-backup');

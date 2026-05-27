@@ -325,6 +325,14 @@ if echo "$HEALTH_BODY" | grep -q '"status"[[:space:]]*:[[:space:]]*"UP"'; then
     HEALTH_VERSION="$(printf '%s' "$HEALTH_BODY" | extract_json_string version)"
     if [ -n "$HEALTH_VERSION" ]; then
         pass "健康检查 UP，版本: $HEALTH_VERSION"
+        if [ -n "${APP_REVISION:-}" ]; then
+            HEALTH_SHORT_REVISION="${APP_REVISION:0:7}"
+            if echo "$HEALTH_VERSION" | grep -Fq "$HEALTH_SHORT_REVISION"; then
+                pass "健康版本和镜像提交一致: $HEALTH_VERSION"
+            else
+                warn "健康版本和镜像提交可能不一致: health=$HEALTH_VERSION image_revision=$APP_REVISION"
+            fi
+        fi
     else
         pass "健康检查 UP"
     fi
