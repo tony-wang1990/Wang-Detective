@@ -98,6 +98,7 @@ docker compose up -d --force-recreate
 - 服务器脚本继续收口：`server-smoke-test.sh` 新增脚本语法和最近日志接口检查；`backup.sh` 创建后校验备份包；`support-bundle.sh` 对文件日志尾部也执行脱敏并校验支持包可读。
 - 发布前静态验收新增 smoke 临时文件命名检查，防止路由名里的 `/`、`:` 再次导致 shell 版远程验收误报。
 - `restore.sh` 新增 `RESTORE_VERIFY_ONLY=1` 安全校验模式，可先检查备份包 tar、payload/meta 结构和 sha256，再决定是否真正恢复。
+- `maintenance.sh` 新增 `verify-backup` 子命令和菜单项，可通过统一维护入口校验备份包。
 - README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
 
 ## 已完成能力

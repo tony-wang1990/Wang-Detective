@@ -44,12 +44,12 @@ compose() {
 
 verify_backup() {
     log "校验备份包..."
-    tar -tzf "$BACKUP_FILE" >/dev/null || die "备份包校验失败，tar 无法读取: $BACKUP_FILE"
-    if tar -tzf "$BACKUP_FILE" | grep -E '(^/|(^|/)\.\.(/|$))' >/dev/null; then
+    backup_entries="$(tar -tzf "$BACKUP_FILE")" || die "备份包校验失败，tar 无法读取: $BACKUP_FILE"
+    if grep -E '(^/|(^|/)\.\.(/|$))' <<< "$backup_entries" >/dev/null; then
         die "备份包包含不安全路径，拒绝恢复"
     fi
-    tar -tzf "$BACKUP_FILE" | grep -q '^payload/' || die "备份包格式不正确，缺少 payload 目录"
-    tar -tzf "$BACKUP_FILE" | grep -q '^meta/backup-info.txt$' || die "备份包格式不正确，缺少 meta/backup-info.txt"
+    grep -Eq '^payload(/|$)' <<< "$backup_entries" || die "备份包格式不正确，缺少 payload 目录"
+    grep -q '^meta/backup-info.txt$' <<< "$backup_entries" || die "备份包格式不正确，缺少 meta/backup-info.txt"
 
     if [ -f "$BACKUP_FILE.sha256" ]; then
         if command -v sha256sum >/dev/null 2>&1; then

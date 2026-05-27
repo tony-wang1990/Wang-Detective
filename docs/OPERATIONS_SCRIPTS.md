@@ -78,6 +78,12 @@ RETENTION_DAYS=30 bash scripts/backup.sh
 RESTORE_VERIFY_ONLY=1 bash scripts/restore.sh /app/king-detective/backups/wang-detective-backup-YYYYmmdd-HHMMSS.tar.gz
 ```
 
+也可以通过统一维护入口校验：
+
+```bash
+bash scripts/maintenance.sh verify-backup /app/king-detective/backups/wang-detective-backup-YYYYmmdd-HHMMSS.tar.gz
+```
+
 ```bash
 cd /app/king-detective
 bash scripts/restore.sh /app/king-detective/backups/wang-detective-backup-YYYYmmdd-HHMMSS.tar.gz
@@ -201,6 +207,7 @@ bash scripts/maintenance.sh menu
 bash scripts/maintenance.sh status
 bash scripts/maintenance.sh health
 bash scripts/maintenance.sh backup
+bash scripts/maintenance.sh verify-backup /path/to/backup.tar.gz
 bash scripts/maintenance.sh update
 bash scripts/maintenance.sh rollback ghcr.io/tony-wang1990/wang-detective:main
 bash scripts/maintenance.sh smoke

@@ -82,7 +82,7 @@
 | `scripts/remote-smoke-test.sh` | 无 Node 环境可跑，40 项页面和只读接口验收；路由名会安全转换为临时文件名 | 已验收一期 |
 | `scripts/remote-smoke-test.mjs` | Windows/Node 环境可跑，curl 回退，40 项页面和只读接口验收 | 已验收一期 |
 | `scripts/backup.sh` | 备份 data/keys/logs/config/scripts，生成 sha256，并校验 tar/payload/meta | 待复验 |
-| `scripts/restore.sh` | 恢复前确认、备份包校验、sha256 校验、`RESTORE_VERIFY_ONLY=1` 只校验模式、失败保护 | 待专用环境验收 |
+| `scripts/restore.sh` | 恢复前确认、备份包校验、sha256 校验、`RESTORE_VERIFY_ONLY=1` 只校验模式、维护入口 `verify-backup`、失败保护 | 待专用环境验收 |
 | `scripts/support-bundle.sh` | 生成排障包、脱敏配置和日志尾部，并校验 tar 可读 | 待复验 |
 | `scripts/verify-release.sh` | 发布前静态检查、前端构建、Maven 构建、验收检查 | 进行中 |
 

@@ -39,11 +39,12 @@ show_menu() {
 4) 查看 watcher 日志
 5) 创建备份
 6) 恢复备份
-7) 手动更新
-8) 回滚镜像
-9) 部署冒烟检查
-10) 生成支持包
-11) 重启服务
+7) 校验备份包
+8) 手动更新
+9) 回滚镜像
+10) 部署冒烟检查
+11) 生成支持包
+12) 重启服务
 0) 退出
 MENU
     printf '请选择: '
@@ -64,11 +65,12 @@ case "$ACTION" in
                 4) docker logs -f --tail 160 king-detective-watcher ;;
                 5) run_script backup.sh ;;
                 6) printf '备份文件路径: '; read -r backup_file; RESTORE_CONFIRM=YES run_script restore.sh "$backup_file" ;;
-                7) run_script update.sh ;;
-                8) printf '目标镜像: '; read -r image; run_script rollback.sh "$image" ;;
-                9) run_script server-smoke-test.sh ;;
-                10) run_script support-bundle.sh ;;
-                11) compose up -d --force-recreate king-detective watcher ;;
+                7) printf '备份文件路径: '; read -r backup_file; RESTORE_VERIFY_ONLY=1 run_script restore.sh "$backup_file" ;;
+                8) run_script update.sh ;;
+                9) printf '目标镜像: '; read -r image; run_script rollback.sh "$image" ;;
+                10) run_script server-smoke-test.sh ;;
+                11) run_script support-bundle.sh ;;
+                12) compose up -d --force-recreate king-detective watcher ;;
                 0) exit 0 ;;
                 *) echo "无效选择" ;;
             esac
@@ -94,6 +96,9 @@ case "$ACTION" in
     restore)
         run_script restore.sh "$@"
         ;;
+    verify-backup)
+        RESTORE_VERIFY_ONLY=1 run_script restore.sh "$@"
+        ;;
     update)
         run_script update.sh "$@"
         ;;
@@ -118,6 +123,7 @@ case "$ACTION" in
   bash scripts/maintenance.sh logs [tail]
   bash scripts/maintenance.sh watcher-logs [tail]
   bash scripts/maintenance.sh backup
+  bash scripts/maintenance.sh verify-backup /path/to/backup.tar.gz
   bash scripts/maintenance.sh restore /path/to/backup.tar.gz
   bash scripts/maintenance.sh update
   bash scripts/maintenance.sh rollback ghcr.io/tony-wang1990/wang-detective:main
