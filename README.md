@@ -59,7 +59,7 @@ docker compose up -d --force-recreate
 | Telegram Bot | 86% | 运维中心、诊断、任务、日志、风险、备份、版本更新、实例操作向导、多 Chat ID 和实例状态推送已接入 |
 | 备份恢复 | 90% | Web 备份统一为 `backup.sh` 的 tar.gz 格式，定时自动备份和恢复计划已接入，Bucket 为空时自动退回本地备份；本地备份和计划接口已纳入线上 smoke；备份包创建后会立即校验 tar 和核心目录；恢复脚本支持只校验不覆盖 |
 | 救援中心 | 72% | 轻量自救、boot volume 拆卷救援、netboot.xyz 实验区已上线；概览、轻量自救脚本和 netboot 脚本只读接口已通过线上 smoke |
-| CI/测试 | 80% | GitHub Actions 已包含 Java 21、Node 20、前端构建、Maven 构建、脚本换行/语法、前后端接口映射和 40 项远程 smoke 检查；自动 Release 创建前也会跑发布验证 |
+| CI/测试 | 82% | GitHub Actions 已包含 Java 21、Node 20、前端构建、Maven 构建、脚本换行/语法、前后端接口映射、乱码/原生弹窗扫描和 40 项远程 smoke 检查；自动 Release 创建前也会跑发布验证 |
 
 ## 最近完成
 
@@ -101,6 +101,7 @@ docker compose up -d --force-recreate
 - `maintenance.sh` 新增 `verify-backup` 子命令和菜单项，可通过统一维护入口校验备份包。
 - `update.sh` / `rollback.sh` 继续补强：成功状态写入 `runtime/`，回滚前镜像留痕，并支持 `RUN_SMOKE_AFTER_ROLLBACK=1` 回滚后自动体检。
 - 自动 Release 工作流已接入 `verify-release.sh`，创建 GitHub Release 前会先跑脚本、前端和 Maven 验证。
+- 发布前静态验收新增常见乱码标记和前端原生弹窗扫描，防止 TGBOT/Release 文案乱码、浏览器默认确认框回流。
 - README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
 
 ## 已完成能力

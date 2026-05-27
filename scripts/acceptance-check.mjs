@@ -116,12 +116,35 @@ check('shell scripts parse with bash when available', () => {
 check('key text files do not contain replacement characters', () => {
   const targets = [
     'README.md',
+    ...walk('.github', (full) => full.endsWith('.yml') || full.endsWith('.yaml')),
     ...walk('docs', (full) => full.endsWith('.md')),
+    ...walk('scripts', (full) => full.endsWith('.sh') || full.endsWith('.mjs')),
     ...walk('frontend/src', (full) => full.endsWith('.vue') || full.endsWith('.ts')),
     ...walk('src/main/java/com/tony/kingdetective/telegram', (full) => full.endsWith('.java'))
   ];
   const bad = targets.filter((target) => fs.readFileSync(target, 'utf8').includes('\uFFFD')).map(rel);
   assert(!bad.length, `replacement character found in: ${bad.join(', ')}`);
+});
+
+check('key text files do not contain common mojibake markers', () => {
+  const targets = [
+    'README.md',
+    ...walk('.github', (full) => full.endsWith('.yml') || full.endsWith('.yaml')),
+    ...walk('docs', (full) => full.endsWith('.md')),
+    ...walk('scripts', (full) => full.endsWith('.sh') || full.endsWith('.mjs')),
+    ...walk('frontend/src', (full) => full.endsWith('.vue') || full.endsWith('.ts')),
+    ...walk('src/main/java/com/tony/kingdetective/telegram', (full) => full.endsWith('.java'))
+  ];
+  const mojibake = /[\u9983\u9477\u9359\u93c7\u7039\u95bf\u6fe1\u65c2\u7ee0\u9410\u6d30\u52eb\u579a\u6d5c]/;
+  const bad = targets.filter((target) => mojibake.test(fs.readFileSync(target, 'utf8'))).map(rel);
+  assert(!bad.length, `common mojibake marker found in: ${bad.join(', ')}`);
+});
+
+check('frontend does not use native browser dialogs', () => {
+  const targets = walk('frontend/src', (full) => full.endsWith('.vue') || full.endsWith('.ts'));
+  const nativeDialog = /window\.(alert|confirm|prompt)|\b(alert|confirm|prompt)\(/;
+  const bad = targets.filter((target) => nativeDialog.test(fs.readFileSync(target, 'utf8'))).map(rel);
+  assert(!bad.length, `native browser dialog found in: ${bad.join(', ')}`);
 });
 
 check('production dist index references existing assets', () => {
