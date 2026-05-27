@@ -103,6 +103,7 @@ docker compose up -d --force-recreate
 - 自动 Release 工作流已接入 `verify-release.sh`，创建 GitHub Release 前会先跑脚本、前端和 Maven 验证。
 - 发布前静态验收新增常见乱码标记和前端原生弹窗扫描，防止 TGBOT/Release 文案乱码、浏览器默认确认框回流。
 - 新增 `scripts/verify-telegram-callbacks.mjs`，自动检查 Telegram 按钮 callback 是否能匹配到处理器，避免菜单按钮失效。
+- 服务器体检脚本的 CR 字节检查改为 `od` 字节级判断，避免不同 grep 环境下把正常 LF 脚本误报为 CRLF。
 - README 已整理为当前状态版，旧流水账迁移到文档索引中继续保留。
 
 ## 已完成能力

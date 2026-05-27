@@ -127,6 +127,7 @@ need_cmd grep
 need_cmd sed
 need_cmd date
 need_cmd tar
+need_cmd od
 
 if [ ! -d "$APP_DIR" ]; then
     fail "应用目录不存在: $APP_DIR"
@@ -180,8 +181,11 @@ for script_name in $EXPECTED_SCRIPTS; do
         else
             warn "运维脚本不可执行: $script_path，可执行 chmod +x scripts/*.sh"
         fi
-        if grep -Iq . "$script_path" && LC_ALL=C grep -q $'\r' "$script_path"; then
-            fail "运维脚本包含 CRLF 换行，bash 可能报错: $script_path"
+        if command -v od >/dev/null 2>&1; then
+            hex_bytes="$(od -An -t x1 "$script_path")"
+            case " $hex_bytes " in
+                *" 0d "*) fail "运维脚本包含 CR 字节，bash 可能报错: $script_path" ;;
+            esac
         fi
         if command -v bash >/dev/null 2>&1; then
             if bash -n "$script_path" >/dev/null 2>&1; then

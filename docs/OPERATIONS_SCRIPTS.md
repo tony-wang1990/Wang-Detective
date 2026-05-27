@@ -9,7 +9,7 @@
 | 脚本 | 用途 | 是否修改数据 |
 | --- | --- | --- |
 | `scripts/install.sh` | 一键安装/刷新 compose、配置和运维脚本 | 会创建/更新部署文件，不覆盖 `.env` |
-| `scripts/server-smoke-test.sh` | 部署后体检，检查容器、登录、健康、watcher、关键 API | 只读 |
+| `scripts/server-smoke-test.sh` | 部署后体检，检查容器、登录、健康、watcher、关键 API 和脚本 CR 字节 | 只读 |
 | `scripts/remote-smoke-test.sh` | 公网/域名远程验收，检查健康、登录、诊断、风险、VCN 和安全规则读接口 | 只读 |
 | `scripts/remote-smoke-test.mjs` | Node 版远程验收，支持 fetch/curl 自动回退 | 只读 |
 | `scripts/backup.sh` | 备份 `.env`、配置、数据库、keys、scripts | 只创建备份 |

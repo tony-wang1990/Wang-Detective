@@ -202,11 +202,15 @@ check('maintenance scripts expose recovery guardrails', () => {
   const backup = read('scripts/backup.sh');
   const restore = read('scripts/restore.sh');
   const maintenance = read('scripts/maintenance.sh');
+  const serverSmoke = read('scripts/server-smoke-test.sh');
   const update = read('scripts/update.sh');
+  const verifyRelease = read('scripts/verify-release.sh');
   const rollback = read('scripts/rollback.sh');
 
   assert(!/tar -tzf "\$BACKUP_FILE"\s*\|\s*grep -q/.test(backup), 'backup.sh should not use tar | grep -q with pipefail');
   assert(!/tar -tzf "\$BACKUP_FILE"\s*\|\s*grep -q/.test(restore), 'restore.sh should not use tar | grep -q with pipefail');
+  assert(!serverSmoke.includes("grep -q $'\\r'"), 'server-smoke-test.sh should use byte-level CR checks instead of grep CR checks');
+  assert(!verifyRelease.includes("grep -Il $'\\r'"), 'verify-release.sh should use byte-level CR checks instead of grep CR checks');
   assert(restore.includes('RESTORE_VERIFY_ONLY'), 'restore.sh must support RESTORE_VERIFY_ONLY');
   assert(maintenance.includes('verify-backup'), 'maintenance.sh must expose verify-backup');
   assert(update.includes('runtime/last_successful_update'), 'update.sh must record successful update metadata');
