@@ -232,6 +232,62 @@ check('install and server smoke include remote smoke helpers', () => {
   assert(serverSmoke.includes('remote-smoke-test.mjs'), 'server-smoke-test.sh must check remote-smoke-test.mjs presence');
 });
 
+check('remote smoke scripts cover required routes and endpoints', () => {
+  const shellSmoke = read('scripts/remote-smoke-test.sh');
+  const nodeSmoke = read('scripts/remote-smoke-test.mjs');
+  const requiredRoutes = [
+    '/login',
+    '/dashboard/home',
+    '/dashboard/user',
+    '/dashboard/createTask',
+    '/dashboard/risk',
+    '/dashboard/backups',
+    '/dashboard/rescue',
+    '/dashboard/features',
+    '/dashboard/ops-terminal',
+    '/dashboard/ai-chat',
+    '/dashboard/ociLog',
+    '/dashboard/ops-audit',
+    '/dashboard/sysCfg'
+  ];
+  const requiredChecks = [
+    'legacy-map-redirect',
+    'legacy-features-redirect',
+    'legacy-terminal-redirect',
+    'diagnostics',
+    'version-info',
+    'glance',
+    'sys-config',
+    'oci-user-page',
+    'task-page',
+    'audit-recent',
+    'audit-search',
+    'audit-export',
+    'logs-recent',
+    'ops-ssh-hosts',
+    'ops-ssh-sessions',
+    'ops-templates',
+    'backup-local',
+    'backup-schedule-plan',
+    'rescue-overview',
+    'rescue-light-script',
+    'rescue-netboot-script',
+    'oci-risk',
+    'vcn-page',
+    'security-rules-ingress',
+    'security-rules-egress'
+  ];
+
+  for (const route of requiredRoutes) {
+    assert(shellSmoke.includes(route), `shell remote smoke must cover route ${route}`);
+    assert(nodeSmoke.includes(route), `node remote smoke must cover route ${route}`);
+  }
+  for (const checkName of requiredChecks) {
+    assert(shellSmoke.includes(checkName), `shell remote smoke must cover ${checkName}`);
+    assert(nodeSmoke.includes(checkName), `node remote smoke must cover ${checkName}`);
+  }
+});
+
 check('telegram callback buttons map to handlers', () => {
   const result = spawnSync(process.execPath, ['scripts/verify-telegram-callbacks.mjs'], {
     cwd: root,
