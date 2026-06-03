@@ -29,9 +29,21 @@ type ConfigRisk = {
   bootVolumeGb?: number;
   publicIngressRuleCount?: number;
   highRiskPortRuleCount?: number;
+  resourceRisks?: ResourceRisk[];
   portExposures?: PortExposure[];
   status?: string;
   message?: string;
+};
+
+type ResourceRisk = {
+  level?: string;
+  category?: string;
+  title?: string;
+  message?: string;
+  recommendation?: string;
+  count?: number;
+  configName?: string;
+  region?: string;
 };
 
 type PortExposure = {
@@ -74,6 +86,16 @@ const risks = computed(() => report.value?.risks || []);
 const highRisks = computed(() => risks.value.filter((item) => item.level === 'HIGH'));
 const warnRisks = computed(() => risks.value.filter((item) => item.level === 'WARN'));
 const errorRisks = computed(() => risks.value.filter((item) => item.level === 'ERROR'));
+const resourceRisks = computed<ResourceRisk[]>(() =>
+  configs.value.flatMap((cfg) =>
+    (cfg.resourceRisks || []).map((item) => ({
+      ...item,
+      configName: cfg.configName || cfg.configId,
+      region: cfg.region
+    }))
+  )
+);
+const highResourceRisks = computed(() => resourceRisks.value.filter((item) => item.level === 'HIGH' || item.level === 'ERROR'));
 const portExposures = computed<PortExposure[]>(() =>
   configs.value.flatMap((cfg) =>
     (cfg.portExposures || []).map((item) => ({
@@ -83,7 +105,6 @@ const portExposures = computed<PortExposure[]>(() =>
     }))
   )
 );
-const highRiskPortExposures = computed(() => portExposures.value.filter((item) => item.highRisk));
 
 function levelClass(level?: string) {
   if (level === 'HIGH' || level === 'ERROR') return 'danger';
@@ -128,7 +149,7 @@ onMounted(loadReport);
     <div class="wd-page-title">
       <div>
         <h1>风险看板</h1>
-        <p>实时扫描 OCI 实例、ARM 免费资源、引导卷容量和安全列表公网入站风险。</p>
+        <p>实时扫描 OCI 配置、实例状态、ARM 免费资源、引导卷容量和安全列表风险。</p>
       </div>
       <div class="wd-actions">
         <select v-model.number="maxConfigs" class="wd-compact-select">
@@ -159,8 +180,8 @@ onMounted(loadReport);
         <strong>{{ summary.armOcpus || 0 }} OCPU / {{ summary.armMemoryGb || 0 }} GB</strong>
       </article>
       <article class="wd-card wd-stat-card">
-        <span>风险项</span>
-        <strong><ShieldAlert :size="20" />{{ summary.highRiskCount || 0 }} 高 / {{ summary.warnRiskCount || 0 }} 警告</strong>
+            <span>资源风险</span>
+            <strong><ShieldAlert :size="20" />{{ highResourceRisks.length }} 高 / {{ resourceRisks.filter((item) => item.level === 'WARN').length }} 警告</strong>
       </article>
     </section>
 
@@ -196,8 +217,8 @@ onMounted(loadReport);
         <div class="wd-health-list">
           <div>
             <ShieldAlert :size="18" />
-            <span>高危端口</span>
-            <em class="error">{{ highRiskPortExposures.length }}</em>
+            <span>资源/配置高危</span>
+            <em class="error">{{ highResourceRisks.length }}</em>
           </div>
           <div>
             <AlertTriangle :size="18" />
@@ -220,8 +241,40 @@ onMounted(loadReport);
 
     <article class="wd-card wd-table-card">
       <header>
-        <h2><ShieldAlert :size="17" /> 公网端口明细与收敛建议</h2>
-        <span class="wd-help-line">来自 OCI 安全列表入站规则，只读展示，不在这里直接修改。</span>
+        <h2><ShieldAlert :size="17" /> 配置资源风险</h2>
+        <span class="wd-help-line">优先看这里：实例状态、资源用量、引导卷、配置异常和网络开放都会汇总为可处理事项。</span>
+      </header>
+      <div class="wd-table-scroll">
+        <table class="wd-table">
+          <thead>
+            <tr>
+              <th>配置</th>
+              <th>类别</th>
+              <th>级别</th>
+              <th>问题</th>
+              <th>建议</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in resourceRisks" :key="`${item.configName}-${item.category}-${item.title}`">
+              <td><b>{{ item.configName || '-' }}</b><small>{{ item.region || '-' }}</small></td>
+              <td>{{ item.category || '-' }}</td>
+              <td><span class="wd-badge" :class="levelClass(item.level)">{{ item.level }}</span></td>
+              <td><b>{{ item.title }}</b><small>{{ item.message || '-' }}</small></td>
+              <td class="wd-port-suggestion">{{ item.recommendation || '确认是否符合当前业务预期。' }}</td>
+            </tr>
+            <tr v-if="!resourceRisks.length">
+              <td colspan="5" class="wd-empty">暂无配置/资源风险。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="wd-card wd-table-card">
+      <header>
+        <h2><ShieldAlert :size="17" /> 公网规则明细（网络项）</h2>
+        <span class="wd-help-line">来自 OCI 安全列表入站规则，网络开放证据在这里展开；需要修改请到配置列表的规则明细。</span>
       </header>
       <div class="wd-table-scroll">
         <table class="wd-table">
@@ -263,6 +316,7 @@ onMounted(loadReport);
               <th>实例</th>
               <th>ARM 用量</th>
               <th>引导卷</th>
+              <th>资源风险</th>
               <th>公网入站</th>
               <th>状态</th>
             </tr>
@@ -274,6 +328,7 @@ onMounted(loadReport);
               <td>{{ cfg.runningInstanceCount || 0 }} / {{ cfg.instanceCount || 0 }}</td>
               <td>{{ cfg.armOcpus || 0 }} OCPU / {{ cfg.armMemoryGb || 0 }} GB</td>
               <td>{{ cfg.bootVolumeGb || 0 }} GB</td>
+              <td>{{ cfg.resourceRisks?.length || 0 }} 项</td>
               <td>
                 {{ cfg.publicIngressRuleCount || 0 }} 条，其中高危 {{ cfg.highRiskPortRuleCount || 0 }} 条
                 <small>端口明细 {{ cfg.portExposures?.length || 0 }} 条</small>
@@ -281,7 +336,7 @@ onMounted(loadReport);
               <td><span class="wd-badge" :class="levelClass(cfg.status)">{{ statusText(cfg.status) }}</span></td>
             </tr>
             <tr v-if="!configs.length">
-              <td colspan="7" class="wd-empty">暂无扫描结果。</td>
+              <td colspan="8" class="wd-empty">暂无扫描结果。</td>
             </tr>
           </tbody>
         </table>

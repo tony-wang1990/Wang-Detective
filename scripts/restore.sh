@@ -96,7 +96,11 @@ if [ "$SKIP_PRE_RESTORE_BACKUP" != "1" ] && [ -x "$APP_DIR/scripts/backup.sh" ];
 fi
 
 log "停止服务..."
-compose stop king-detective watcher >/dev/null 2>&1 || true
+if [ "${RESTORE_FROM_WATCHER:-0}" = "1" ]; then
+    compose stop king-detective >/dev/null 2>&1 || true
+else
+    compose stop king-detective watcher >/dev/null 2>&1 || true
+fi
 
 tar -xzf "$BACKUP_FILE" -C "$WORK_DIR"
 [ -d "$WORK_DIR/payload" ] || die "备份包格式不正确，缺少 payload 目录"
@@ -125,7 +129,11 @@ chmod +x "$APP_DIR"/scripts/*.sh 2>/dev/null || true
 
 if [ "$START_AFTER_RESTORE" = "1" ]; then
     log "启动服务..."
-    compose up -d king-detective watcher
+    if [ "${RESTORE_FROM_WATCHER:-0}" = "1" ]; then
+        compose up -d king-detective
+    else
+        compose up -d king-detective watcher
+    fi
     log "服务已启动，请稍后执行: bash scripts/server-smoke-test.sh"
 else
     warn "START_AFTER_RESTORE=0，已恢复但未启动服务"

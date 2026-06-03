@@ -73,4 +73,14 @@ public class ObjectStorageBackupRsp {
         private List<String> steps;
         private List<String> objectStoragePolicy;
     }
+
+    @Data
+    @Builder
+    public static class ActionResult {
+        private String action;
+        private String status;
+        private String message;
+        private String watcherActionFile;
+        private LocalDateTime createTime;
+    }
 }

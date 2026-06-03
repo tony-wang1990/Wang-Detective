@@ -1,11 +1,10 @@
 package com.tony.kingdetective.config.ws;
 
 import cn.hutool.core.map.MapUtil;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.json.JSONUtil;
-import cn.hutool.jwt.JWTUtil;
 import com.tony.kingdetective.exception.OciException;
-import com.tony.kingdetective.utils.CommonUtils;
+import com.tony.kingdetective.service.AdminCredentialService;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnMessage;
 import jakarta.websocket.OnOpen;
@@ -21,15 +20,12 @@ import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static com.tony.kingdetective.service.impl.OciServiceImpl.TEMP_MAP;
 
 /**
  * @author Yohann
@@ -52,12 +48,7 @@ public class MetricsWebSocketHandler {
     int size = 15;
 
     private boolean validateToken(String token) {
-        Object password = TEMP_MAP.get("password");
-        return token != null
-                && password instanceof String passwordText
-                && StrUtil.isNotBlank(passwordText)
-                && !CommonUtils.isTokenExpired(token)
-                && JWTUtil.verify(token, passwordText.getBytes(StandardCharsets.UTF_8));
+        return SpringUtil.getBean(AdminCredentialService.class).verifyToken(token);
     }
 
     @OnOpen

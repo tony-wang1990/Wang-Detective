@@ -165,6 +165,17 @@ const securityRules = reactive({
   egress: [] as SecurityRuleInfo[]
 });
 
+const securityRuleForm = reactive({
+  direction: 'ingress' as 'ingress' | 'egress',
+  protocol: '6',
+  cidr: '0.0.0.0/0',
+  sourcePort: '',
+  destinationPort: '22',
+  icmpType: '',
+  icmpCode: '',
+  description: 'W-探长手动规则'
+});
+
 const addForm = reactive({
   username: '',
   ociCfgStr: ''
@@ -563,6 +574,100 @@ function rulePortText(rule: SecurityRuleInfo) {
   const source = rule.sourcePort || '全部';
   const destination = rule.destinationPort || '全部';
   return `源 ${source} / 目标 ${destination}`;
+}
+
+function ruleProtocolNeedsPort() {
+  return ['6', '17'].includes(securityRuleForm.protocol);
+}
+
+function buildIcmpOptions() {
+  if (securityRuleForm.protocol !== '1' || !securityRuleForm.icmpType.trim()) {
+    return null;
+  }
+  return {
+    type: Number(securityRuleForm.icmpType),
+    code: securityRuleForm.icmpCode.trim() ? Number(securityRuleForm.icmpCode) : null
+  };
+}
+
+async function addSecurityRule() {
+  const cfgId = securityRules.cfg ? rowId(securityRules.cfg) : '';
+  if (!cfgId || !securityRules.selectedVcnId) {
+    securityRules.error = '请先选择 VCN';
+    return;
+  }
+  if (!securityRuleForm.cidr.trim()) {
+    securityRules.error = '请填写来源/目标 CIDR';
+    return;
+  }
+  securityRules.loading = true;
+  securityRules.error = '';
+  try {
+    if (securityRuleForm.direction === 'ingress') {
+      await apiPost('/securityRule/addIngress', {
+        ociCfgId: cfgId,
+        vcnId: securityRules.selectedVcnId,
+        inboundRule: {
+          isStateless: false,
+          sourceType: 'CIDR_BLOCK',
+          source: securityRuleForm.cidr.trim(),
+          protocol: securityRuleForm.protocol,
+          icmpOptions: buildIcmpOptions(),
+          sourcePort: securityRuleForm.sourcePort.trim(),
+          destinationPort: ruleProtocolNeedsPort() ? securityRuleForm.destinationPort.trim() : '',
+          description: securityRuleForm.description.trim()
+        }
+      });
+    } else {
+      await apiPost('/securityRule/addEgress', {
+        ociCfgId: cfgId,
+        vcnId: securityRules.selectedVcnId,
+        outboundRule: {
+          isStateless: false,
+          destinationType: 'CIDR_BLOCK',
+          destination: securityRuleForm.cidr.trim(),
+          protocol: securityRuleForm.protocol,
+          icmpOptions: buildIcmpOptions(),
+          sourcePort: securityRuleForm.sourcePort.trim(),
+          destinationPort: ruleProtocolNeedsPort() ? securityRuleForm.destinationPort.trim() : '',
+          description: securityRuleForm.description.trim()
+        }
+      });
+    }
+    notifyGlobal('安全规则已提交到 OCI', 'success');
+    await loadSecurityRules(true);
+  } catch (err) {
+    securityRules.error = err instanceof Error ? err.message : '新增安全规则失败';
+    notifyGlobal(securityRules.error, 'error');
+  } finally {
+    securityRules.loading = false;
+  }
+}
+
+function removeSecurityRule(rule: SecurityRuleInfo, type: 0 | 1) {
+  const cfgId = securityRules.cfg ? rowId(securityRules.cfg) : '';
+  if (!cfgId || !securityRules.selectedVcnId || !rule.id) return;
+  const label = type === 0 ? '入站' : '出站';
+  openActionDialog({
+    title: `删除${label}安全规则`,
+    description: '会直接修改 OCI 默认安全列表，请确认这条规则不再需要。',
+    target: `${rule.sourceOrDestination || '-'} / ${rule.protocol || '-'} / ${rulePortText(rule)}`,
+    actionLabel: `删除${label}规则`,
+    busyKey: actionKey('security-rule-remove', rule.id),
+    danger: true,
+    refreshDetail: false,
+    fields: [],
+    onConfirm: async () => {
+      securityRules.error = '';
+      await apiPost('/securityRule/remove', {
+        ociCfgId: cfgId,
+        vcnId: securityRules.selectedVcnId,
+        type,
+        ruleIds: [rule.id]
+      });
+      await loadSecurityRules(true);
+    }
+  });
 }
 
 async function loadDetails(force: boolean) {
@@ -1179,13 +1284,13 @@ onMounted(load);
       <div class="wd-dialog wide">
         <header>
           <div>
-            <span>只读实时数据</span>
+            <span>真实 OCI 操作</span>
             <h3>安全规则明细 · {{ securityRules.cfg ? displayName(securityRules.cfg) : '-' }}</h3>
           </div>
           <button type="button" class="ghost" @click="closeSecurityRules">关闭</button>
         </header>
 
-        <p>这里仅展示 OCI 安全列表入站/出站规则，不会修改任何网络配置。需要变更规则时请先在风险看板确认收敛方案。</p>
+        <p>这里会直接读取并修改 OCI 默认安全列表。新增或删除规则前请确认目标 VCN 和 CIDR，避免误开放公网。</p>
 
         <div class="wd-security-toolbar">
           <label>
@@ -1209,6 +1314,52 @@ onMounted(load);
           <div><span>出站规则</span><strong>{{ securityRules.egress.length }}</strong></div>
         </div>
 
+        <section class="wd-security-rule-form">
+          <label>
+            <span>方向</span>
+            <select v-model="securityRuleForm.direction" :disabled="securityRules.loading">
+              <option value="ingress">入站</option>
+              <option value="egress">出站</option>
+            </select>
+          </label>
+          <label>
+            <span>{{ securityRuleForm.direction === 'ingress' ? '来源 CIDR' : '目标 CIDR' }}</span>
+            <input v-model="securityRuleForm.cidr" placeholder="例如 1.2.3.4/32" />
+          </label>
+          <label>
+            <span>协议</span>
+            <select v-model="securityRuleForm.protocol">
+              <option value="6">TCP</option>
+              <option value="17">UDP</option>
+              <option value="1">ICMP</option>
+              <option value="all">全部协议</option>
+            </select>
+          </label>
+          <label v-if="ruleProtocolNeedsPort()">
+            <span>源端口</span>
+            <input v-model="securityRuleForm.sourcePort" placeholder="留空表示全部" />
+          </label>
+          <label v-if="ruleProtocolNeedsPort()">
+            <span>目标端口</span>
+            <input v-model="securityRuleForm.destinationPort" placeholder="22 或 80-443" />
+          </label>
+          <label v-if="securityRuleForm.protocol === '1'">
+            <span>ICMP Type</span>
+            <input v-model="securityRuleForm.icmpType" placeholder="例如 3" />
+          </label>
+          <label v-if="securityRuleForm.protocol === '1'">
+            <span>ICMP Code</span>
+            <input v-model="securityRuleForm.icmpCode" placeholder="可选，例如 4" />
+          </label>
+          <label>
+            <span>说明</span>
+            <input v-model="securityRuleForm.description" placeholder="规则说明" />
+          </label>
+          <button type="button" :disabled="securityRules.loading || !securityRules.selectedVcnId" @click="addSecurityRule">
+            <ShieldCheck :size="16" />新增规则
+          </button>
+        </section>
+
         <section class="wd-security-rule-grid">
           <article>
             <h4>入站规则</h4>
@@ -1221,6 +1372,7 @@ onMounted(load);
                     <th>端口</th>
                     <th>ICMP</th>
                     <th>说明</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1230,9 +1382,12 @@ onMounted(load);
                     <td>{{ rulePortText(rule) }}</td>
                     <td>{{ rule.typeAndCode || '-' }}</td>
                     <td>{{ rule.description || '-' }}</td>
+                    <td>
+                      <button type="button" class="wd-link-button danger" :disabled="securityRules.loading" @click="removeSecurityRule(rule, 0)">删除</button>
+                    </td>
                   </tr>
                   <tr v-if="!securityRules.ingress.length">
-                    <td colspan="5" class="wd-empty">暂无入站规则。</td>
+                    <td colspan="6" class="wd-empty">暂无入站规则。</td>
                   </tr>
                 </tbody>
               </table>
@@ -1250,6 +1405,7 @@ onMounted(load);
                     <th>端口</th>
                     <th>ICMP</th>
                     <th>说明</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1259,9 +1415,12 @@ onMounted(load);
                     <td>{{ rulePortText(rule) }}</td>
                     <td>{{ rule.typeAndCode || '-' }}</td>
                     <td>{{ rule.description || '-' }}</td>
+                    <td>
+                      <button type="button" class="wd-link-button danger" :disabled="securityRules.loading" @click="removeSecurityRule(rule, 1)">删除</button>
+                    </td>
                   </tr>
                   <tr v-if="!securityRules.egress.length">
-                    <td colspan="5" class="wd-empty">暂无出站规则。</td>
+                    <td colspan="6" class="wd-empty">暂无出站规则。</td>
                   </tr>
                 </tbody>
               </table>

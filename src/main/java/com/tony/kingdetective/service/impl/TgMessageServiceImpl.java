@@ -44,10 +44,8 @@ public class TgMessageServiceImpl implements IMessageService {
 
     @Override
     public void sendMessage(String message) {
-        OciKv tgToken = kvService.getOne(new LambdaQueryWrapper<OciKv>().eq(OciKv::getCode, SysCfgEnum.SYS_TG_BOT_TOKEN.getCode()));
-        OciKv tgChatId = kvService.getOne(new LambdaQueryWrapper<OciKv>().eq(OciKv::getCode, SysCfgEnum.SYS_TG_CHAT_ID.getCode()));
-        String botToken = firstNonBlank(kvValue(tgToken), telegramBotToken);
-        String chatId = firstNonBlank(kvValue(tgChatId), telegramChatId);
+        String botToken = firstNonBlank(cfgValue(SysCfgEnum.SYS_TG_BOT_TOKEN), telegramBotToken);
+        String chatId = firstNonBlank(cfgValue(SysCfgEnum.SYS_TG_CHAT_ID), telegramChatId);
 
         if (StrUtil.isNotBlank(botToken) && StrUtil.isNotBlank(chatId)) {
             doSend(message, botToken, chatId);
@@ -55,14 +53,20 @@ public class TgMessageServiceImpl implements IMessageService {
     }
 
     public void sendVersionUpdateMessage(String message) {
-        OciKv tgToken = kvService.getOne(new LambdaQueryWrapper<OciKv>().eq(OciKv::getCode, SysCfgEnum.SYS_TG_BOT_TOKEN.getCode()));
-        OciKv tgChatId = kvService.getOne(new LambdaQueryWrapper<OciKv>().eq(OciKv::getCode, SysCfgEnum.SYS_TG_CHAT_ID.getCode()));
-        String botToken = firstNonBlank(kvValue(tgToken), telegramBotToken);
-        String chatId = firstNonBlank(kvValue(tgChatId), telegramChatId);
+        String botToken = firstNonBlank(cfgValue(SysCfgEnum.SYS_TG_BOT_TOKEN), telegramBotToken);
+        String chatId = firstNonBlank(cfgValue(SysCfgEnum.SYS_TG_CHAT_ID), telegramChatId);
 
         if (StrUtil.isNotBlank(botToken) && StrUtil.isNotBlank(chatId)) {
             doSendWithUpdateButton(message, botToken, chatId);
         }
+    }
+
+    private String cfgValue(SysCfgEnum cfg) {
+        OciKv kv = kvService.getOne(new LambdaQueryWrapper<OciKv>()
+                .eq(OciKv::getCode, cfg.getCode())
+                .orderByDesc(OciKv::getCreateTime)
+                .last("limit 1"), false);
+        return kvValue(kv);
     }
 
     private String kvValue(OciKv kv) {

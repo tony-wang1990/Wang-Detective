@@ -924,6 +924,11 @@ html.dark .wd-leaflet-map .leaflet-tile {
   font-weight: 900;
 }
 
+.wd-link-button.danger {
+  border-color: color-mix(in srgb, var(--wd-danger) 35%, var(--wd-line));
+  color: var(--wd-danger);
+}
+
 .wd-table-footer {
   padding: 12px 14px;
   color: var(--wd-muted);
@@ -2504,6 +2509,45 @@ html.dark .wd-leaflet-map .leaflet-tile {
   word-break: break-all;
 }
 
+.wd-security-rule-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--wd-line);
+  border-radius: 10px;
+  background: var(--wd-surface-2);
+}
+
+.wd-security-rule-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--wd-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wd-security-rule-form input,
+.wd-security-rule-form select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--wd-line);
+  border-radius: 8px;
+  padding: 0 11px;
+  background: var(--wd-surface);
+  color: var(--wd-text);
+}
+
+.wd-security-rule-form button {
+  align-self: end;
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--wd-accent-2);
+  color: #fff;
+  font-weight: 900;
+}
+
 .wd-security-rule-grid {
   display: grid;
   gap: 14px;
@@ -2789,6 +2833,10 @@ html.dark .wd-leaflet-map .leaflet-tile {
   .wd-row-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .wd-security-rule-form {
+    grid-template-columns: 1fr;
   }
 
   .wd-actions button,

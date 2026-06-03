@@ -31,4 +31,6 @@ public class GetSysCfgRsp {
     private String allowedEmails;
     private Boolean enableKeepAlive;
 
+    private String adminAccount;
+
 }

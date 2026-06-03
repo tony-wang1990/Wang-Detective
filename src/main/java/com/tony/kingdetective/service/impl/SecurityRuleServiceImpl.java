@@ -263,6 +263,12 @@ public class SecurityRuleServiceImpl implements ISecurityRuleService {
         SysUserDTO sysUserDTO = sysService.getOciUser(params.getOciCfgId());
         Map<String, IngressSecurityRule> ingressMap = (Map<String, IngressSecurityRule>) customCache.get(CacheConstant.PREFIX_INGRESS_SECURITY_RULE_MAP + params.getVcnId());
         Map<String, EgressSecurityRule> egressMap = (Map<String, EgressSecurityRule>) customCache.get(CacheConstant.PREFIX_EGRESS_SECURITY_RULE_MAP + params.getVcnId());
+        if (CollectionUtil.isEmpty(params.getRuleIds())) {
+            throw new OciException(-1, "请选择要删除的安全规则");
+        }
+        if (ingressMap == null || egressMap == null) {
+            throw new OciException(-1, "安全规则缓存已过期，请先刷新规则后再删除");
+        }
         params.getRuleIds().forEach(ruleId -> {
             if (params.getType().equals(0)) {
                 ingressMap.remove(ruleId);

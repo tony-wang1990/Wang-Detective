@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.botapimethods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -747,6 +748,7 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
      */
     private void handleCallbackQuery(Update update) {
         String callbackData = update.getCallbackQuery().getData();
+        String callbackQueryId = update.getCallbackQuery().getId();
         long chatId = update.getCallbackQuery().getMessage().getChatId();
         
         log.info("Handling callback query: callbackData={}, chatId={}", callbackData, chatId);
@@ -754,9 +756,12 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         // 检查权限
         if (!isAuthorized(chatId)) {
             log.warn("Unauthorized callback attempt: chatId={}", chatId);
+            answerCallbackQuery(callbackQueryId, "无权限操作");
             sendUnauthorizedMessage(chatId);
             return;
         }
+
+        answerCallbackQuery(callbackQueryId, "请求已接收，正在处理");
 
         // Use virtual thread to handle callback asynchronously
         Thread.ofVirtual().start(() -> {
@@ -783,12 +788,15 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                     }
                 } else {
                     log.warn("未找到处理回调数据的处理器: callbackData={}", callbackData);
+                    answerCallbackQuery(callbackQueryId, "这个菜单暂未接入处理器");
+                    sendMessage(chatId, "⚠️ 这个菜单暂未接入处理器，请返回主菜单重试。");
                 }
             } catch (TelegramApiException e) {
                 log.error("处理回调查询失败: callbackData={}, error={}", callbackData, e.getMessage(), e);
                 // Try to notify user about the error
                 try {
-                    sendMessage(chatId, "❌ 处理请求时发生错误，请重试");
+                    answerCallbackQuery(callbackQueryId, "菜单处理失败");
+                    sendMessage(chatId, "❌ 菜单处理失败，请返回主菜单后重试。");
                 } catch (Exception ex) {
                     log.error("Failed to send error message to user", ex);
                 }
@@ -797,6 +805,7 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                     callbackData, e.getClass().getSimpleName(), e.getMessage(), e);
                 // Try to notify user about the error
                 try {
+                    answerCallbackQuery(callbackQueryId, "系统处理异常");
                     sendMessage(chatId, "❌ 系统错误，请重试或联系管理员");
                 } catch (Exception ex) {
                     log.error("Failed to send error message to user", ex);
@@ -809,6 +818,10 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
         try {
             telegramClient.execute(response);
         } catch (TelegramApiException e) {
+            if (response instanceof AnswerCallbackQuery && isCallbackAlreadyAnswered(e)) {
+                log.debug("Ignored duplicate callback answer: callbackData={}, message={}", callbackData, e.getMessage());
+                return;
+            }
             if (isMarkdownParseError(e) && retryCallbackResponseAsPlainText(response, callbackData)) {
                 return;
             }
@@ -839,6 +852,28 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     private boolean isMarkdownParseError(TelegramApiException e) {
         String message = e.getMessage();
         return message != null && message.contains("can't parse entities");
+    }
+
+    private boolean isCallbackAlreadyAnswered(TelegramApiException e) {
+        String message = e.getMessage();
+        return message != null && (message.contains("query is too old") || message.contains("query ID is invalid"));
+    }
+
+    private void answerCallbackQuery(String callbackQueryId, String text) {
+        if (callbackQueryId == null || callbackQueryId.isBlank()) {
+            return;
+        }
+        try {
+            telegramClient.execute(AnswerCallbackQuery.builder()
+                    .callbackQueryId(callbackQueryId)
+                    .text(text)
+                    .showAlert(false)
+                    .build());
+        } catch (TelegramApiException e) {
+            if (!isCallbackAlreadyAnswered(e)) {
+                log.debug("Answer callback query failed: {}", e.getMessage());
+            }
+        }
     }
 
     /**

@@ -55,7 +55,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import net.lingala.zip4j.ZipFile;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
@@ -90,11 +89,6 @@ import static com.tony.kingdetective.task.OciTask.pushVersionUpdateMsg;
 @Slf4j
 public class SysServiceImpl implements ISysService {
 
-    @Value("${web.account}")
-    private String account;
-    @Value("${web.password}")
-    private String password;
-
     @Resource
     private MessageServiceFactory messageServiceFactory;
     @Resource
@@ -121,11 +115,38 @@ public class SysServiceImpl implements ISysService {
     private ExecutorService virtualExecutor;
     @Resource
     private CustomExpiryGuavaCache<String, Object> customCache;
+    @Resource
+    private AdminCredentialService adminCredentialService;
 
     @Override
     public void sendMessage(String message) {
         virtualExecutor.execute(() -> messageServiceFactory.getMessageService(MessageTypeEnum.MSG_TYPE_DING_DING).sendMessage(message));
-        virtualExecutor.execute(() -> messageServiceFactory.getMessageService(MessageTypeEnum.MSG_TYPE_TELEGRAM).sendMessage(message));
+        if (!shouldSuppressTelegramNotification(message)) {
+            virtualExecutor.execute(() -> messageServiceFactory.getMessageService(MessageTypeEnum.MSG_TYPE_TELEGRAM).sendMessage(message));
+        }
+    }
+
+    private boolean shouldSuppressTelegramNotification(String message) {
+        if (StrUtil.isBlank(message)) {
+            return false;
+        }
+        String text = message.replace("\r", "");
+        if (text.contains("【每日播报】") && text.contains("正在执行的开机任务")) {
+            return true;
+        }
+        if (!text.contains("【开机任务】")) {
+            return false;
+        }
+        return !containsAny(text, "开机成功", "成功开机", "开机失败", "无法创建实例", "配额", "账号异常", "出现错误");
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -164,14 +185,15 @@ public class SysServiceImpl implements ISysService {
                 throw new OciException(-1, "无效的验证码");
             }
         }
-        if (!params.getAccount().equals(account) || !params.getPassword().equals(password)) {
+        String activeAccount = adminCredentialService.getAccount();
+        if (!adminCredentialService.matches(params.getAccount(), params.getPassword())) {
             log.error("请求IP：{} 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp);
             sendMessage(String.format("请求IP：%s 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp));
             throw new OciException(-1, "账号或密码不正确");
         }
         Map<String, Object> payload = new HashMap<>(1);
-        payload.put("account", CommonUtils.getMD5(account));
-        String token = CommonUtils.genToken(payload, password);
+        payload.put("account", CommonUtils.getMD5(activeAccount));
+        String token = adminCredentialService.generateToken(payload);
 
         String currentVersion = kvService.getObj(new LambdaQueryWrapper<OciKv>()
                 .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
@@ -249,7 +271,7 @@ public class SysServiceImpl implements ISysService {
                 mfa.setCode(SysCfgEnum.SYS_MFA_SECRET.getCode());
                 mfa.setValue(secretKey);
                 mfa.setType(SysCfgTypeEnum.SYS_MFA_CFG.getCode());
-                String qrCodeURL = CommonUtils.generateQRCodeURL(secretKey, account, "king-detective");
+                String qrCodeURL = CommonUtils.generateQRCodeURL(secretKey, adminCredentialService.getAccount(), "king-detective");
                 CommonUtils.genQRPic(CommonUtils.MFA_QR_PNG_PATH, qrCodeURL);
                 kvService.save(mfa);
             }
@@ -279,6 +301,7 @@ public class SysServiceImpl implements ISysService {
     @Override
     public GetSysCfgRsp getSysCfg() {
         GetSysCfgRsp rsp = new GetSysCfgRsp();
+        rsp.setAdminAccount(adminCredentialService.getAccount());
         rsp.setDingToken(getCfgValue(SysCfgEnum.SYS_DING_BOT_TOKEN));
         rsp.setDingSecret(getCfgValue(SysCfgEnum.SYS_DING_BOT_SECRET));
         rsp.setTgChatId(getCfgValue(SysCfgEnum.SYS_TG_CHAT_ID));
@@ -328,6 +351,15 @@ public class SysServiceImpl implements ISysService {
             }
         });
         return rsp;
+    }
+
+    @Override
+    public void updateAdminCredential(UpdateAdminCredentialParams params) {
+        adminCredentialService.updateCredential(
+                params.getCurrentPassword(),
+                params.getNewAccount(),
+                params.getNewPassword(),
+                params.getConfirmPassword());
     }
 
     @Override
@@ -957,7 +989,7 @@ public class SysServiceImpl implements ISysService {
             Map<String, Object> tokenPayload = new HashMap<>(2);
             tokenPayload.put("account", CommonUtils.getMD5(email));
             tokenPayload.put("googleUser", true);
-            String token = CommonUtils.genToken(tokenPayload, password);
+            String token = adminCredentialService.generateToken(tokenPayload);
 
             String currentVersion = kvService.getObj(new LambdaQueryWrapper<OciKv>()
                     .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
@@ -1051,7 +1083,7 @@ public class SysServiceImpl implements ISysService {
     private void initGenMfaPng() {
         Optional.ofNullable(kvService.getOne(new LambdaQueryWrapper<OciKv>()
                 .eq(OciKv::getCode, SysCfgEnum.SYS_MFA_SECRET.getCode()))).ifPresent(mfa -> {
-            String qrCodeURL = CommonUtils.generateQRCodeURL(mfa.getValue(), account, "king-detective");
+            String qrCodeURL = CommonUtils.generateQRCodeURL(mfa.getValue(), adminCredentialService.getAccount(), "king-detective");
             CommonUtils.genQRPic(CommonUtils.MFA_QR_PNG_PATH, qrCodeURL);
         });
     }

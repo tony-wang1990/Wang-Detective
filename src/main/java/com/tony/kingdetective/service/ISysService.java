@@ -16,6 +16,8 @@ public interface ISysService {
 
     void updateSysCfg(UpdateSysCfgParams params);
 
+    void updateAdminCredential(UpdateAdminCredentialParams params);
+
     GetSysCfgRsp getSysCfg();
 
     boolean getEnableMfa();

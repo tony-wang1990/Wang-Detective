@@ -82,11 +82,13 @@ public class OciRiskService {
 
         int instanceCount = 0;
         int runningCount = 0;
+        int stoppedCount = 0;
         double armOcpus = 0;
         double armMemoryGb = 0;
         long bootVolumeGb = 0;
         int publicIngressRuleCount = 0;
         int highRiskPortRuleCount = 0;
+        List<OciRiskReportRsp.ResourceRisk> resourceRisks = new ArrayList<>();
         List<OciRiskReportRsp.PortExposure> portExposures = new ArrayList<>();
 
         try (OracleInstanceFetcher fetcher = new OracleInstanceFetcher(config)) {
@@ -99,6 +101,7 @@ public class OciRiskService {
                     runningCount++;
                     summary.runningInstanceCount++;
                 } else if (instance.getLifecycleState() == Instance.LifecycleState.Stopped) {
+                    stoppedCount++;
                     summary.stoppedInstanceCount++;
                 }
 
@@ -143,6 +146,8 @@ public class OciRiskService {
 
             addThresholdRisks(risks, configId, configName, region, armOcpus, armMemoryGb, bootVolumeGb,
                     publicIngressRuleCount, highRiskPortRuleCount, portExposures);
+            buildResourceRisks(resourceRisks, instanceCount, runningCount, stoppedCount, armOcpus, armMemoryGb,
+                    bootVolumeGb, publicIngressRuleCount, highRiskPortRuleCount);
 
             return OciRiskReportRsp.ConfigRisk.builder()
                     .configId(configId)
@@ -155,13 +160,17 @@ public class OciRiskService {
                     .bootVolumeGb(bootVolumeGb)
                     .publicIngressRuleCount(publicIngressRuleCount)
                     .highRiskPortRuleCount(highRiskPortRuleCount)
+                    .resourceRisks(resourceRisks)
                     .portExposures(portExposures)
-                    .status(highRiskPortRuleCount > 0 ? "HIGH" : publicIngressRuleCount > 0 ? "WARN" : "OK")
+                    .status(configStatus(resourceRisks))
                     .message("扫描完成")
                     .build();
         } catch (Exception e) {
             log.warn("OCI risk scan failed for {}", configName, e);
             summary.errorConfigCount++;
+            resourceRisks.add(resourceRisk("ERROR", "CONFIG", "配置扫描失败",
+                    "无法读取此配置的实时 OCI 数据: " + e.getMessage(),
+                    "检查 API 私钥、租户/用户 OCID、区域和网络连通性。", 1));
             risks.add(risk("ERROR", "CONFIG", "配置扫描失败",
                     "配置 " + configName + " 扫描失败: " + e.getMessage(), configId, configName, region));
             return OciRiskReportRsp.ConfigRisk.builder()
@@ -175,11 +184,83 @@ public class OciRiskService {
                     .bootVolumeGb(bootVolumeGb)
                     .publicIngressRuleCount(publicIngressRuleCount)
                     .highRiskPortRuleCount(highRiskPortRuleCount)
+                    .resourceRisks(resourceRisks)
                     .portExposures(portExposures)
                     .status("ERROR")
                     .message(e.getMessage())
                     .build();
         }
+    }
+
+    private void buildResourceRisks(List<OciRiskReportRsp.ResourceRisk> resourceRisks,
+                                    int instanceCount,
+                                    int runningCount,
+                                    int stoppedCount,
+                                    double armOcpus,
+                                    double armMemoryGb,
+                                    long bootVolumeGb,
+                                    int publicIngressRuleCount,
+                                    int highRiskPortRuleCount) {
+        if (instanceCount == 0) {
+            resourceRisks.add(resourceRisk("WARN", "COMPUTE", "配置下没有实例",
+                    "当前配置没有扫描到 Compute 实例，可能是空配置，也可能是权限/区域不匹配。",
+                    "确认区域是否正确；如果是备用配置可忽略。", 0));
+        }
+        if (stoppedCount > 0) {
+            resourceRisks.add(resourceRisk("WARN", "COMPUTE", "存在已停止实例",
+                    "检测到 " + stoppedCount + " 台已停止实例，可能仍保留引导卷并产生存储占用。",
+                    "确认是否需要保留；长期不用建议备份后终止并清理闲置卷。", stoppedCount));
+        }
+        if (runningCount > 0 && armOcpus == 0 && armMemoryGb == 0) {
+            resourceRisks.add(resourceRisk("OK", "COMPUTE", "非 ARM 实例运行中",
+                    "当前运行实例不是 ARM A1 Flex，免费额度判断以实际 OCI 账单为准。",
+                    "如目标是 Always Free，请核对 Shape 和区域可用性。", runningCount));
+        }
+        if (armOcpus > 4 || armMemoryGb > 24) {
+            resourceRisks.add(resourceRisk("WARN", "QUOTA", "ARM 免费资源可能超额",
+                    "ARM 合计 " + round(armOcpus) + " OCPU / " + round(armMemoryGb) + " GB。",
+                    "Always Free 常见上限为 4 OCPU / 24 GB，请确认是否拆分或释放。", 1));
+        }
+        if (bootVolumeGb > 200) {
+            resourceRisks.add(resourceRisk("WARN", "STORAGE", "引导卷容量偏高",
+                    "引导卷合计 " + bootVolumeGb + " GB，长期闲置卷可能带来额外成本。",
+                    "在备份后清理无用 boot volume，必要时降低新实例默认磁盘。", 1));
+        }
+        if (highRiskPortRuleCount > 0) {
+            resourceRisks.add(resourceRisk("HIGH", "NETWORK", "公网高危入站规则",
+                    "检测到 " + highRiskPortRuleCount + " 条公网高危入站规则。",
+                    "优先在配置列表的规则明细中删除或收敛到固定管理 IP/CIDR。", highRiskPortRuleCount));
+        } else if (publicIngressRuleCount > 0) {
+            resourceRisks.add(resourceRisk("WARN", "NETWORK", "公网入站规则较多",
+                    "检测到 " + publicIngressRuleCount + " 条公网入站规则。",
+                    "确认业务确实需要公网暴露；管理端口建议收敛来源 CIDR。", publicIngressRuleCount));
+        }
+    }
+
+    private OciRiskReportRsp.ResourceRisk resourceRisk(String level,
+                                                       String category,
+                                                       String title,
+                                                       String message,
+                                                       String recommendation,
+                                                       int count) {
+        return OciRiskReportRsp.ResourceRisk.builder()
+                .level(level)
+                .category(category)
+                .title(title)
+                .message(message)
+                .recommendation(recommendation)
+                .count(count)
+                .build();
+    }
+
+    private String configStatus(List<OciRiskReportRsp.ResourceRisk> resourceRisks) {
+        if (resourceRisks.stream().anyMatch(item -> "ERROR".equals(item.getLevel()) || "HIGH".equals(item.getLevel()))) {
+            return "HIGH";
+        }
+        if (resourceRisks.stream().anyMatch(item -> "WARN".equals(item.getLevel()))) {
+            return "WARN";
+        }
+        return "OK";
     }
 
     private List<BootVolume> safeListBootVolumes(OracleInstanceFetcher fetcher) {

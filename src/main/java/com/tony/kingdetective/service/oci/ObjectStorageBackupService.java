@@ -14,6 +14,8 @@ import com.tony.kingdetective.bean.dto.SysUserDTO;
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageBackupParams;
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageListObjectsParams;
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageObjectParams;
+import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageRestoreParams;
+import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageScheduleParams;
 import com.tony.kingdetective.bean.response.oci.objectstorage.ObjectStorageBackupRsp;
 import com.tony.kingdetective.config.OracleInstanceFetcher;
 import com.tony.kingdetective.exception.OciException;
@@ -26,6 +28,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -34,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -215,15 +223,15 @@ public class ObjectStorageBackupService {
                 .sizeBytes(file.length())
                 .command("cd " + appDir + " && RESTORE_CONFIRM=YES bash scripts/restore.sh " + shellQuote(file.getAbsolutePath()))
                 .warnings(List.of(
-                        "恢复会先停止服务并移动当前 data/keys/scripts 等目录，请确认已经有最新备份。",
-                        "建议先在低峰期执行，恢复期间 Web 面板会短暂不可用。",
+                        "Web 一键恢复会通过 watcher 执行，期间主服务会短暂重启。",
+                        "恢复会移动当前 data/keys/scripts 等目录，请确认已经有最新备份。",
                         "Object Storage 归档对象需要先下载到本地 backups/ 目录后再执行恢复。"
                 ))
                 .steps(List.of(
-                        "1. 在 Web 端或命令行确认备份文件完整。",
-                        "2. 复制恢复命令到服务器 SSH 执行。",
-                        "3. restore.sh 会把旧文件移动到 .restore-archive-* 后再恢复。",
-                        "4. 恢复后执行 bash scripts/server-smoke-test.sh 验证服务。"
+                        "1. 在左侧选择本地备份包。",
+                        "2. 输入 RESTORE 后点击 Web 一键恢复。",
+                        "3. watcher 会调用 restore.sh，把旧文件移动到 .restore-archive-* 后再恢复。",
+                        "4. 恢复后等待健康检查恢复为 UP；右侧命令只作为 SSH 兜底方案。"
                 ))
                 .build();
     }
@@ -234,16 +242,50 @@ public class ObjectStorageBackupService {
                 .cronExpression(cron)
                 .command("cd " + appDir + " && BACKUP_CRON='" + cron.replace("'", "'\"'\"'") + "' bash scripts/setup-backup-cron.sh")
                 .steps(List.of(
-                        "1. 确认 scripts/setup-backup-cron.sh 存在且可执行。",
-                        "2. 执行命令写入系统 crontab。",
-                        "3. 执行 crontab -l 确认计划任务。",
-                        "4. 首次计划执行后在 backups/ 目录确认备份包。"
+                        "1. 在 Web 端确认 Cron 表达式。",
+                        "2. 点击一键安装定时备份，任务会交给 watcher 持久化。",
+                        "3. watcher 到点会调用 scripts/backup.sh 创建本地备份包。",
+                        "4. 右侧命令只作为 SSH 兜底方案。"
                 ))
                 .objectStoragePolicy(List.of(
-                        "Object Storage 建议使用前缀 wang-detective/backups/yyyyMMdd/ 分日归档，保留最近 7 天本地备份。",
-                        "重要升级前手动创建一次备份并上传到 Standard 桶；稳定后可把 30 天前对象转 Archive 或删除。",
-                        "恢复时先从 Object Storage 下载对象到 /app/king-detective/backups，再执行恢复命令。"
+                        "Object Storage 上传已经集成在一键备份里，选择配置和 Bucket 后即可同步归档。",
+                        "建议使用 wang-detective/backups/yyyyMMdd/ 前缀分日归档，保留最近 7 天本地备份。",
+                        "恢复云端归档时先把对象下载到 /app/king-detective/backups，再使用 Web 一键恢复。"
                 ))
+                .build();
+    }
+
+    public ObjectStorageBackupRsp.ActionResult dispatchRestore(ObjectStorageRestoreParams params) {
+        if (!"RESTORE".equals(params.getConfirm())) {
+            throw new OciException(-1, "恢复属于高危操作，请输入 RESTORE 确认");
+        }
+        File file = safeLocalBackup(params.getBackupName());
+        Path actionFile = writeWatcherAction(Map.of(
+                "ACTION", "restore",
+                "BACKUP_NAME", file.getName(),
+                "CREATED_AT", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        ));
+        return ObjectStorageBackupRsp.ActionResult.builder()
+                .action("restore")
+                .status("QUEUED")
+                .message("恢复任务已交给 watcher 执行，服务会短暂重启，请稍后查看 Docker 日志和健康检查。")
+                .watcherActionFile(actionFile.toString())
+                .createTime(LocalDateTime.now())
+                .build();
+    }
+
+    public ObjectStorageBackupRsp.ActionResult dispatchSchedule(ObjectStorageScheduleParams params) {
+        boolean enabled = Boolean.TRUE.equals(params.getEnabled());
+        String cron = normalizeCron(params.getCronExpression());
+        Path actionFile = writeWatcherAction(enabled
+                ? Map.of("ACTION", "schedule_install", "CRON_SCHEDULE", cron, "CREATED_AT", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                : Map.of("ACTION", "schedule_remove", "CREATED_AT", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+        return ObjectStorageBackupRsp.ActionResult.builder()
+                .action(enabled ? "schedule_install" : "schedule_remove")
+                .status("QUEUED")
+                .message(enabled ? "定时备份安装任务已交给 watcher 执行。" : "定时备份移除任务已交给 watcher 执行。")
+                .watcherActionFile(actionFile.toString())
+                .createTime(LocalDateTime.now())
                 .build();
     }
 
@@ -335,6 +377,51 @@ public class ObjectStorageBackupService {
             throw new OciException(-1, "备份文件不存在: " + backupName);
         }
         return file;
+    }
+
+    private String normalizeCron(String cronExpression) {
+        String cron = StrUtil.blankToDefault(cronExpression, "0 3 * * *").trim();
+        if (cron.contains("\n") || cron.contains("\r")) {
+            throw new OciException(-1, "Cron 表达式不能包含换行");
+        }
+        if (cron.split("\\s+").length != 5) {
+            throw new OciException(-1, "请使用 5 段 Linux cron 表达式，例如 0 3 * * *");
+        }
+        return cron;
+    }
+
+    private Path writeWatcherAction(Map<String, String> values) {
+        try {
+            Path runtimeDir = Path.of(appDir, "runtime");
+            Files.createDirectories(runtimeDir);
+            Path actionFile = runtimeDir.resolve("watcher_action.env");
+            Path processingFile = runtimeDir.resolve("watcher_action.env.processing");
+            if (Files.exists(actionFile) || Files.exists(processingFile)) {
+                throw new OciException(-1, "已有 watcher 动作正在排队或执行，请稍后再试");
+            }
+            StringBuilder content = new StringBuilder();
+            for (Map.Entry<String, String> entry : values.entrySet()) {
+                String value = StrUtil.blankToDefault(entry.getValue(), "");
+                if (value.contains("\n") || value.contains("\r")) {
+                    throw new OciException(-1, "动作参数不合法");
+                }
+                content.append(entry.getKey()).append('=').append(value).append('\n');
+            }
+            Path tempFile = runtimeDir.resolve("watcher_action.env.tmp");
+            Files.writeString(tempFile, content.toString(), StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            try {
+                Files.move(tempFile, actionFile, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tempFile, actionFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return actionFile;
+        } catch (OciException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Write watcher action failed", e);
+            throw new OciException(-1, "写入 watcher 动作失败: " + e.getMessage());
+        }
     }
 
     private String shellQuote(String value) {

@@ -2,10 +2,9 @@ package com.tony.kingdetective.config.ws;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.Tailer;
-import cn.hutool.jwt.JWTUtil;
+import com.tony.kingdetective.service.AdminCredentialService;
 import com.tony.kingdetective.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.apache.commons.io.input.TailerListener;
 import org.apache.commons.io.input.TailerListenerAdapter;
 import org.springframework.stereotype.Component;
@@ -44,8 +43,11 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
     private volatile boolean close = false;
     private volatile boolean isSenderRunning = false;
 
-    @Value("${web.password}")
-    private String password;
+    private final AdminCredentialService adminCredentialService;
+
+    public LogWebSocketHandler(AdminCredentialService adminCredentialService) {
+        this.adminCredentialService = adminCredentialService;
+    }
 
     private String getTokenFromSession(WebSocketSession session) {
         // 解析 URI 中的 token 参数
@@ -67,9 +69,7 @@ public class LogWebSocketHandler extends TextWebSocketHandler {
     }
 
     private boolean validateToken(String token) {
-        return token != null
-                && !CommonUtils.isTokenExpired(token)
-                && JWTUtil.verify(token, password.getBytes(StandardCharsets.UTF_8));
+        return adminCredentialService.verifyToken(token);
     }
 
     @Override

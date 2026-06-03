@@ -25,6 +25,7 @@ public class SystemDiagnosticsService {
 
     private final DataSource dataSource;
     private final IOciKvService kvService;
+    private final AdminCredentialService adminCredentialService;
 
     @Value("${spring.datasource.url:}")
     private String datasourceUrl;
@@ -32,20 +33,17 @@ public class SystemDiagnosticsService {
     @Value("${oci-cfg.key-dir-path:}")
     private String keyDirPath;
 
-    @Value("${web.account:}")
-    private String adminAccount;
-
-    @Value("${web.password:}")
-    private String adminPassword;
-
     @Value("${telegram.bot.token:${TELEGRAM_BOT_TOKEN:${BOT_TOKEN:}}}")
     private String telegramToken;
     @Value("${telegram.bot.chat-id:${TELEGRAM_BOT_CHAT_ID:${TELEGRAM_CHAT_ID:${TG_CHAT_ID:}}}}")
     private String telegramChatId;
 
-    public SystemDiagnosticsService(DataSource dataSource, IOciKvService kvService) {
+    public SystemDiagnosticsService(DataSource dataSource,
+                                    IOciKvService kvService,
+                                    AdminCredentialService adminCredentialService) {
         this.dataSource = dataSource;
         this.kvService = kvService;
+        this.adminCredentialService = adminCredentialService;
     }
 
     public SystemDiagnostics diagnostics() {
@@ -120,6 +118,8 @@ public class SystemDiagnosticsService {
     }
 
     private SystemDiagnostics.CheckItem checkDefaultPassword() {
+        String adminAccount = adminCredentialService.getAccount();
+        String adminPassword = adminCredentialService.getPassword();
         if ("admin".equals(adminAccount) && "admin123456".equals(adminPassword)) {
             return item("admin-password", "WARN", "仍在使用默认管理员账号密码，建议立即修改");
         }

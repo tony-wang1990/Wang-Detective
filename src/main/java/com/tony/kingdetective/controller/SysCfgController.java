@@ -111,6 +111,12 @@ public class SysCfgController {
         return ResponseData.successData("更新系统配置成功");
     }
 
+    @PostMapping(path = "/updateAdminCredential")
+    public ResponseData<Void> updateAdminCredential(@Validated @RequestBody UpdateAdminCredentialParams params) {
+        sysService.updateAdminCredential(params);
+        return ResponseData.successData("登录账号密码已更新，请重新登录");
+    }
+
     @PostMapping(path = "/sendMsg")
     public ResponseData<Void> sendMsg(@Validated @RequestBody SendMsgParams params) {
         sysService.sendMessage(params.getMessage());

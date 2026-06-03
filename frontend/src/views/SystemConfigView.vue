@@ -24,6 +24,7 @@ type DiagItem = {
 };
 
 type SystemConfig = {
+  adminAccount?: string;
   dingToken: string;
   dingSecret: string;
   tgChatId: string;
@@ -47,7 +48,9 @@ const saving = ref(false);
 const diagnosticsLoading = ref(false);
 const testingMessage = ref(false);
 const checkingMfa = ref(false);
+const savingCredential = ref(false);
 const cfg = reactive<SystemConfig>({
+  adminAccount: '',
   dingToken: '',
   dingSecret: '',
   tgChatId: '',
@@ -70,6 +73,12 @@ const raw = ref('');
 const msg = ref('W-探长测试消息');
 const mfaCode = ref('');
 const notice = ref('');
+const credentialForm = reactive({
+  currentPassword: '',
+  newAccount: '',
+  newPassword: '',
+  confirmPassword: ''
+});
 
 const diagnosticStats = computed(() => {
   const result = { ok: 0, warn: 0, error: 0 };
@@ -103,6 +112,7 @@ const diagnosticNames: Record<string, string> = {
 function assignConfig(next: Partial<SystemConfig>) {
   Object.assign(cfg, {
     dingToken: next.dingToken || '',
+    adminAccount: next.adminAccount || 'admin',
     dingSecret: next.dingSecret || '',
     tgChatId: next.tgChatId || '',
     tgBotToken: next.tgBotToken || '',
@@ -119,6 +129,7 @@ function assignConfig(next: Partial<SystemConfig>) {
     allowedEmails: next.allowedEmails || '',
     enableKeepAlive: Boolean(next.enableKeepAlive)
   });
+  credentialForm.newAccount = cfg.adminAccount || 'admin';
 }
 
 async function loadCfg() {
@@ -189,6 +200,31 @@ async function checkMfa() {
     notice.value = err instanceof Error ? err.message : 'MFA 验证失败';
   } finally {
     checkingMfa.value = false;
+  }
+}
+
+async function updateAdminCredential() {
+  savingCredential.value = true;
+  notice.value = '';
+  try {
+    const res = await apiPost<void>('/sys/updateAdminCredential', {
+      currentPassword: credentialForm.currentPassword,
+      newAccount: credentialForm.newAccount,
+      newPassword: credentialForm.newPassword,
+      confirmPassword: credentialForm.confirmPassword
+    });
+    notice.value = res.msg || '登录账号密码已更新，请重新登录';
+    credentialForm.currentPassword = '';
+    credentialForm.newPassword = '';
+    credentialForm.confirmPassword = '';
+    window.setTimeout(() => {
+      sessionStorage.clear();
+      window.location.href = '/login';
+    }, 900);
+  } catch (err) {
+    notice.value = err instanceof Error ? err.message : '更新登录账号密码失败';
+  } finally {
+    savingCredential.value = false;
   }
 }
 
@@ -335,6 +371,29 @@ onMounted(() => {
             <span>允许登录邮箱</span>
             <textarea v-model="cfg.allowedEmails" placeholder="多个邮箱可用逗号或换行分隔" />
           </label>
+          <label>
+            <span>当前登录账号</span>
+            <input :value="cfg.adminAccount || 'admin'" readonly />
+          </label>
+          <label>
+            <span>新登录账号</span>
+            <input v-model="credentialForm.newAccount" autocomplete="username" placeholder="例如 admin" />
+          </label>
+          <label>
+            <span>当前密码</span>
+            <input v-model="credentialForm.currentPassword" autocomplete="current-password" type="password" placeholder="输入当前密码确认身份" />
+          </label>
+          <label>
+            <span>新密码</span>
+            <input v-model="credentialForm.newPassword" autocomplete="new-password" type="password" placeholder="至少 8 位" />
+          </label>
+          <label>
+            <span>确认新密码</span>
+            <input v-model="credentialForm.confirmPassword" autocomplete="new-password" type="password" placeholder="再次输入新密码" />
+          </label>
+          <button type="button" class="ghost" :disabled="savingCredential" @click="updateAdminCredential">
+            <KeyRound :size="16" />{{ savingCredential ? '更新中' : '更新登录账号密码' }}
+          </button>
           <div v-if="cfg.mfaQrData" class="wd-mfa-preview">
             <img :src="cfg.mfaQrData" alt="MFA QR Code" />
             <span>扫码绑定 MFA 后再保存并测试验证码。</span>

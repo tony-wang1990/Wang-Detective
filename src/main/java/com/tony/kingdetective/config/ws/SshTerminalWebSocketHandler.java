@@ -1,14 +1,12 @@
 package com.tony.kingdetective.config.ws;
 
-import cn.hutool.jwt.JWTUtil;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.Session;
 import com.tony.kingdetective.bean.params.ops.SshCredentialParams;
+import com.tony.kingdetective.service.AdminCredentialService;
 import com.tony.kingdetective.service.ops.WebSshService;
 import com.tony.kingdetective.service.ops.WebSshSessionRegistry;
-import com.tony.kingdetective.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -34,12 +32,14 @@ public class SshTerminalWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, TerminalSession> sessions = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    @Value("${web.password}")
-    private String password;
+    private final AdminCredentialService adminCredentialService;
 
-    public SshTerminalWebSocketHandler(WebSshService webSshService, WebSshSessionRegistry sessionRegistry) {
+    public SshTerminalWebSocketHandler(WebSshService webSshService,
+                                       WebSshSessionRegistry sessionRegistry,
+                                       AdminCredentialService adminCredentialService) {
         this.webSshService = webSshService;
         this.sessionRegistry = sessionRegistry;
+        this.adminCredentialService = adminCredentialService;
     }
 
     @Override
@@ -166,9 +166,7 @@ public class SshTerminalWebSocketHandler extends TextWebSocketHandler {
     }
 
     private boolean validateToken(String token) {
-        return token != null
-                && !CommonUtils.isTokenExpired(token)
-                && JWTUtil.verify(token, password.getBytes(StandardCharsets.UTF_8));
+        return adminCredentialService.verifyToken(token);
     }
 
     private String extractSessionId(WebSocketSession session) {

@@ -1,68 +1,61 @@
 # Wang-Detective 代码审计与优化报告
 
-审计日期：2026-05-26
+审计日期：2026-06-03
 
-## 审计结论
+## 结论
 
-本轮对后端 Controller、OCI Service、Vue 路由、前端 API 调用、WebSocket、Telegram Bot 菜单与回调处理做了第一轮发布前审计。结论是：核心链路已经可以作为阶段版本继续部署验证，现有 Vue 页面调用的 API 均能在后端找到对应接口；OCI 实例、租户、流量、VCN、引导卷、安全规则等核心数据仍由 OCI SDK 实时读取或在短期缓存后返回，不是纯静态假数据。
+本轮对 Web 前端、后端 Controller/Service、OCI SDK 调用、脚本、Telegram Bot 回调和部署链路做了收口审计。当前核心功能已经不是纯文字说明或静态假按钮：配置详情、实例操作、风险扫描、备份归档、救援入口、安全规则和 TGBOT 菜单均有后端接口承接；其中高危动作保留二次确认和审计边界。
 
-需要注意：首页总 API 数、任务数、区域数来自本地数据库统计；首页地图来自 `ip_data` 表，通常由 OCI IP 数据加载任务刷新；配置详情页本轮已改为调用 `/api/oci/details` 并强制刷新缓存，用于读取 OCI 实例和 NLB 实时详情。
+需要特别说明：netboot.xyz 自动改启动链属于高危实验能力，本版本提供脚本生成和安全入口，不做无确认的静默改写；Boot Volume 拆卷救援和终止实例等动作仍建议只在专用测试资源上验收。
 
-## 本轮已完成核对
+## 本轮已修复
 
-| 范围 | 结果 |
+| 范围 | 完成情况 |
 |---|---|
-| Vue 路由 | `/dashboard/home`、`/dashboard/user`、`/dashboard/createTask`、`/dashboard/ociLog`、`/dashboard/sysCfg`、`/dashboard/ai-chat`、`/dashboard/features`、`/dashboard/ops-terminal`、`/dashboard/ops-audit`、`/dashboard/risk`、`/dashboard/backups`、`/dashboard/rescue` 均为原生 Vue 路由 |
-| 前端 API 映射 | 当前 Vue 源码使用的 `/api/*` 调用均能匹配后端 Controller |
-| WebSocket | 日志 `/logs`、SSH `/ops/ssh/terminal/{sessionId}`、指标 `/metrics/{token}` 均有后端处理器 |
-| TGBOT 回调 | 静态扫描按钮回调，当前入口均有处理器或明确的 no-op 处理 |
-| TGBOT 前缀冲突 | 已修复工厂按回调 pattern 长度优先匹配，避免 `traffic_history` 抢先吃掉 `traffic_history_query:` |
-| OCI 实时调用 | `/api/oci/details`、实例/流量/租户/VCN/安全规则/引导卷相关接口仍通过 `OracleInstanceFetcher` 和 OCI SDK 执行 |
+| TGBOT 回调 | 点击按钮后立即 `answerCallbackQuery`，减少菜单转圈等待；重复回调答复不再误报“处理请求错误” |
+| TGBOT 菜单映射 | `scripts/verify-telegram-callbacks.mjs` 静态扫描 120 个 callback，全部能匹配 handler |
+| TGBOT 通知降噪 | 开机任务只保留成功和明确失败等结果通知，过程性任务状态不再刷屏推送到 TG |
+| TG 配置读取 | Telegram Token/Chat ID 从数据库读取时按最新记录取值，避免历史重复配置导致 `selectOne` 异常 |
+| Web API 映射 | `scripts/verify-ui-api-mapping.mjs` 扫描 72 个前端 API 调用，全部有后端 Controller 映射 |
+| 备份恢复 | Web 端新增一键恢复本地备份、一键安装/关闭定时备份，watcher 执行动作，命令仅作为兜底 |
+| 救援中心 | 新增一键自动救援表单，选择 OCI 配置和实例后调用 `/api/oci/autoRescue`；脚本区作为兜底和实验说明 |
+| 风险看板 | 风险判断扩展到配置、实例、ARM 免费资源、引导卷容量、扫描异常和公网网络暴露，不再只看端口 |
+| 安全规则 | 配置详情里的规则明细支持新增/删除入站和出站安全规则，直接调用 OCI 安全列表接口 |
+| 登录配置 | 系统配置新增修改当前 Web 登录账号和密码，保存到 SQLite `oci_kv`，登录和 WebSocket token 校验同步使用新凭据 |
 
-## 本轮修复与优化
+## 功能真实性
 
-1. 修复 Telegram Bot 回调前缀冲突风险：`CallbackHandlerFactory` 改为按 pattern 长度倒序匹配。
-2. 修复 Telegram 分页中间按钮 `page_info` 无处理器的问题，归入 `NoopHandler`。
-3. 修复账号选择辅助键盘的回调前缀，从错误的 `account:` 改为已有处理器识别的 `account_detail:`。
-4. 修复创建实例流程返回按钮回调，从无处理器的 `create_instance:` 改为现有 `ci:` 流程。
-5. 增强 TGBOT 运维中心：新增“操作审计”和“主机概览”入口，并同步加入快捷运维菜单。
-6. 修复新版登录页 MFA 缺口：登录页会读取 `/api/sys/getEnableMfa`，启用 MFA 时显示验证码输入框并随登录提交。
-7. 增强配置列表：新增 OCI 配置表单，调用 `/api/oci/addCfg` 上传 config 内容和私钥文件。
-8. 增强配置详情：从本地行预览改为调用 `/api/oci/details`，并使用 `cleanReLaunchDetails: true` 强制刷新 OCI 实时详情。
-9. 新增前端 `apiForm` 封装，统一 multipart 表单提交和 token 注入。
-10. 清理本次构建产生的旧 Vue hash 资源，避免生产 dist 中堆积无引用 JS 文件。
-11. 旧静态入口 `/ip-map.html`、`/wang-features.html`、`/ops-terminal.html` 已停止展示旧 UI 或模拟数据，统一跳转新版 Vue 路由。
-12. 远程冒烟脚本补充旧入口迁移、VCN 和安全规则只读检查，用于部署后验证真实线上状态。
+| 功能区 | 是否真实调用 | 说明 |
+|---|---|---|
+| 配置列表 | 是 | 列表来自本地 SQLite；实时资源按钮调用 `/api/oci/details` 读取 OCI SDK 返回 |
+| 实例动作 | 是 | 启动、停止、重启、改名、Shape、CPU/内存、引导卷、换 IP、IPv6、VNC、终止等均走后端 OCI Service |
+| 安全规则明细 | 是 | 入站/出站列表、添加、删除均调用 `/api/securityRule/*`，会修改 OCI 默认 Security List |
+| 风险看板 | 是 | 读取实例、VCN、安全规则、引导卷等 OCI 实时/短期缓存数据后生成风险 |
+| 备份归档 | 是 | 本地备份执行 `scripts/backup.sh`，Object Storage 上传/删除走 OCI Object Storage SDK |
+| 一键恢复/定时备份 | 是 | Web 提交动作文件到 `runtime/`，watcher 调用 `restore.sh` 或内部定时备份调度 |
+| 救援中心 | 部分自动 | 一键自动救援调用 `/api/oci/autoRescue`；netboot.xyz 保持实验脚本入口，避免误刷启动链 |
+| 运维终端 | 是 | Web SSH/SFTP 通过后端 SSH 服务连接目标主机 |
+| TGBOT | 是 | 诊断、任务、日志、审计、风险、备份、实例菜单均由后端服务或 OCI SDK 返回；按钮映射已静态验收 |
 
-## 功能真实性说明
+## 仍需人工验收的边界
 
-| 功能 | 数据来源 |
+| 项目 | 原因 |
 |---|---|
-| 配置列表 | 本地 SQLite 的 OCI 配置表 |
-| 配置实时详情 | OCI SDK 实时读取实例、VNIC、NLB，并短期缓存 |
-| 开机任务列表 | 本地 SQLite 开机任务表 |
-| 实例创建/停止/释放安全规则 | 后端 Service 调用 OCI SDK 或操作本地任务调度 |
-| 首页健康状态 | `/actuator/health` 实时检查应用、数据库、JVM |
-| 首页 CPU/内存/流量 | `/metrics/{token}` WebSocket 读取服务器实时指标 |
-| 首页地图 | `ip_data` 表聚合，数据需通过 OCI IP 数据加载刷新 |
-| 服务日志 | `/logs` WebSocket 读取应用日志文件 |
-| 运维终端 | JSch 真实 SSH/SFTP 连接 |
-| TGBOT 诊断/任务/日志/审计/主机 | 后端服务、日志文件、SQLite 和诊断服务真实返回 |
-
-## 当前仍需后续专项审计
-
-1. 旧版完整控制台仍保留为 `/legacy-dashboard.html` 降级入口，后续可继续清理无引用静态资源。
-2. Google 一键登录后端能力存在，但新版登录页还未原生接入 Google Identity 流程。
-3. SFTP 已补上传/下载进度反馈，仍缺大文件大小提示、断点/失败重试和更细的危险操作确认。
-4. 高危 OCI 动作仍需专用测试资源逐项验收，包括终止实例、改安全规则、拆卷救援和恢复回滚。
-5. 本地 Windows 环境缺少 Java 21、Maven 和 Docker，后端 Maven 编译需在 GitHub Actions 或服务器环境继续验证。
+| 终止实例、拆卷救援、恢复回滚 | 高危破坏性操作，不能在生产资源上自动全量验证 |
+| netboot.xyz 一键救砖 | 涉及 bootloader、UEFI/BIOS、ARM/AMD 差异，需要专用测试实例确认 |
+| Object Storage 云端恢复 | 当前闭环是先下载到本地 `backups/` 再一键恢复，后续可补“从对象直接拉取并恢复” |
+| TGBOT 可控执行权限 | 已补回调与菜单稳定性，后续可继续加管理员二次确认、冷却时间和角色权限 |
 
 ## 验证记录
 
 ```bash
+node scripts/verify-telegram-callbacks.mjs
+node scripts/verify-ui-api-mapping.mjs
 npm --prefix frontend run build
 ```
 
-结果：通过。`vue-tsc --noEmit` 和 Vite 生产构建均成功。
+当前静态映射检查已通过；前端构建和后端 Maven 编译结果以本次提交后的本地/CI输出为准。部署后建议继续执行：
 
-后端静态审计已完成；由于当前本地环境没有 `java`、`mvn`、`docker` 命令，本轮未在本机完成 Maven 编译。后续部署后应优先检查 GitHub Actions 构建、容器启动日志、`/actuator/health`、登录/MFA、配置详情、TGBOT 运维中心、Web SSH/SFTP、风险看板和备份恢复。
+```bash
+bash scripts/remote-smoke-test.sh https://oci.199060.xyz admin '***'
+```

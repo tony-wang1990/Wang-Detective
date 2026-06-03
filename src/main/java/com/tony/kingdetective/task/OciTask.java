@@ -79,6 +79,8 @@ public class OciTask implements ApplicationRunner {
     private SQLiteHelper sqLiteHelper;
     @Resource
     private ExecutorService virtualExecutor;
+    @Resource
+    private AdminCredentialService adminCredentialService;
 
     private static volatile boolean isPushedLatestVersion = false;
     public static volatile TelegramBotsLongPollingApplication botsApplication;
@@ -94,7 +96,7 @@ public class OciTask implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        TEMP_MAP.put("password", password);
+        TEMP_MAP.put("password", adminCredentialService.getPassword());
         startTgBog();
         updateUserInDb();
         cleanLogTask();
@@ -273,7 +275,7 @@ public class OciTask implements ApplicationRunner {
     private void initGenMfaPng() {
         virtualExecutor.execute(() -> {
             Optional.ofNullable(getSingleKv(kvService, SysCfgEnum.SYS_MFA_SECRET, null, null)).ifPresent(mfa -> {
-                String qrCodeURL = CommonUtils.generateQRCodeURL(mfa.getValue(), account, "king-detective");
+                String qrCodeURL = CommonUtils.generateQRCodeURL(mfa.getValue(), adminCredentialService.getAccount(), "king-detective");
                 CommonUtils.genQRPic(CommonUtils.MFA_QR_PNG_PATH, qrCodeURL);
             });
         });

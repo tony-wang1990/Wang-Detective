@@ -4,6 +4,8 @@ import com.tony.kingdetective.bean.ResponseData;
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageBackupParams;
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageListObjectsParams;
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageObjectParams;
+import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageRestoreParams;
+import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageScheduleParams;
 import com.tony.kingdetective.bean.response.oci.objectstorage.ObjectStorageBackupRsp;
 import com.tony.kingdetective.service.oci.ObjectStorageBackupService;
 import jakarta.validation.Valid;
@@ -60,5 +62,15 @@ public class ObjectStorageBackupController {
     @GetMapping("/schedule-plan")
     public ResponseData<ObjectStorageBackupRsp.SchedulePlan> schedulePlan(@RequestParam(value = "cron", required = false, defaultValue = "0 3 * * *") String cron) {
         return ResponseData.successData(backupService.schedulePlan(cron));
+    }
+
+    @PostMapping("/restore-local")
+    public ResponseData<ObjectStorageBackupRsp.ActionResult> restoreLocal(@RequestBody @Valid ObjectStorageRestoreParams params) {
+        return ResponseData.successData(backupService.dispatchRestore(params));
+    }
+
+    @PostMapping("/schedule")
+    public ResponseData<ObjectStorageBackupRsp.ActionResult> schedule(@RequestBody @Valid ObjectStorageScheduleParams params) {
+        return ResponseData.successData(backupService.dispatchSchedule(params));
     }
 }

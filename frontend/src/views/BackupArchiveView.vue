@@ -64,6 +64,14 @@ type SchedulePlan = {
   objectStoragePolicy?: string[];
 };
 
+type ActionResult = {
+  action?: string;
+  status?: string;
+  message?: string;
+  watcherActionFile?: string;
+  createTime?: string;
+};
+
 type DeleteConfirm = {
   objectName: string;
 };
@@ -83,6 +91,7 @@ const lastBackup = ref<BackupResult | null>(null);
 const localBackups = ref<LocalBackupInfo[]>([]);
 const selectedBackupName = ref('');
 const restorePlan = ref<RestorePlan | null>(null);
+const restoreConfirm = ref('');
 const cronExpression = ref('0 3 * * *');
 const schedulePlan = ref<SchedulePlan | null>(null);
 const deleteConfirm = ref<DeleteConfirm | null>(null);
@@ -263,6 +272,52 @@ async function loadSchedulePlan() {
   }
 }
 
+async function restoreLocalBackup() {
+  if (!selectedBackupName.value) {
+    error.value = '请先选择要恢复的本地备份包';
+    return;
+  }
+  if (restoreConfirm.value.trim() !== 'RESTORE') {
+    error.value = '恢复会重启服务，请输入 RESTORE 后再执行';
+    return;
+  }
+  loading.value = 'restoreAction';
+  error.value = '';
+  try {
+    const res = await apiPost<ActionResult>('/v1/backups/restore-local', {
+      backupName: selectedBackupName.value,
+      confirm: restoreConfirm.value.trim()
+    });
+    notice.value = res.data?.message || '恢复任务已交给 watcher 执行';
+    restoreConfirm.value = '';
+    notifyGlobal(notice.value, 'success');
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '提交恢复任务失败';
+    notifyGlobal(error.value, 'error');
+  } finally {
+    loading.value = '';
+  }
+}
+
+async function applySchedule(enabled: boolean) {
+  loading.value = enabled ? 'scheduleInstall' : 'scheduleRemove';
+  error.value = '';
+  try {
+    const res = await apiPost<ActionResult>('/v1/backups/schedule', {
+      cronExpression: cronExpression.value,
+      enabled
+    });
+    notice.value = res.data?.message || (enabled ? '定时备份已提交安装' : '定时备份已提交关闭');
+    notifyGlobal(notice.value, 'success');
+    await loadSchedulePlan();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '提交定时备份动作失败';
+    notifyGlobal(error.value, 'error');
+  } finally {
+    loading.value = '';
+  }
+}
+
 async function copyText(text?: string) {
   if (!text) return;
   await navigator.clipboard.writeText(text);
@@ -425,10 +480,17 @@ onMounted(() => {
           </label>
         </div>
         <div v-if="restorePlan" class="wd-placeholder">
-          <p>恢复前会保留当前 data、keys、scripts 等目录到回滚目录。建议先在低峰期 SSH 执行命令。</p>
+          <p>一键恢复会把任务交给 watcher 执行，服务会短暂重启；执行前会先生成当前状态备份并保留旧目录。</p>
+          <label>
+            <span>高危确认</span>
+            <input v-model="restoreConfirm" placeholder="输入 RESTORE 后启用一键恢复" />
+          </label>
           <pre class="wd-terminal small">{{ restorePlan.command }}</pre>
           <div class="wd-actions compact">
-            <button type="button" @click="copyText(restorePlan.command)">复制恢复命令</button>
+            <button type="button" class="danger" :disabled="loading === 'restoreAction' || restoreConfirm.trim() !== 'RESTORE'" @click="restoreLocalBackup">
+              <RotateCcw :size="16" />{{ loading === 'restoreAction' ? '提交中...' : '一键恢复本地备份' }}
+            </button>
+            <button type="button" class="ghost" @click="copyText(restorePlan.command)">复制恢复命令</button>
           </div>
           <ul class="wd-check-list">
             <li v-for="item in restorePlan.warnings" :key="item"><strong>注意</strong><span>{{ item }}</span></li>
@@ -448,6 +510,12 @@ onMounted(() => {
           </label>
           <div class="wd-actions compact">
             <button type="button" @click="loadSchedulePlan" :disabled="Boolean(loading)">生成定时方案</button>
+            <button type="button" :disabled="loading === 'scheduleInstall'" @click="applySchedule(true)">
+              <Clock :size="16" />{{ loading === 'scheduleInstall' ? '安装中...' : '一键安装定时备份' }}
+            </button>
+            <button type="button" class="ghost" :disabled="loading === 'scheduleRemove'" @click="applySchedule(false)">
+              {{ loading === 'scheduleRemove' ? '关闭中...' : '关闭定时备份' }}
+            </button>
             <button type="button" class="ghost" @click="copyText(schedulePlan?.command)" :disabled="!schedulePlan?.command">复制命令</button>
           </div>
         </div>

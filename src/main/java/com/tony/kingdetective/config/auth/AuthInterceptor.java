@@ -1,22 +1,19 @@
 package com.tony.kingdetective.config.auth;
 
 import cn.hutool.extra.spring.SpringUtil;
-import cn.hutool.jwt.JWTUtil;
 import com.tony.kingdetective.bean.entity.OciKv;
 import com.tony.kingdetective.exception.OciException;
+import com.tony.kingdetective.service.AdminCredentialService;
 import com.tony.kingdetective.service.IIpBlacklistService;
 import com.tony.kingdetective.service.ILoginAttemptService;
 import com.tony.kingdetective.service.IOciKvService;
-import com.tony.kingdetective.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -30,8 +27,11 @@ public class AuthInterceptor implements HandlerInterceptor {
     
     private static final String DEFENSE_MODE_KEY = "defense_mode_enabled";
 
-    @Value("${web.password}")
-    private String password;
+    private final AdminCredentialService adminCredentialService;
+
+    public AuthInterceptor(AdminCredentialService adminCredentialService) {
+        this.adminCredentialService = adminCredentialService;
+    }
 
     List<String> noTokenList = Arrays.asList(
             "/api/sys/login",
@@ -110,7 +110,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean validateToken(String token) {
-        return !CommonUtils.isTokenExpired(token) && JWTUtil.verify(token, password.getBytes(StandardCharsets.UTF_8));
+        return adminCredentialService.verifyToken(token);
     }
     
     /**

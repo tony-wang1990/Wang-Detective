@@ -44,6 +44,7 @@ public class OciRiskReportRsp {
         private Long bootVolumeGb;
         private Integer publicIngressRuleCount;
         private Integer highRiskPortRuleCount;
+        private List<ResourceRisk> resourceRisks;
         private List<PortExposure> portExposures;
         private String status;
         private String message;
@@ -72,5 +73,16 @@ public class OciRiskReportRsp {
         private String description;
         private Boolean highRisk;
         private String recommendation;
+    }
+
+    @Data
+    @Builder
+    public static class ResourceRisk {
+        private String level;
+        private String category;
+        private String title;
+        private String message;
+        private String recommendation;
+        private Integer count;
     }
 }
