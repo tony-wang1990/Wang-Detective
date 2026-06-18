@@ -275,10 +275,13 @@ check('low-memory VPS health checks do not report false downtime', () => {
 
   assert(healthController.includes('String status = databaseOk ? "UP" : "DOWN"'), 'memory warnings must not make an available application DOWN');
   assert(healthController.includes('.memoryStatus(memoryOk)'), 'memory warning detail must remain visible');
+  assert(healthController.includes('@GetMapping("/health/liveness")'), 'health controller must expose a lightweight liveness endpoint');
   assert(dockerfile.includes('--start-period=15m'), 'Dockerfile health check must allow slow 1C/1G startup');
+  assert(dockerfile.includes('/actuator/health/liveness'), 'Dockerfile must use the lightweight liveness endpoint');
   assert(compose.includes('start_period: 15m'), 'compose health check must allow slow 1C/1G startup');
+  assert(compose.includes('/actuator/health/liveness'), 'compose must use the lightweight liveness endpoint');
   assert(install.includes('remove_env_word "JAVA_TOOL_OPTIONS" "-XX:TieredStopAtLevel=1"'), 'install.sh must remove the legacy TieredStopAtLevel option');
-  assert(install.includes('"databaseConnectivity"[[:space:]]*:[[:space:]]*true'), 'install.sh must accept an available service with only resource warnings');
+  assert(install.includes('HEALTH_URL="http://127.0.0.1:9527/actuator/health/liveness"'), 'install.sh must wait on the lightweight liveness endpoint');
 });
 
 check('remote smoke scripts cover required routes and endpoints', () => {

@@ -101,7 +101,8 @@ if grep -q "king-detective-websockify\\|ghcr.io/tony-wang1990/king-detective:mai
     || ! grep -Fq './backups:/app/king-detective/backups' docker-compose.yml \
     || ! grep -Fq './scripts:/app/king-detective/scripts:ro' docker-compose.yml \
     || ! grep -Fq -- '-Dfile.encoding=UTF-8' docker-compose.yml \
-    || ! grep -Fq 'start_period: 15m' docker-compose.yml; then
+    || ! grep -Fq 'start_period: 15m' docker-compose.yml \
+    || ! grep -Fq '/actuator/health/liveness' docker-compose.yml; then
     backup_file="docker-compose.yml.bak.$(date +%Y%m%d%H%M%S)"
     cp docker-compose.yml "$backup_file"
     wget -q -O docker-compose.yml https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/main/docker-compose.yml || {
@@ -319,18 +320,18 @@ compose up -d king-detective watcher || {
 }
 
 echo "步骤 6: 等待服务就绪..."
-HEALTH_URL="http://127.0.0.1:9527/actuator/health"
+HEALTH_URL="http://127.0.0.1:9527/actuator/health/liveness"
+DETAIL_HEALTH_URL="http://127.0.0.1:9527/actuator/health"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-900}"
 WAIT_STARTED_AT="$(date +%s)"
 while true; do
     HEALTH_BODY="$(curl -fsS --max-time 5 "$HEALTH_URL" 2>/dev/null || true)"
     if echo "$HEALTH_BODY" | grep -q '"status":"UP"'; then
         echo "  - 服务已就绪 health=UP"
-        break
-    fi
-    if echo "$HEALTH_BODY" | grep -q '"databaseConnectivity"[[:space:]]*:[[:space:]]*true'; then
-        echo "  - 服务已可用，数据库连接正常；当前仅存在资源健康告警"
-        echo "  - 健康详情: $HEALTH_BODY"
+        DETAIL_HEALTH_BODY="$(curl -fsS --max-time 8 "$DETAIL_HEALTH_URL" 2>/dev/null || true)"
+        if [ -n "$DETAIL_HEALTH_BODY" ]; then
+            echo "  - 详细健康状态: $DETAIL_HEALTH_BODY"
+        fi
         break
     fi
 

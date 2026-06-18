@@ -51,7 +51,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9527/actuator/health | grep -q '\"status\":\"UP\"'"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9527/actuator/health/liveness | grep -q '\"status\":\"UP\"'"]
       interval: 30s
       timeout: 10s
       retries: 5

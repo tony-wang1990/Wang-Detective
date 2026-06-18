@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.sql.DataSource;
 import java.lang.management.ManagementFactory;
 import java.sql.Connection;
+import java.util.Map;
 
 /**
  * 健康检查控制器
@@ -56,6 +57,20 @@ public class HealthCheckController {
                 .version(getVersion())
                 .timestamp(System.currentTimeMillis())
                 .build();
+    }
+
+    /**
+     * Lightweight container liveness probe. It deliberately avoids database and
+     * resource checks so a busy 1C/1G host cannot make the probe block itself.
+     */
+    @GetMapping("/health/liveness")
+    public Map<String, Object> liveness() {
+        return Map.of(
+                "status", "UP",
+                "uptimeSeconds", ManagementFactory.getRuntimeMXBean().getUptime() / 1000,
+                "version", getVersion(),
+                "timestamp", System.currentTimeMillis()
+        );
     }
     
     /**
