@@ -19,6 +19,10 @@ public class MyErrorViewResolver implements ErrorViewResolver {
     @Override
     public ModelAndView resolveErrorView(HttpServletRequest request, HttpStatus status, Map<String, Object> model) {
         if (status == HttpStatus.NOT_FOUND) {
+            String uri = request.getRequestURI();
+            if (uri != null && (uri.startsWith("/api/") || uri.startsWith("/chat/") || uri.startsWith("/actuator/"))) {
+                return null;
+            }
             return new ModelAndView(new InternalResourceView("/index.html"), model);
         }
         return null;

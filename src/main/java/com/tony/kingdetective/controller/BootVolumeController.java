@@ -7,6 +7,7 @@ import com.tony.kingdetective.bean.params.oci.volume.TerminateBootVolumeParams;
 import com.tony.kingdetective.bean.params.oci.volume.UpdateBootVolumeParams;
 import com.tony.kingdetective.bean.response.oci.volume.BootVolumeListPage;
 import com.tony.kingdetective.service.IBootVolumeService;
+import com.tony.kingdetective.service.OperationAuditSupport;
 import com.tony.kingdetective.utils.CommonUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -31,6 +32,8 @@ public class BootVolumeController {
 
     @Resource
     private IBootVolumeService bootVolumeService;
+    @Resource
+    private OperationAuditSupport audit;
 
     @PostMapping(path = "/page")
     public ResponseData<Page<BootVolumeListPage.BootVolumeInfo>> userPage(@Validated @RequestBody BootVolumePageParams params) {
@@ -39,13 +42,23 @@ public class BootVolumeController {
 
     @PostMapping(path = "/terminate")
     public ResponseData<Void> terminate(@Validated @RequestBody TerminateBootVolumeParams params) {
-        bootVolumeService.terminateBootVolume(params);
+        audit.run(
+                "OCI_BOOT_VOLUME_TERMINATE",
+                String.join(",", params.getBootVolumeIds()),
+                "cfgId=" + params.getOciCfgId(),
+                () -> bootVolumeService.terminateBootVolume(params)
+        );
         return ResponseData.successData("终止引导卷命令下发成功");
     }
 
     @PostMapping(path = "/update")
     public ResponseData<Void> update(@Validated @RequestBody UpdateBootVolumeParams params) {
-        bootVolumeService.update(params);
+        audit.run(
+                "OCI_BOOT_VOLUME_UPDATE",
+                params.getBootVolumeId(),
+                "cfgId=" + params.getOciCfgId() + ", size=" + params.getBootVolumeSize() + ", vpu=" + params.getBootVolumeVpu(),
+                () -> bootVolumeService.update(params)
+        );
         return ResponseData.successData("更改引导卷配置成功");
     }
 }

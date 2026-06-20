@@ -10,6 +10,7 @@ import com.tony.kingdetective.bean.response.oci.securityrule.SecurityRuleListRsp
 import com.tony.kingdetective.service.IAuditLogService;
 import com.tony.kingdetective.service.ISecurityRuleService;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,24 +34,24 @@ public class SecurityRuleController {
     @Resource
     private IAuditLogService auditLogService;
 
-    @RequestMapping("/page")
+    @PostMapping("/page")
     public ResponseData<Page<SecurityRuleListRsp.SecurityRuleInfo>> page(@Validated @RequestBody GetSecurityRuleListPageParams params) {
         return ResponseData.successData(securityRuleService.page(params));
     }
 
-    @RequestMapping("/addIngress")
+    @PostMapping("/addIngress")
     public ResponseData<Void> addIngress(@Validated @RequestBody AddIngressSecurityRuleParams params){
         audited("OCI_SECURITY_RULE_ADD_INGRESS", params.getOciCfgId(), summarize(params), () -> securityRuleService.addIngress(params));
         return ResponseData.successData();
     }
 
-    @RequestMapping("/addEgress")
+    @PostMapping("/addEgress")
     public ResponseData<Void> addEgress(@Validated @RequestBody AddEgressSecurityRuleParams params){
         audited("OCI_SECURITY_RULE_ADD_EGRESS", params.getOciCfgId(), summarize(params), () -> securityRuleService.addEgress(params));
         return ResponseData.successData();
     }
 
-    @RequestMapping("/remove")
+    @PostMapping("/remove")
     public ResponseData<Void> remove(@Validated @RequestBody RemoveSecurityRuleParams params){
         audited("OCI_SECURITY_RULE_REMOVE", params.getOciCfgId(), summarize(params), () -> securityRuleService.remove(params));
         return ResponseData.successData();

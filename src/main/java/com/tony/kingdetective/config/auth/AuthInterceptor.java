@@ -2,10 +2,10 @@ package com.tony.kingdetective.config.auth;
 
 import cn.hutool.extra.spring.SpringUtil;
 import com.tony.kingdetective.bean.entity.OciKv;
-import com.tony.kingdetective.exception.OciException;
 import com.tony.kingdetective.service.AdminCredentialService;
 import com.tony.kingdetective.service.IIpBlacklistService;
 import com.tony.kingdetective.service.IOciKvService;
+import com.tony.kingdetective.utils.CommonUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -47,8 +47,11 @@ public class AuthInterceptor implements HandlerInterceptor {
             response.setStatus(HttpServletResponse.SC_OK);
             return true;
         }
+        if (request.getRequestURI() != null && request.getRequestURI().startsWith("/actuator/")) {
+            return true;
+        }
 
-        String clientIp = getClientIp(request);
+        String clientIp = CommonUtils.getClientIP(request);
         if (isDefenseModeEnabled()) {
             log.warn("Defense mode is enabled, blocking request from IP: {}", clientIp);
             writeJson(response, HttpServletResponse.SC_FORBIDDEN, "{\"code\":403,\"msg\":\"防御模式已开启，访问被拒绝\"}");
@@ -70,8 +73,9 @@ public class AuthInterceptor implements HandlerInterceptor {
                     return true;
                 }
             }
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            throw new OciException(401, "未授权，请重新登录");
+            writeJson(response, HttpServletResponse.SC_UNAUTHORIZED,
+                    "{\"code\":401,\"message\":\"未授权，请重新登录\"}");
+            return false;
         }
 
         return true;
@@ -112,20 +116,6 @@ public class AuthInterceptor implements HandlerInterceptor {
             log.error("Failed to check defense mode", e);
             return false;
         }
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
     }
 
     private void writeJson(HttpServletResponse response, int status, String body) throws Exception {

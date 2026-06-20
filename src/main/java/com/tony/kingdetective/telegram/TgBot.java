@@ -26,10 +26,10 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 
-import org.springframework.beans.factory.annotation.Value;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -51,9 +51,6 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
     private final TgAccountFlowService accountFlowService;
     private final TgSessionFlowService sessionFlowService;
-
-    @Value("${oci-cfg.key-dir-path}")
-    private String keyDirPath;
 
     public TgBot(String botToken, String chatId) {
         BOT_TOKEN = botToken;
@@ -783,7 +780,8 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                         executeCallbackResponse(response, callbackData);
                         log.info("Successfully executed callback response: callbackData={}", callbackData);
                     } else {
-                        log.warn("Handler returned null response: handler={}, callbackData={}", 
+                        // Some handlers execute TelegramClient directly and intentionally return null.
+                        log.debug("Handler completed without a returned BotApiMethod: handler={}, callbackData={}",
                             handler.getClass().getSimpleName(), callbackData);
                     }
                 } else {
@@ -792,26 +790,43 @@ public class TgBot implements LongPollingSingleThreadUpdateConsumer {
                     sendMessage(chatId, "⚠️ 这个菜单暂未接入处理器，请返回主菜单重试。");
                 }
             } catch (TelegramApiException e) {
-                log.error("处理回调查询失败: callbackData={}, error={}", callbackData, e.getMessage(), e);
-                // Try to notify user about the error
+                String errorId = shortErrorId();
+                log.error("处理回调查询失败: errorId={}, callbackData={}, error={}",
+                        errorId, callbackData, e.getMessage(), e);
                 try {
                     answerCallbackQuery(callbackQueryId, "菜单处理失败");
-                    sendMessage(chatId, "❌ 菜单处理失败，请返回主菜单后重试。");
+                    sendMessage(chatId, String.format(
+                            "❌ 菜单处理失败\n\n功能：%s\n错误编号：%s\n请返回主菜单重试；如持续失败，请在服务日志中搜索该编号。",
+                            callbackLabel(callbackData), errorId));
                 } catch (Exception ex) {
                     log.error("Failed to send error message to user", ex);
                 }
             } catch (Exception e) {
-                log.error("处理回调时发生意外错误: callbackData={}, errorType={}, message={}", 
-                    callbackData, e.getClass().getSimpleName(), e.getMessage(), e);
-                // Try to notify user about the error
+                String errorId = shortErrorId();
+                log.error("处理回调时发生意外错误: errorId={}, callbackData={}, errorType={}, message={}",
+                        errorId, callbackData, e.getClass().getSimpleName(), e.getMessage(), e);
                 try {
                     answerCallbackQuery(callbackQueryId, "系统处理异常");
-                    sendMessage(chatId, "❌ 系统错误，请重试或联系管理员");
+                    sendMessage(chatId, String.format(
+                            "❌ 系统处理异常\n\n功能：%s\n错误编号：%s\n请重试；如持续失败，请在服务日志中搜索该编号。",
+                            callbackLabel(callbackData), errorId));
                 } catch (Exception ex) {
                     log.error("Failed to send error message to user", ex);
                 }
             }
         });
+    }
+
+    private String shortErrorId() {
+        return UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    private String callbackLabel(String callbackData) {
+        if (callbackData == null || callbackData.isBlank()) {
+            return "unknown";
+        }
+        String normalized = callbackData.replaceAll("[^a-zA-Z0-9_:-]", "");
+        return normalized.length() > 64 ? normalized.substring(0, 64) : normalized;
     }
 
     private void executeCallbackResponse(BotApiMethod<? extends Serializable> response, String callbackData) throws TelegramApiException {

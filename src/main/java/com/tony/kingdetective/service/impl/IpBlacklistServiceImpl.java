@@ -6,6 +6,7 @@ import com.tony.kingdetective.bean.entity.IpBlacklist;
 import com.tony.kingdetective.mapper.IpBlacklistMapper;
 import com.tony.kingdetective.service.IIpBlacklistService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +27,7 @@ public class IpBlacklistServiceImpl extends ServiceImpl<IpBlacklistMapper, IpBla
     }
     
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void addToBlacklist(String ipAddress, String reason, String bannedBy) {
         // Check if already exists
         if (isBlacklisted(ipAddress)) {
@@ -38,7 +40,13 @@ public class IpBlacklistServiceImpl extends ServiceImpl<IpBlacklistMapper, IpBla
                 .bannedBy(bannedBy)
                 .createTime(LocalDateTime.now())
                 .build();
-        save(blacklist);
+        try {
+            save(blacklist);
+        } catch (RuntimeException duplicate) {
+            if (!isBlacklisted(ipAddress)) {
+                throw duplicate;
+            }
+        }
     }
     
     @Override

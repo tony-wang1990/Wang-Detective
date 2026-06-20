@@ -106,6 +106,7 @@ public class AdminCredentialService {
         }
         saveValue(ADMIN_ACCOUNT_CODE, newAccount.trim());
         saveValue(ADMIN_PASSWORD_CODE, hashPassword(newPassword));
+        rotateTokenSecret();
     }
 
     private boolean verifyCurrentPassword(String password) {
@@ -127,6 +128,13 @@ public class AdminCredentialService {
         secret = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         saveValue(ADMIN_TOKEN_SECRET_CODE, secret);
         return secret;
+    }
+
+    private void rotateTokenSecret() {
+        byte[] bytes = new byte[32];
+        secureRandom.nextBytes(bytes);
+        saveValue(ADMIN_TOKEN_SECRET_CODE,
+                Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));
     }
 
     private boolean isPasswordHash(String value) {

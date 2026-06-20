@@ -135,7 +135,16 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(NoResourceFoundException.class)
     public void handleNoResourceFoundException(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Forward to index.html for SPA support
+        String uri = request.getRequestURI();
+        if (uri != null && (uri.startsWith("/api/") || uri.startsWith("/chat/") || uri.startsWith("/actuator/"))) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+            response.setCharacterEncoding("UTF-8");
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("""
+                    {"code":404,"message":"接口不存在","timestamp":%d}
+                    """.formatted(System.currentTimeMillis()).trim());
+            return;
+        }
         request.getRequestDispatcher("/index.html").forward(request, response);
     }
     
@@ -149,7 +158,7 @@ public class GlobalExceptionHandler {
         
         ErrorResponse response = ErrorResponse.builder()
                 .code(500)
-                .message("系统内部错误：" + e.getMessage())
+                .message("系统内部错误，请查看服务日志获取详情")
                 .timestamp(System.currentTimeMillis())
                 .build();
         

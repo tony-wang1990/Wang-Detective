@@ -1,61 +1,110 @@
-# Wang-Detective 代码审计与优化报告
+# Wang-Detective 全量代码审计报告
 
-审计日期：2026-06-03
+审计日期：2026-06-20
 
 ## 结论
 
-本轮对 Web 前端、后端 Controller/Service、OCI SDK 调用、脚本、Telegram Bot 回调和部署链路做了收口审计。当前核心功能已经不是纯文字说明或静态假按钮：配置详情、实例操作、风险扫描、备份归档、救援入口、安全规则和 TGBOT 菜单均有后端接口承接；其中高危动作保留二次确认和审计边界。
+本轮对后端 Controller/Service、OCI SDK 调用、Vue 路由与 API、Telegram callback、WebSocket、登录安全、数据库迁移、备份 watcher 和部署脚本进行了交叉审计。
 
-需要特别说明：netboot.xyz 自动改启动链属于高危实验能力，本版本提供脚本生成和安全入口，不做无确认的静默改写；Boot Volume 拆卷救援和终止实例等动作仍建议只在专用测试资源上验收。
+项目已经具备完整的管理闭环，未发现仍在使用前端假数据冒充 OCI 实时结果的主功能。当前主要剩余风险不是“按钮未接后端”，而是少数破坏性操作尚未在专用 OCI 测试资源上完成真实演练。
 
-## 本轮已修复
+## 审计范围
 
-| 范围 | 完成情况 |
+| 范围 | 结果 |
 |---|---|
-| TGBOT 回调 | 点击按钮后立即 `answerCallbackQuery`，减少菜单转圈等待；重复回调答复不再误报“处理请求错误” |
-| TGBOT 菜单映射 | `scripts/verify-telegram-callbacks.mjs` 静态扫描 120 个 callback，全部能匹配 handler |
-| TGBOT 通知降噪 | 开机任务只保留成功和明确失败等结果通知，过程性任务状态不再刷屏推送到 TG |
-| TG 配置读取 | Telegram Token/Chat ID 从数据库读取时按最新记录取值，避免历史重复配置导致 `selectOne` 异常 |
-| Web API 映射 | `scripts/verify-ui-api-mapping.mjs` 扫描 72 个前端 API 调用，全部有后端 Controller 映射 |
-| 备份恢复 | Web 端新增一键恢复本地备份、一键安装/关闭定时备份，watcher 执行动作，命令仅作为兜底 |
-| 救援中心 | 新增一键自动救援表单，选择 OCI 配置和实例后调用 `/api/oci/autoRescue`；脚本区作为兜底和实验说明 |
-| 风险看板 | 风险判断扩展到配置、实例、ARM 免费资源、引导卷容量、扫描异常和公网网络暴露，不再只看端口 |
-| 安全规则 | 配置详情里的规则明细支持新增/删除入站和出站安全规则，直接调用 OCI 安全列表接口 |
-| 登录配置 | 系统配置新增修改当前 Web 登录账号和密码，保存到 SQLite `oci_kv`，登录和 WebSocket token 校验同步使用新凭据 |
+| Java 主代码 | 343 个源文件可编译 |
+| Web API | 138 个 Controller 端点 |
+| Vue API | 72 个调用全部匹配后端 |
+| Vue 路由 | 登录与 13 个控制台路由均有真实组件 |
+| Telegram | 120 个按钮 callback 对应 160 个处理器模式 |
+| 自动测试 | 10 项 Spring Boot 回归测试通过 |
+| 前端构建 | TypeScript 检查与 Vite 生产构建通过 |
+| 脚本验收 | 安装、更新、恢复、smoke、watcher 静态检查通过 |
 
-## 功能真实性
+## 已修复问题
 
-| 功能区 | 是否真实调用 | 说明 |
-|---|---|---|
-| 配置列表 | 是 | 列表来自本地 SQLite；实时资源按钮调用 `/api/oci/details` 读取 OCI SDK 返回 |
-| 实例动作 | 是 | 启动、停止、重启、改名、Shape、CPU/内存、引导卷、换 IP、IPv6、VNC、终止等均走后端 OCI Service |
-| 安全规则明细 | 是 | 入站/出站列表、添加、删除均调用 `/api/securityRule/*`，会修改 OCI 默认 Security List |
-| 风险看板 | 是 | 读取实例、VCN、安全规则、引导卷等 OCI 实时/短期缓存数据后生成风险 |
-| 备份归档 | 是 | 本地备份执行 `scripts/backup.sh`，Object Storage 上传/删除走 OCI Object Storage SDK |
-| 一键恢复/定时备份 | 是 | Web 提交动作文件到 `runtime/`，watcher 调用 `restore.sh` 或内部定时备份调度 |
-| 救援中心 | 部分自动 | 一键自动救援调用 `/api/oci/autoRescue`；netboot.xyz 保持实验脚本入口，避免误刷启动链 |
-| 运维终端 | 是 | Web SSH/SFTP 通过后端 SSH 服务连接目标主机 |
-| TGBOT | 是 | 诊断、任务、日志、审计、风险、备份、实例菜单均由后端服务或 OCI SDK 返回；按钮映射已静态验收 |
+### P0
 
-## 仍需人工验收的边界
+1. **API 404 被 SPA 路由伪装成成功**
+   - 未知 `/api/*` 原来会返回 `index.html` 和 200。
+   - 已改为 JSON 404；只对真实 Vue 页面路径执行 SPA fallback。
 
-| 项目 | 原因 |
-|---|---|
-| 终止实例、拆卷救援、恢复回滚 | 高危破坏性操作，不能在生产资源上自动全量验证 |
-| netboot.xyz 一键救砖 | 涉及 bootloader、UEFI/BIOS、ARM/AMD 差异，需要专用测试实例确认 |
-| Object Storage 云端恢复 | 当前闭环是先下载到本地 `backups/` 再一键恢复，后续可补“从对象直接拉取并恢复” |
-| TGBOT 可控执行权限 | 已补回调与菜单稳定性，后续可继续加管理员二次确认、冷却时间和角色权限 |
+2. **健康检查可能被防御模式拦截**
+   - 防御模式和黑名单判断原来早于 `/actuator/*` 放行。
+   - 已保证 liveness/health 始终可被 Docker 检查。
 
-## 验证记录
+3. **登录凭据修改后旧 Token 仍有效**
+   - 已在修改管理员账号密码时轮换 JWT secret。
 
-```bash
-node scripts/verify-telegram-callbacks.mjs
-node scripts/verify-ui-api-mapping.mjs
-npm --prefix frontend run build
-```
+4. **登录防爆破记录可能重复**
+   - 并发失败可能生成同 IP 多条记录并触发 `TooManyResultsException`。
+   - 已增加重复数据清理、唯一索引和事务/并发保护。
 
-当前静态映射检查已通过；前端构建和后端 Maven 编译结果以本次提交后的本地/CI输出为准。部署后建议继续执行：
+5. **公网可伪造代理 IP 头**
+   - 现在只在请求来自本机、Docker 私网或内网代理时采信转发头。
 
-```bash
-bash scripts/remote-smoke-test.sh https://oci.199060.xyz admin '***'
-```
+### P1
+
+1. **日志 WebSocket 只能服务一个页面**
+   - 已改为多会话广播、共享 Tailer、会话独立清理。
+
+2. **VNC 会杀死任意占用 5900 的进程**
+   - 已改为只管理本服务创建的隧道进程。
+   - 同时校验 OCI 返回的连接命令结构。
+
+3. **引导卷聚合存在并发写普通 ArrayList**
+   - 已改为安全聚合，并过滤空 VNIC。
+
+4. **外网版本查询阻塞启动完成**
+   - GitHub 查询和启动通知已移出 ApplicationRunner 关键路径。
+
+5. **TG 错误无法定位**
+   - 用户消息现在包含 callback 功能名和短错误编号。
+   - 返回 `null` 的直发型处理器不再被误记为警告。
+
+6. **高危接口 HTTP 方法过宽**
+   - 安全规则、VCN、租户、Cloudflare 和流量接口已收紧为明确 POST。
+
+7. **高危操作审计覆盖不完整**
+   - 已补充备份、恢复、定时计划、引导卷、VCN、租户和 Cloudflare 操作审计。
+
+## 功能真实性判断
+
+### Web
+
+- 配置、任务、实例、网络、安全规则、引导卷、风险、备份和救援页面均调用后端 API。
+- OCI 资源结果来自 OCI Java SDK，不由前端生成模拟数据。
+- 高危动作具有确认、loading、错误提示或审计记录。
+
+### Telegram Bot
+
+- callback 静态映射完整，所有处理器可由 Spring 实例化。
+- OCI 菜单通过相同 Service/OCI SDK 获取数据或执行动作。
+- 复杂 OCI 请求仍取决于 Oracle API 响应速度；Bot 会先确认已接收，再异步执行。
+- 本轮无法使用旧测试密码重新登录线上站点，因此需要部署新镜像后做一次 TG 全菜单真实复验。
+
+### 备份与救援
+
+- Web 本地备份真实执行 `scripts/backup.sh`。
+- 恢复与定时任务通过 watcher 动作文件执行，不是文字占位。
+- 自动救援真实调用 `IOciService.autoRescue`。
+- netboot.xyz 自动改写 bootloader 仍有意保持实验边界，避免一键误清盘。
+
+## 启动性能判断
+
+- 本地 Spring Boot 测试上下文约 7-8 秒完成。
+- 服务器曾出现 700 秒启动，日志同时显示 CPU 100%、内存/Swap 压力和线程饥饿，属于低配主机资源争用被重依赖放大。
+- 已完成可选 TG/AI 延迟初始化、轻量 liveness、外网版本查询后台化。
+- 1C1G 正常目标应回到约 30-90 秒；最终数值必须以新镜像部署日志为准。
+
+## 仍需验收
+
+1. 在专用测试实例执行启动、停止、重启、改名、换 IP、IPv6、Shape 和引导卷调整。
+2. 在可删除资源上验证安全规则、VCN、引导卷和实例终止。
+3. 做一次备份、恢复、回滚和 Object Storage 归档演练。
+4. 部署新镜像后逐级点击 TG 一级/二级菜单，并按错误编号检查失败项。
+5. 记录 1C1G 冷启动时间、峰值 CPU、峰值 RSS 和 Swap 变化。
+
+## 发布判断
+
+代码层面达到候选发布状态。建议新镜像部署后先运行只读 smoke，再进行专用资源的破坏性验收；通过后可标记为稳定版。

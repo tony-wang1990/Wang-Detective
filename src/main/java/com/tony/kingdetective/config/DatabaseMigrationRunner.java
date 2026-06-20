@@ -59,6 +59,8 @@ public class DatabaseMigrationRunner implements ApplicationRunner {
                 log.info("运维脚本工具箱表结构迁移完成");
             }
 
+            ensureSecurityIndexes(stmt);
+
         } catch (Exception e) {
             log.error("❌ 数据库迁移失败", e);
             // 不抛出异常，允许应用继续启动
@@ -77,6 +79,23 @@ public class DatabaseMigrationRunner implements ApplicationRunner {
              ResultSet rs = stmt.executeQuery(sql)) {
             return rs.next();
         }
+    }
+
+    private void ensureSecurityIndexes(Statement stmt) throws Exception {
+        stmt.executeUpdate("""
+                DELETE FROM login_attempts
+                WHERE id NOT IN (
+                    SELECT MAX(id) FROM login_attempts GROUP BY ip_address
+                )
+                """);
+        stmt.executeUpdate("""
+                DELETE FROM ip_blacklist
+                WHERE id NOT IN (
+                    SELECT MAX(id) FROM ip_blacklist GROUP BY ip_address
+                )
+                """);
+        stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_login_attempts_ip ON login_attempts(ip_address)");
+        stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uk_ip_blacklist_ip ON ip_blacklist(ip_address)");
     }
 
     private boolean columnExists(Connection conn, String tableName, String columnName) throws Exception {

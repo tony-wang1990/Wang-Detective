@@ -322,12 +322,23 @@ public class OciTask implements ApplicationRunner {
     }
 
     private void startInform() {
-        String latestVersion = CommonUtils.getLatestVersion();
-        String nowVersion = getSingleKvValue(kvService, SysCfgEnum.SYS_INFO_VERSION, SysCfgTypeEnum.SYS_INFO, CommonUtils.getCurrentVersion());
-        nowVersion = StrUtil.blankToDefault(nowVersion, CommonUtils.getCurrentVersion());
-        latestVersion = StrUtil.blankToDefault(latestVersion, nowVersion);
-        log.info(String.format("【king-detective】服务启动成功~ 当前版本：%s 最新版本：%s", nowVersion, latestVersion));
-        sysService.sendMessage(String.format("【king-detective】服务启动成功🎉🎉\n\n当前版本：%s\n最新版本：%s\n发送 /start 操作机器人🤖\n放货通知频道：https://t.me/Woci_detective", nowVersion, latestVersion));
+        virtualExecutor.execute(() -> {
+            String currentVersion = CommonUtils.getCurrentVersion();
+            String nowVersion = getSingleKvValue(
+                    kvService,
+                    SysCfgEnum.SYS_INFO_VERSION,
+                    SysCfgTypeEnum.SYS_INFO,
+                    currentVersion
+            );
+            nowVersion = StrUtil.blankToDefault(nowVersion, currentVersion);
+            String latestVersion = StrUtil.blankToDefault(CommonUtils.getLatestVersion(), nowVersion);
+            log.info("【king-detective】服务启动成功~ 当前版本：{} 最新版本：{}", nowVersion, latestVersion);
+            sysService.sendMessage(String.format(
+                    "【king-detective】服务启动成功🎉🎉\n\n当前版本：%s\n最新版本：%s\n发送 /start 操作机器人🤖\n放货通知频道：https://t.me/Woci_detective",
+                    nowVersion,
+                    latestVersion
+            ));
+        });
     }
 
     public static void pushVersionUpdateMsg(IOciKvService kvService, ISysService sysService) {

@@ -29,7 +29,7 @@ function add(map, key, source) {
 
 const files = walk(telegramDir);
 const callbacks = new Map();
-const handlerPatterns = new Set();
+const handlerPatterns = new Map();
 const explicitCallbacks = new Set();
 
 for (const file of files) {
@@ -48,7 +48,7 @@ for (const file of files) {
   }
 
   for (const match of source.matchAll(/getCallbackPattern\s*\(\)\s*\{[\s\S]*?return\s+"([^"]+)"/g)) {
-    handlerPatterns.add(match[1]);
+    add(handlerPatterns, match[1], sourceName);
   }
   for (const match of source.matchAll(/"([^"]+)"\.equals\(callbackData\)/g)) {
     explicitCallbacks.add(match[1]);
@@ -59,22 +59,42 @@ for (const file of files) {
 }
 
 function isCovered(callback) {
-  return explicitCallbacks.has(callback) || [...handlerPatterns].some((pattern) => callback.startsWith(pattern));
+  return explicitCallbacks.has(callback) || [...handlerPatterns.keys()].some((pattern) => callback.startsWith(pattern));
 }
 
 const missing = [...callbacks.entries()]
   .filter(([callback]) => !isCovered(callback))
   .sort(([left], [right]) => left.localeCompare(right));
+const blankPatterns = [...handlerPatterns.entries()].filter(([pattern]) => !pattern.trim());
+const duplicatePatterns = [...handlerPatterns.entries()].filter(([, sources]) => sources.length > 1);
 
 console.log(`Telegram callbacks: ${callbacks.size}`);
 console.log(`Telegram handler patterns: ${handlerPatterns.size}`);
 console.log(`Telegram explicit callbacks: ${explicitCallbacks.size}`);
+
+if (blankPatterns.length || duplicatePatterns.length || missing.length) {
+  if (blankPatterns.length) {
+    console.error('\nBlank Telegram callback handler patterns:');
+    for (const [, sources] of blankPatterns) {
+      console.error(`- ${[...new Set(sources)].join(', ')}`);
+    }
+  }
+  if (duplicatePatterns.length) {
+    console.error('\nDuplicate Telegram callback handler patterns:');
+    for (const [pattern, sources] of duplicatePatterns) {
+      console.error(`- ${pattern} (${[...new Set(sources)].join(', ')})`);
+    }
+  }
+}
 
 if (missing.length) {
   console.error('\nMissing Telegram callback handlers:');
   for (const [callback, sources] of missing) {
     console.error(`- ${callback} (${[...new Set(sources)].join(', ')})`);
   }
+}
+
+if (blankPatterns.length || duplicatePatterns.length || missing.length) {
   process.exit(1);
 }
 

@@ -835,20 +835,42 @@ public class CommonUtils {
     }
 
     public static String getClientIP(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.split(",")[0].trim();
+        String remoteAddress = request.getRemoteAddr();
+        if (isTrustedProxyAddress(remoteAddress)) {
+            String forwardedFor = request.getHeader("X-Forwarded-For");
+            if (StrUtil.isNotBlank(forwardedFor) && !"unknown".equalsIgnoreCase(forwardedFor)) {
+                return forwardedFor.split(",")[0].trim();
+            }
+            String realIp = request.getHeader("X-Real-IP");
+            if (StrUtil.isNotBlank(realIp) && !"unknown".equalsIgnoreCase(realIp)) {
+                return realIp.trim();
+            }
         }
-        ip = request.getHeader("Proxy-Client-IP");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip;
+        return remoteAddress;
+    }
+
+    private static boolean isTrustedProxyAddress(String address) {
+        if (StrUtil.isBlank(address)) {
+            return false;
         }
-        ip = request.getHeader("WL-Proxy-Client-IP");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip;
+        if ("::1".equals(address) || "0:0:0:0:0:0:0:1".equals(address) || address.startsWith("127.")) {
+            return true;
         }
-        ip = request.getRemoteAddr();
-        return ip;
+        if (address.startsWith("10.") || address.startsWith("192.168.")) {
+            return true;
+        }
+        if (address.startsWith("172.")) {
+            String[] parts = address.split("\\.");
+            if (parts.length > 1) {
+                try {
+                    int secondOctet = Integer.parseInt(parts[1]);
+                    return secondOctet >= 16 && secondOctet <= 31;
+                } catch (NumberFormatException ignored) {
+                    return false;
+                }
+            }
+        }
+        return address.startsWith("fc") || address.startsWith("fd");
     }
 
     public static void writeResponse(HttpServletResponse response,

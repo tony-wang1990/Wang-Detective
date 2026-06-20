@@ -8,6 +8,7 @@ import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageRestore
 import com.tony.kingdetective.bean.params.oci.objectstorage.ObjectStorageScheduleParams;
 import com.tony.kingdetective.bean.response.oci.objectstorage.ObjectStorageBackupRsp;
 import com.tony.kingdetective.service.oci.ObjectStorageBackupService;
+import com.tony.kingdetective.service.OperationAuditSupport;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,9 +24,11 @@ import java.util.List;
 public class ObjectStorageBackupController {
 
     private final ObjectStorageBackupService backupService;
+    private final OperationAuditSupport audit;
 
-    public ObjectStorageBackupController(ObjectStorageBackupService backupService) {
+    public ObjectStorageBackupController(ObjectStorageBackupService backupService, OperationAuditSupport audit) {
         this.backupService = backupService;
+        this.audit = audit;
     }
 
     @GetMapping("/buckets")
@@ -40,12 +43,22 @@ public class ObjectStorageBackupController {
 
     @PostMapping("/archive")
     public ResponseData<ObjectStorageBackupRsp> archive(@RequestBody @Valid ObjectStorageBackupParams params) {
-        return ResponseData.successData(backupService.createBackup(params));
+        return ResponseData.successData(audit.supply(
+                "BACKUP_CREATE",
+                params.getBucketName(),
+                "cfgId=" + params.getOciCfgId() + ", upload=" + params.getUploadToObjectStorage(),
+                () -> backupService.createBackup(params)
+        ));
     }
 
     @PostMapping("/delete-object")
     public ResponseData<Void> deleteObject(@RequestBody @Valid ObjectStorageObjectParams params) {
-        backupService.deleteObject(params);
+        audit.run(
+                "BACKUP_OBJECT_DELETE",
+                params.getObjectName(),
+                "cfgId=" + params.getOciCfgId() + ", bucket=" + params.getBucketName(),
+                () -> backupService.deleteObject(params)
+        );
         return ResponseData.successData();
     }
 
@@ -66,11 +79,21 @@ public class ObjectStorageBackupController {
 
     @PostMapping("/restore-local")
     public ResponseData<ObjectStorageBackupRsp.ActionResult> restoreLocal(@RequestBody @Valid ObjectStorageRestoreParams params) {
-        return ResponseData.successData(backupService.dispatchRestore(params));
+        return ResponseData.successData(audit.supply(
+                "BACKUP_RESTORE_QUEUE",
+                params.getBackupName(),
+                "restore queued through watcher",
+                () -> backupService.dispatchRestore(params)
+        ));
     }
 
     @PostMapping("/schedule")
     public ResponseData<ObjectStorageBackupRsp.ActionResult> schedule(@RequestBody @Valid ObjectStorageScheduleParams params) {
-        return ResponseData.successData(backupService.dispatchSchedule(params));
+        return ResponseData.successData(audit.supply(
+                "BACKUP_SCHEDULE_UPDATE",
+                "backup-schedule",
+                "enabled=" + params.getEnabled() + ", cron=" + params.getCronExpression(),
+                () -> backupService.dispatchSchedule(params)
+        ));
     }
 }

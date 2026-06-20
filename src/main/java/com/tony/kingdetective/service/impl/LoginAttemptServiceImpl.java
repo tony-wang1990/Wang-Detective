@@ -6,6 +6,7 @@ import com.tony.kingdetective.bean.entity.LoginAttempt;
 import com.tony.kingdetective.mapper.LoginAttemptMapper;
 import com.tony.kingdetective.service.ILoginAttemptService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -18,7 +19,8 @@ import java.time.LocalDateTime;
 public class LoginAttemptServiceImpl extends ServiceImpl<LoginAttemptMapper, LoginAttempt> implements ILoginAttemptService {
     
     @Override
-    public void recordFailure(String ipAddress) {
+    @Transactional(rollbackFor = Exception.class)
+    public synchronized void recordFailure(String ipAddress) {
         LambdaQueryWrapper<LoginAttempt> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LoginAttempt::getIpAddress, ipAddress);
         LoginAttempt attempt = getOne(wrapper);
@@ -42,7 +44,9 @@ public class LoginAttemptServiceImpl extends ServiceImpl<LoginAttemptMapper, Log
     @Override
     public int getAttemptCount(String ipAddress) {
         LambdaQueryWrapper<LoginAttempt> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(LoginAttempt::getIpAddress, ipAddress);
+        wrapper.eq(LoginAttempt::getIpAddress, ipAddress)
+                .orderByDesc(LoginAttempt::getLastAttempt)
+                .last("limit 1");
         LoginAttempt attempt = getOne(wrapper);
         return attempt == null ? 0 : attempt.getAttemptCount();
     }

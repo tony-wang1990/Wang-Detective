@@ -486,7 +486,9 @@ public class OracleInstanceFetcher implements AutoCloseable {
                         return vnic;
                     }
                     return null;
-                }).collect(Collectors.toList());
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     private String getCidr(VirtualNetworkClient virtualNetworkClient, String compartmentId) {
@@ -1435,7 +1437,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
     public List<BootVolume> listBootVolume() {
         List<BootVolume> bootVolumes = new ArrayList<>();
         List<AvailabilityDomain> availabilityDomains = getAvailabilityDomains(identityClient, compartmentId);
-        availabilityDomains.parallelStream().forEach(availabilityDomain -> {
+        availabilityDomains.forEach(availabilityDomain -> {
             List<BootVolume> items = blockstorageClient.listBootVolumes(ListBootVolumesRequest.builder()
                     .availabilityDomain(availabilityDomain.getName())
                     .compartmentId(compartmentId)
@@ -1526,7 +1528,7 @@ public class OracleInstanceFetcher implements AutoCloseable {
     public List<Vnic> listVnicByInstanceId(String instanceId) {
         List<Vnic> vnics = listInstanceIPs(instanceId);
         if (CollectionUtil.isEmpty(vnics)) {
-            return null;
+            return Collections.emptyList();
         }
         return vnics;
     }
@@ -1554,7 +1556,11 @@ public class OracleInstanceFetcher implements AutoCloseable {
 
     public InstanceCfgDTO getInstanceCfg(String instanceId) {
         Instance instance = getInstanceById(instanceId);
-        List<String> ipv6Addresses = getVnicByInstanceId(instanceId).getIpv6Addresses();
+        Vnic primaryVnic = getVnicByInstanceId(instanceId);
+        if (primaryVnic == null) {
+            throw new OciException(-1, "实例未找到可用的 VNIC");
+        }
+        List<String> ipv6Addresses = primaryVnic.getIpv6Addresses();
         String ipv6 = CollectionUtil.isEmpty(ipv6Addresses) ? null : ipv6Addresses.get(0);
 
         String bootVolumeSize = null;

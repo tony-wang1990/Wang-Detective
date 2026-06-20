@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tony.kingdetective.bean.entity.AuditLog;
 import com.tony.kingdetective.mapper.AuditLogMapper;
 import com.tony.kingdetective.service.IAuditLogService;
+import com.tony.kingdetective.utils.CommonUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -153,14 +154,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
     }
 
     private String clientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        return ip != null && ip.contains(",") ? ip.split(",")[0].trim() : ip;
+        return CommonUtils.getClientIP(request);
     }
 
     private String csv(String value) {

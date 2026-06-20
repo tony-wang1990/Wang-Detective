@@ -44,7 +44,7 @@ public class SysCfgController {
 
     @PostMapping(path = "/login")
     public ResponseData<LoginRsp> addCfg(@Validated @RequestBody LoginParams params) {
-        String clientIp = getClientIp(request);
+        String clientIp = CommonUtils.getClientIP(request);
         
         try {
             // Clean expired login attempts
@@ -72,23 +72,6 @@ public class SysCfgController {
         }
     }
     
-    /**
-     * Get client IP address
-     */
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
-    }
-
     @PostMapping(path = "/updateVersion")
     public ResponseData<Void> updateVersion() {
         sysService.updateVersion();

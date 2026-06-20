@@ -174,21 +174,18 @@ public class SysServiceImpl implements ISysService {
         if (getEnableMfa()) {
             if (params.getMfaCode() == null) {
                 log.error("请求IP：{} 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp);
-                sendMessage(String.format("请求IP：%s 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp));
                 throw new OciException(-1, "验证码不能为空");
             }
             OciKv mfa = kvService.getOne(new LambdaQueryWrapper<OciKv>()
                     .eq(OciKv::getCode, SysCfgEnum.SYS_MFA_SECRET.getCode()));
             if (!CommonUtils.verifyMfaCode(mfa.getValue(), params.getMfaCode())) {
                 log.error("请求IP：{} 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp);
-                sendMessage(String.format("请求IP：%s 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp));
                 throw new OciException(-1, "无效的验证码");
             }
         }
         String activeAccount = adminCredentialService.getAccount();
         if (!adminCredentialService.matches(params.getAccount(), params.getPassword())) {
             log.error("请求IP：{} 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp);
-            sendMessage(String.format("请求IP：%s 登录失败，如果不是本人操作，可能存在被攻击的风险", clientIp));
             throw new OciException(-1, "账号或密码不正确");
         }
         Map<String, Object> payload = new HashMap<>(1);
@@ -199,7 +196,7 @@ public class SysServiceImpl implements ISysService {
                 .eq(OciKv::getCode, SysCfgEnum.SYS_INFO_VERSION.getCode())
                 .eq(OciKv::getType, SysCfgTypeEnum.SYS_INFO.getCode())
                 .select(OciKv::getValue), String::valueOf);
-        sendMessage(String.format("请求IP：%s 登录成功，时间：%s", clientIp, LocalDateTime.now().format(CommonUtils.DATETIME_FMT_NORM)));
+        log.info("请求IP：{} 登录成功，时间：{}", clientIp, LocalDateTime.now().format(CommonUtils.DATETIME_FMT_NORM));
         LoginRsp rsp = new LoginRsp();
         rsp.setToken(token);
         rsp.setCurrentVersion(StrUtil.blankToDefault(currentVersion, CommonUtils.getCurrentVersion()));

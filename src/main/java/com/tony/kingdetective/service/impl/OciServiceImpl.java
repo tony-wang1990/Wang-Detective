@@ -73,6 +73,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.tony.kingdetective.config.VirtualThreadConfig.VIRTUAL_EXECUTOR;
@@ -119,6 +120,7 @@ public class OciServiceImpl implements IOciService {
             Math.min(4, Runtime.getRuntime().availableProcessors()),
             ThreadFactoryBuilder.create().setNamePrefix("oci-task-").build());
     public final static Set<String> RUNNING_TASKS = ConcurrentHashMap.newKeySet();
+    private final AtomicReference<Process> vncTunnelProcess = new AtomicReference<>();
 
     @Override
     public Page<OciUserListRsp> userPage(GetOciUserListParams params) {
@@ -662,23 +664,12 @@ public class OciServiceImpl implements IOciService {
 
             String resStr = String.format("【%s】【%s】", sysUserDTO.getUsername(), fetcher.getInstanceById(params.getInstanceId()).getDisplayName());
 
-            // 检查并释放 5900 端口
-            try {
-                String portCheckCmd = "lsof -i:5900 -t";
-                String pid = RuntimeUtil.execForStr("sh", "-c", portCheckCmd).trim();
-                if (StrUtil.isNotBlank(pid)) {
-                    log.warn("Port 5900 is occupied by PID {}. Killing it.", pid);
-                    RuntimeUtil.exec("kill", "-9", pid);
-                }
-            } catch (Exception e) {
-                log.error("Failed to check/kill process on port 5900", e);
-            }
-
             // 避免重复生成密钥
             File privateKey = new File("/root/.ssh/id_rsa");
             File publicKey = new File("/root/.ssh/id_rsa.pub");
 
             if (!privateKey.exists() || !publicKey.exists()) {
+                FileUtil.mkdir(privateKey.getParentFile());
                 // 构造命令：生成无密码 SSH 密钥
                 ProcessBuilder builder = new ProcessBuilder(
                         "ssh-keygen",
@@ -726,25 +717,30 @@ public class OciServiceImpl implements IOciService {
 
             // 提取 ProxyCommand 并增强
             String proxyCommand = StrUtil.subBetween(updated, "ProxyCommand='", "'");
+            if (StrUtil.isBlank(proxyCommand) || !proxyCommand.startsWith("ssh ")) {
+                throw new OciException(-1, "OCI 返回的 VNC 连接命令格式无效");
+            }
             String enhancedProxy = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " + proxyCommand.substring(4);
             updated = StrUtil.replace(updated, proxyCommand, enhancedProxy);
 
             // 增强主 ssh 命令：禁用交互，不要尝试连接终端
             updated = StrUtil.replaceFirst(updated, "ssh ", "ssh -T -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ");
 
-            // 加上 nohup 和 & 确保后台运行
-            String finalCommand = "nohup " + updated + " > /dev/null 2>&1 &";
-
-            log.info("Starting VNC SSH tunnel for instanceId {}: {}", params.getInstanceId(), finalCommand);
-
-            // 异步后台执行：使用 ProcessBuilder 不等待
-            try {
-                ProcessBuilder pb = new ProcessBuilder("sh", "-c", finalCommand);
-                pb.redirectErrorStream(true);
-                pb.start(); // 不等待命令结束
-            } catch (Exception e) {
-                log.error("Failed to start VNC SSH tunnel", e);
+            Process previous = vncTunnelProcess.getAndSet(null);
+            if (previous != null && previous.isAlive()) {
+                previous.destroy();
+                if (!previous.waitFor(3, TimeUnit.SECONDS)) {
+                    previous.destroyForcibly();
+                }
             }
+
+            ProcessBuilder pb = new ProcessBuilder("sh", "-c", "exec " + updated);
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            Process process = pb.start();
+            vncTunnelProcess.set(process);
+            log.info("Started managed VNC SSH tunnel for instanceId={}, pid={}",
+                    params.getInstanceId(), process.pid());
 
             return resStr;
         } catch (Exception e) {
