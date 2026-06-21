@@ -43,7 +43,7 @@ TELEGRAM_BOT_CHAT_ID=
 | Telegram Bot | 已完成待线上复验 | 114 个按钮 callback 对应 155 个处理器模式；异常返回带功能名和错误编号 |
 | Web SSH/SFTP | 已完成 | 主机库、会话、重连、resize、命令模板、上传下载及危险操作确认已接入 |
 | 备份恢复 | 已完成待恢复演练 | 本地备份、Object Storage、Web 恢复、定时备份与 watcher 执行链已完成 |
-| 救援中心 | 已完成待专用机验收 | 一键自动救援、轻量检查、boot volume 救援与 netboot 实验入口已接入 |
+| 救援中心 | 已完成待专用机验收 | SSH 一键轻量自救、OCI 拆卷换盘救援、netboot.xyz UEFI 预检与 BootNext 一次性引导已接入 |
 | 安全与审计 | 已完成 | Token、MFA、登录防爆破、IP 黑名单、管理员凭据修改和高危操作审计已覆盖 |
 | CI/自动验收 | 已完成 | Java 21 测试、Vue 构建、脚本检查、前后端 API 映射和 TG callback 映射已接入 |
 
@@ -64,6 +64,7 @@ TELEGRAM_BOT_CHAT_ID=
 - TG callback 异常返回功能名和错误编号，服务日志可按编号定位真实异常。
 - TG callback 校验增加空模式、重复模式和 Spring 实例化回归测试。
 - 删除使用价值较低的 AI 聊天页面、接口、TG 菜单、配置项和 Spring AI 依赖，普通 TG 文本改为引导使用明确的运维菜单。
+- 救援中心由文字向导升级为真实动作：保存 SSH 主机后可执行轻量自救、netboot 预检和一次性 UEFI BootNext；OCI 自动救援修正为使用真实 boot volume attachment ID。
 
 完整报告：[docs/CODE_AUDIT_REPORT.md](docs/CODE_AUDIT_REPORT.md)
 
@@ -71,8 +72,8 @@ TELEGRAM_BOT_CHAT_ID=
 
 - Java 21 / Maven：10 项测试通过。
 - Vue：TypeScript 检查与生产构建通过。
-- 后端 Controller：135 个端点。
-- 前端 API：72 个调用，全部存在对应后端映射。
+- 后端 Controller：138 个端点。
+- 前端 API：73 个调用，全部存在对应后端映射。
 - Telegram：114 个按钮 callback，155 个处理器模式，映射检查通过。
 - 静态验收：脚本、路由、乱码、README 链接、低配健康检查和发布守卫全部通过。
 

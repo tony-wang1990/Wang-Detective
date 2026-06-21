@@ -1402,6 +1402,22 @@ public class OracleInstanceFetcher implements AutoCloseable {
         return bootVolume;
     }
 
+    public BootVolumeAttachment getBootVolumeAttachmentByInstanceId(String instanceId) {
+        List<AvailabilityDomain> availabilityDomains = getAvailabilityDomains(identityClient, compartmentId);
+        for (AvailabilityDomain availabilityDomain : availabilityDomains) {
+            List<BootVolumeAttachment> attachments = computeClient.listBootVolumeAttachments(
+                    ListBootVolumeAttachmentsRequest.builder()
+                            .availabilityDomain(availabilityDomain.getName())
+                            .compartmentId(compartmentId)
+                            .instanceId(instanceId)
+                            .build()).getItems();
+            if (CollectionUtil.isNotEmpty(attachments)) {
+                return attachments.get(0);
+            }
+        }
+        throw new OciException(-1, "未找到实例的引导卷挂载关系");
+    }
+
     public List<BootVolume> listBootVolumeListByInstanceId(String instanceId) {
         List<BootVolume> bootVolumes = new ArrayList<>();
         List<AvailabilityDomain> availabilityDomains = getAvailabilityDomains(identityClient, compartmentId);

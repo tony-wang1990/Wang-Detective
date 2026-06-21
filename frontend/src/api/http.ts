@@ -173,6 +173,23 @@ export async function apiPost<T>(url: string, body: unknown): Promise<ApiEnvelop
   }
 }
 
+export async function apiPostLong<T>(url: string, body: unknown): Promise<ApiEnvelope<T>> {
+  const done = beginNetwork(`/api${url}`);
+  try {
+    const response = await fetchWithTimeout(`/api${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders()
+      },
+      body: JSON.stringify(body)
+    }, 180000);
+    return await parseResponse<ApiEnvelope<T>>(response, url);
+  } finally {
+    done();
+  }
+}
+
 export async function apiForm<T>(url: string, form: FormData): Promise<ApiEnvelope<T>> {
   const done = beginNetwork(`/api${url}`);
   try {

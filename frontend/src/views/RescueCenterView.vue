@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { LifeBuoy, Play, RefreshCw, Server, ShieldAlert, Terminal } from 'lucide-vue-next';
-import { apiGet, apiPost, notifyGlobal, type PageResult } from '../api/http';
+import { apiGet, apiPost, apiPostLong, notifyGlobal, opsGet, type PageResult } from '../api/http';
 
 type RescueItem = {
   title?: string;
@@ -43,6 +43,23 @@ type OciDetail = {
   instanceList?: InstanceInfo[];
 };
 
+type SshHost = {
+  id?: string;
+  name?: string;
+  host?: string;
+  port?: number;
+  username?: string;
+};
+
+type SshCommandResult = {
+  host?: string;
+  exitStatus?: number;
+  timedOut?: boolean;
+  durationMillis?: number;
+  stdout?: string;
+  stderr?: string;
+};
+
 const loading = ref(false);
 const actionLoading = ref('');
 const error = ref('');
@@ -56,6 +73,12 @@ const selectedConfigId = ref('');
 const selectedInstanceId = ref('');
 const rescueName = ref('');
 const keepBackupVolume = ref(true);
+const rescueConfirmation = ref('');
+const sshHosts = ref<SshHost[]>([]);
+const selectedSshHostId = ref('');
+const netbootConfirmation = ref('');
+const rebootAfterNetboot = ref(false);
+const actionOutput = ref('');
 
 const selectedConfig = computed(() => configs.value.find((item) => item.id === selectedConfigId.value));
 const selectedInstance = computed(() => instances.value.find((item) => item.ocId === selectedInstanceId.value));
@@ -64,14 +87,19 @@ async function loadOverview() {
   loading.value = true;
   error.value = '';
   try {
-    const [overviewRsp, lightRsp, netbootRsp] = await Promise.all([
+    const [overviewRsp, lightRsp, netbootRsp, hostsRsp] = await Promise.all([
       apiGet<RescueOverview>('/rescue/overview'),
       apiGet<string>('/rescue/light-script'),
-      apiGet<string>('/rescue/netboot-script?mode=ipxe')
+      apiGet<string>('/rescue/netboot-script?mode=ipxe'),
+      opsGet<SshHost[]>('/ssh/hosts')
     ]);
     overview.value = overviewRsp.data || {};
     lightScript.value = lightRsp.data || '';
     netbootScript.value = netbootRsp.data || '';
+    sshHosts.value = hostsRsp.data || [];
+    if (!selectedSshHostId.value && sshHosts.value[0]?.id) {
+      selectedSshHostId.value = sshHosts.value[0].id;
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '救援中心加载失败';
     notifyGlobal(error.value, 'error');
@@ -122,6 +150,7 @@ async function loadInstances() {
     if (selectedInstance.value && !rescueName.value) {
       rescueName.value = `${selectedInstance.value.name || 'oci-instance'}-rescue`;
     }
+    rescueConfirmation.value = '';
   } catch (err) {
     error.value = err instanceof Error ? err.message : '读取实例列表失败';
   } finally {
@@ -132,6 +161,10 @@ async function loadInstances() {
 async function submitAutoRescue() {
   if (!selectedConfigId.value || !selectedInstanceId.value) {
     error.value = '请先选择 OCI 配置和失联实例';
+    return;
+  }
+  if (rescueConfirmation.value !== selectedInstance.value?.name) {
+    error.value = '请输入目标实例名称确认高危救援操作';
     return;
   }
   actionLoading.value = 'autoRescue';
@@ -148,6 +181,84 @@ async function submitAutoRescue() {
   } catch (err) {
     error.value = err instanceof Error ? err.message : '提交自动救援失败';
     notifyGlobal(error.value, 'error');
+  } finally {
+    actionLoading.value = '';
+  }
+}
+
+function formatResult(result?: SshCommandResult) {
+  if (!result) return '接口未返回执行结果';
+  return [
+    `主机: ${result.host || '-'}`,
+    `退出码: ${result.exitStatus ?? '-'}`,
+    `耗时: ${result.durationMillis ?? 0} ms`,
+    '',
+    result.stdout || '',
+    result.stderr ? `\n[stderr]\n${result.stderr}` : ''
+  ].join('\n').trim();
+}
+
+async function runLightRescue() {
+  if (!selectedSshHostId.value) {
+    notifyGlobal('请先在运维终端保存 SSH 主机并选择目标', 'error');
+    return;
+  }
+  actionLoading.value = 'lightRescue';
+  actionOutput.value = '';
+  try {
+    const res = await apiPostLong<SshCommandResult>('/rescue/light-rescue', { hostId: selectedSshHostId.value });
+    actionOutput.value = formatResult(res.data);
+    notifyGlobal(res.data?.exitStatus === 0 ? '轻量自救执行完成' : '轻量自救已返回，请检查输出', res.data?.exitStatus === 0 ? 'success' : 'info');
+  } catch (err) {
+    actionOutput.value = err instanceof Error ? err.message : '轻量自救执行失败';
+    notifyGlobal(actionOutput.value, 'error');
+  } finally {
+    actionLoading.value = '';
+  }
+}
+
+async function preflightNetboot() {
+  if (!selectedSshHostId.value) {
+    notifyGlobal('请先选择已保存的 SSH 主机', 'error');
+    return;
+  }
+  actionLoading.value = 'netbootPreflight';
+  actionOutput.value = '';
+  try {
+    const res = await apiPostLong<SshCommandResult>('/rescue/netboot/preflight', { hostId: selectedSshHostId.value });
+    actionOutput.value = formatResult(res.data);
+    notifyGlobal('netboot.xyz 预检完成', 'success');
+  } catch (err) {
+    actionOutput.value = err instanceof Error ? err.message : 'netboot.xyz 预检失败';
+    notifyGlobal(actionOutput.value, 'error');
+  } finally {
+    actionLoading.value = '';
+  }
+}
+
+async function prepareNetboot() {
+  if (!selectedSshHostId.value) {
+    notifyGlobal('请先选择已保存的 SSH 主机', 'error');
+    return;
+  }
+  const expected = rebootAfterNetboot.value ? 'NETBOOT-REBOOT' : 'NETBOOT';
+  if (netbootConfirmation.value !== expected) {
+    notifyGlobal(`请输入确认词 ${expected}`, 'error');
+    return;
+  }
+  actionLoading.value = 'netbootPrepare';
+  actionOutput.value = '';
+  try {
+    const res = await apiPostLong<SshCommandResult>('/rescue/netboot/prepare', {
+      hostId: selectedSshHostId.value,
+      confirmation: netbootConfirmation.value,
+      reboot: rebootAfterNetboot.value
+    });
+    actionOutput.value = formatResult(res.data);
+    notifyGlobal(rebootAfterNetboot.value ? '已设置一次性 netboot 并下发重启' : '已设置一次性 netboot 启动项', 'success');
+  } catch (err) {
+    actionOutput.value = err instanceof Error ? err.message : 'netboot.xyz 准备失败';
+    notifyGlobal(actionOutput.value, 'error');
   } finally {
     actionLoading.value = '';
   }
@@ -205,7 +316,7 @@ onMounted(() => {
     <section class="wd-split">
       <article class="wd-card wd-form-card">
         <header><h2><LifeBuoy :size="17" /> 一键自动救援</h2></header>
-        <p class="wd-help-line">真实调用 OCI 自动救援接口，适合实例失联、SSH 异常或需要拆卷修复的场景；高危动作会保留备份卷选项。</p>
+        <p class="wd-help-line">真实调用 OCI 停机、完整备份、拆下原引导卷并换入新系统盘。它属于“换盘重装式救援”，不会在原盘上自动修文件；原数据保留在强制创建的备份中。</p>
         <div class="wd-form-grid single">
           <label>
             <span>OCI 配置</span>
@@ -230,14 +341,18 @@ onMounted(() => {
             <input v-model="rescueName" placeholder="例如 instance-a-rescue" />
           </label>
           <label class="wd-switch-row">
-            <input v-model="keepBackupVolume" type="checkbox" />
-            <span>保留备份卷，便于回滚</span>
+            <input v-model="keepBackupVolume" type="checkbox" disabled />
+            <span>强制保留原引导卷备份，确保可以回滚</span>
+          </label>
+          <label>
+            <span>高危确认：输入目标实例名称 {{ selectedInstance?.name || '-' }}</span>
+            <input v-model="rescueConfirmation" :placeholder="selectedInstance?.name || '先选择实例'" />
           </label>
           <div class="wd-actions compact">
             <button type="button" class="ghost" :disabled="!selectedConfigId || Boolean(actionLoading)" @click="loadInstances">
               <RefreshCw :size="16" />刷新实例
             </button>
-            <button type="button" class="danger" :disabled="!selectedConfigId || !selectedInstanceId || actionLoading === 'autoRescue'" @click="submitAutoRescue">
+            <button type="button" class="danger" :disabled="!selectedConfigId || !selectedInstanceId || rescueConfirmation !== selectedInstance?.name || actionLoading === 'autoRescue'" @click="submitAutoRescue">
               <Play :size="16" />{{ actionLoading === 'autoRescue' ? '下发中...' : '一键自动救援' }}
             </button>
           </div>
@@ -264,6 +379,20 @@ onMounted(() => {
             <span>{{ item.description }}</span>
           </li>
         </ul>
+        <div class="wd-rescue-actions">
+          <label>
+            <span>已保存 SSH 主机</span>
+            <select v-model="selectedSshHostId" :disabled="Boolean(actionLoading)">
+              <option value="">请先到运维终端保存主机</option>
+              <option v-for="host in sshHosts" :key="host.id" :value="host.id">
+                {{ host.name || host.host }} / {{ host.username }}@{{ host.host }}:{{ host.port || 22 }}
+              </option>
+            </select>
+          </label>
+          <button type="button" :disabled="!selectedSshHostId || Boolean(actionLoading)" @click="runLightRescue">
+            <Play :size="16" />{{ actionLoading === 'lightRescue' ? '执行中...' : '一键轻量自救' }}
+          </button>
+        </div>
       </article>
 
       <article class="wd-card">
@@ -274,6 +403,12 @@ onMounted(() => {
             <span>{{ item.description }}</span>
           </li>
         </ul>
+        <div class="wd-rescue-actions">
+          <p class="wd-help-line">上方“一键自动救援”调用真实 OCI 停机、完整备份、拆卷和换入新系统盘流程。原数据只保留在备份中，请输入实例名称确认。</p>
+          <button type="button" class="danger" :disabled="!selectedInstanceId || rescueConfirmation !== selectedInstance?.name || Boolean(actionLoading)" @click="submitAutoRescue">
+            <Server :size="16" />{{ actionLoading === 'autoRescue' ? '下发中...' : '一键拆卷换盘救援' }}
+          </button>
+        </div>
       </article>
 
       <article class="wd-card">
@@ -284,8 +419,40 @@ onMounted(() => {
             <span>{{ item.description }}</span>
           </li>
         </ul>
+        <div class="wd-rescue-actions">
+          <label>
+            <span>已保存 SSH 主机</span>
+            <select v-model="selectedSshHostId" :disabled="Boolean(actionLoading)">
+              <option value="">请先到运维终端保存主机</option>
+              <option v-for="host in sshHosts" :key="`netboot-${host.id}`" :value="host.id">
+                {{ host.name || host.host }} / {{ host.username }}@{{ host.host }}:{{ host.port || 22 }}
+              </option>
+            </select>
+          </label>
+          <label class="wd-switch-row">
+            <input v-model="rebootAfterNetboot" type="checkbox" />
+            <span>设置 BootNext 后立即重启</span>
+          </label>
+          <label>
+            <span>确认词：{{ rebootAfterNetboot ? 'NETBOOT-REBOOT' : 'NETBOOT' }}</span>
+            <input v-model="netbootConfirmation" :placeholder="rebootAfterNetboot ? 'NETBOOT-REBOOT' : 'NETBOOT'" />
+          </label>
+          <div class="wd-actions compact">
+            <button type="button" class="ghost" :disabled="!selectedSshHostId || Boolean(actionLoading)" @click="preflightNetboot">
+              <RefreshCw :size="16" />{{ actionLoading === 'netbootPreflight' ? '预检中...' : '一键预检' }}
+            </button>
+            <button type="button" class="danger" :disabled="!selectedSshHostId || netbootConfirmation !== (rebootAfterNetboot ? 'NETBOOT-REBOOT' : 'NETBOOT') || Boolean(actionLoading)" @click="prepareNetboot">
+              <ShieldAlert :size="16" />{{ actionLoading === 'netbootPrepare' ? '准备中...' : '一键设置 netboot.xyz' }}
+            </button>
+          </div>
+        </div>
       </article>
     </section>
+
+    <article v-if="actionOutput" class="wd-card wd-log-card">
+      <header><h2><Terminal :size="17" /> 一键动作执行结果</h2></header>
+      <pre class="wd-terminal small">{{ actionOutput }}</pre>
+    </article>
 
     <section class="wd-split">
       <article class="wd-card wd-log-card">

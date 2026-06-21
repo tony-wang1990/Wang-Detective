@@ -25,7 +25,7 @@
 | Web SSH/SFTP | 89% | 主机库、连接测试、Web SSH、resize、重连、会话列表、SFTP 文件操作闭环 | Web 页面实测 + 操作审计检查 + 只读接口 smoke | 进行中 |
 | Telegram Bot | 88% | 运维中心、诊断、任务、日志、风险、备份、版本、实例向导全菜单可用；静态回调映射无缺口 | Bot 菜单逐项点击 + 日志检查 + `verify-telegram-callbacks.mjs` | 进行中 |
 | 备份恢复 | 92% | 本地备份、恢复计划、定时备份、Bucket 为空、Object Storage 边界提示全部稳定 | Web + 脚本 + 测试备份包 + 只读接口 smoke | 进行中 |
-| 救援中心 | 72% | 当前定义为安全向导、脚本入口、风险提示 100%；高危自动救援继续保留实验区 | Web 页面 + 文档边界 + 只读接口 smoke + 专用机型测试 | 进行中 |
+| 救援中心 | 88% | SSH 轻量自救、OCI 拆卷换盘救援、netboot UEFI 预检与 BootNext 已接通；待专用机型实测 | Web 页面 + API 映射 + Java/Vue 构建 + 专用机型测试 | 进行中 |
 | CI/测试 | 90% | 发布前能发现构建、脚本换行、脚本语法、前端导航路由、API 映射、Telegram 回调映射、生产包资产、路由验收遗漏、乱码标记、原生弹窗、README 断链、排障包脱敏、远程 smoke 覆盖缺口、恢复保护缺失和 smoke 临时文件命名回归；Windows 本地可自动识别 Git Bash | `verify-release.sh` + `acceptance-check.mjs` + `remote-smoke-test` | 进行中 |
 
 ## Web 路由验收矩阵
@@ -38,7 +38,7 @@
 | `/dashboard/createTask` | 任务列表 | 搜索、筛选、分页、停止任务、批量停止、详情 | 待全量验收 |
 | `/dashboard/risk` | 风险看板 | 风险扫描、端口明细、收敛建议、空状态、超时提示 | 已验收一期 |
 | `/dashboard/backups` | 备份归档 | 本地备份、Bucket 为空、归档刷新、恢复计划、定时方案 | 已验收一期 |
-| `/dashboard/rescue` | 救援中心 | 安全边界、轻量自救、boot volume 向导、netboot 实验区说明 | 已验收一期 |
+| `/dashboard/rescue` | 救援中心 | SSH 一键自救、OCI 高危确认、netboot 预检/BootNext、执行结果和审计 | 已验收二期 |
 | `/dashboard/features` | 功能中心 | 诊断、版本、入口跳转、旧页面迁移提示 | 已验收一期 |
 | `/dashboard/ops-terminal` | 运维终端 | 主机库、命令模板、Web SSH、SFTP、移动端不横向撑页 | 已验收一期 |
 | `/dashboard/ociLog` | 服务日志 | WebSocket、暂停、筛选、错误统计、移动端滚动、最近日志 REST 兜底 | 历史日志接口已接入，WebSocket 待实测 |

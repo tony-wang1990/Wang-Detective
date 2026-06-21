@@ -13,8 +13,8 @@
 | 范围 | 结果 |
 |---|---|
 | Java 主代码 | 343 个源文件可编译 |
-| Web API | 135 个 Controller 端点 |
-| Vue API | 72 个调用全部匹配后端 |
+| Web API | 138 个 Controller 端点 |
+| Vue API | 73 个调用全部匹配后端 |
 | Vue 路由 | 登录与 12 个控制台路由均有真实组件 |
 | Telegram | 120 个按钮 callback 对应 160 个处理器模式 |
 | 自动测试 | 10 项 Spring Boot 回归测试通过 |
@@ -88,7 +88,8 @@
 - Web 本地备份真实执行 `scripts/backup.sh`。
 - 恢复与定时任务通过 watcher 动作文件执行，不是文字占位。
 - 自动救援真实调用 `IOciService.autoRescue`。
-- netboot.xyz 自动改写 bootloader 仍有意保持实验边界，避免一键误清盘。
+- 轻量自救通过已保存 SSH 主机执行安全修复脚本，并返回 stdout/stderr。
+- netboot.xyz 支持 UEFI 条件预检、按 AMD/ARM 下载 EFI、创建一次性 BootNext；重启仍要求单独确认。
 
 ## 启动性能判断
 

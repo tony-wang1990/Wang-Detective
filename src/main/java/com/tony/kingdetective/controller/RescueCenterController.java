@@ -1,10 +1,18 @@
 package com.tony.kingdetective.controller;
 
 import com.tony.kingdetective.bean.ResponseData;
+import com.tony.kingdetective.bean.params.rescue.NetbootActionParams;
+import com.tony.kingdetective.bean.params.rescue.RescueSshActionParams;
+import com.tony.kingdetective.bean.response.ops.SshCommandRsp;
+import com.tony.kingdetective.service.IAuditLogService;
+import com.tony.kingdetective.service.rescue.RescueExecutionService;
 import com.tony.kingdetective.utils.CommonUtils;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,6 +24,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/rescue")  // fix #15: 统一路径风格，去掉 /v1 版本前缀
 public class RescueCenterController {
+
+    private final RescueExecutionService rescueExecutionService;
+    private final IAuditLogService auditLogService;
+
+    public RescueCenterController(RescueExecutionService rescueExecutionService,
+                                  IAuditLogService auditLogService) {
+        this.rescueExecutionService = rescueExecutionService;
+        this.auditLogService = auditLogService;
+    }
 
     @Value("${king-detective.app-dir:${KING_DETECTIVE_APP_DIR:/app/king-detective}}")
     private String appDir;
@@ -29,7 +46,7 @@ public class RescueCenterController {
         data.put("bootVolumeRescue", bootVolumeSteps());
         data.put("netbootXyz", netbootPlan());
         data.put("localScripts", localScripts());
-        data.put("warning", "救援中心默认只生成检查和操作向导。停止实例、拆卷、改 bootloader、重装系统等动作必须人工确认。");
+        data.put("warning", "轻量自救和 netboot.xyz 已接入保存的 SSH 主机；拆卷换盘救援调用真实 OCI API。停止实例、拆卷、修改 BootNext 和重启均要求明确确认。");
         return ResponseData.successData(data);
     }
 
@@ -117,13 +134,33 @@ public class RescueCenterController {
         return ResponseData.successData(script, "请求成功");
     }
 
+    @PostMapping("/light-rescue")
+    public ResponseData<SshCommandRsp> lightRescue(@Valid @RequestBody RescueSshActionParams params) {
+        return executeAudited("RESCUE_LIGHT_EXECUTE", params.getHostId(),
+                () -> rescueExecutionService.runLightRescue(params.getHostId()));
+    }
+
+    @PostMapping("/netboot/preflight")
+    public ResponseData<SshCommandRsp> netbootPreflight(@Valid @RequestBody RescueSshActionParams params) {
+        return executeAudited("RESCUE_NETBOOT_PREFLIGHT", params.getHostId(),
+                () -> rescueExecutionService.preflightNetboot(params.getHostId()));
+    }
+
+    @PostMapping("/netboot/prepare")
+    public ResponseData<SshCommandRsp> netbootPrepare(@Valid @RequestBody NetbootActionParams params) {
+        boolean reboot = Boolean.TRUE.equals(params.getReboot());
+        return executeAudited("RESCUE_NETBOOT_PREPARE", params.getHostId(),
+                () -> rescueExecutionService.prepareNetboot(
+                        params.getHostId(), params.getConfirmation(), reboot));
+    }
+
     private List<Map<String, String>> lightRescueItems() {
         return List.of(
-                item("SSH 检查", "检查 ssh/sshd 服务、22 端口监听、防火墙和 authorized_keys。"),
+                item("SSH 修复", "通过已保存 SSH 主机重启 ssh/sshd、修复运行目录和 authorized_keys 权限。"),
                 item("磁盘检查", "检查根分区、inode、日志目录和 Docker 占用，避免磁盘满导致服务异常。"),
                 item("网络检查", "检查网卡、路由、DNS、OCI 内网地址和面板端口。"),
                 item("cloud-init 检查", "检查 cloud-init 状态，定位首次启动卡死或密钥注入失败。"),
-                item("错误日志", "汇总 journalctl 最近 warning/error，便于远程判断失联原因。")
+                item("日志收敛", "将 systemd journal 收敛到 200MB，并返回完整执行输出。")
         );
     }
 
@@ -139,9 +176,9 @@ public class RescueCenterController {
 
     private List<Map<String, String>> netbootPlan() {
         return List.of(
-                item("定位", "netboot.xyz 适合作为网络安装/救援入口，但在 OCI 普通实例上不应默认自动写 bootloader。"),
-                item("首期能力", "W-探长提供检查脚本、链接、步骤和实验区说明，避免误清盘。"),
-                item("后续能力", "按 AMD/ARM、Ubuntu/Oracle Linux、UEFI/BIOS 实测后，再开放一次性引导按钮。")
+                item("自动预检", "远程检测 AMD/ARM、UEFI、EFI 分区、efibootmgr 和下载工具。"),
+                item("一次性引导", "下载对应架构的 netboot.xyz EFI，创建 UEFI 启动项并设置 BootNext。"),
+                item("安全边界", "仅支持 UEFI；可选择只准备不重启，立即重启需要输入 NETBOOT-REBOOT。")
         );
     }
 
@@ -171,5 +208,21 @@ public class RescueCenterController {
         item.put("description", description);
         item.put("exists", exists);
         return item;
+    }
+
+    private ResponseData<SshCommandRsp> executeAudited(String operation,
+                                                       String target,
+                                                       java.util.function.Supplier<SshCommandRsp> action) {
+        try {
+            SshCommandRsp result = action.get();
+            String details = "exitStatus=" + result.getExitStatus()
+                    + ", timedOut=" + result.getTimedOut()
+                    + ", durationMillis=" + result.getDurationMillis();
+            auditLogService.logSuccess(null, operation, target, details);
+            return ResponseData.successData(result);
+        } catch (RuntimeException e) {
+            auditLogService.logFailure(null, operation, target, e.getMessage());
+            throw e;
+        }
     }
 }

@@ -758,6 +758,7 @@ public class OciServiceImpl implements IOciService {
                 ComputeClient computeClient = fetcher.getComputeClient();
                 BlockstorageClient blockstorageClient = fetcher.getBlockstorageClient();
                 BootVolume bootVolumeByInstanceId = fetcher.getBootVolumeByInstanceId(instanceId);
+                BootVolumeAttachment originalBootAttachment = fetcher.getBootVolumeAttachmentByInstanceId(instanceId);
                 // 检查能否创建AMD实例
                 List<AvailabilityDomain> availabilityDomains = fetcher.getAvailabilityDomains(fetcher.getIdentityClient(), fetcher.getCompartmentId());
                 List<String> shapeList = availabilityDomains.parallelStream().map(availabilityDomain ->
@@ -812,7 +813,7 @@ public class OciServiceImpl implements IOciService {
                 // 分离原引导卷
                 log.warn("（3/9）⌛ 正在分离原引导卷");
                 computeClient.detachBootVolume(DetachBootVolumeRequest.builder()
-                        .bootVolumeAttachmentId(instanceId)
+                        .bootVolumeAttachmentId(originalBootAttachment.getId())
                         .build());
                 log.info("（3/9）✅ 分离原引导卷成功");
 
@@ -838,7 +839,7 @@ public class OciServiceImpl implements IOciService {
 
                 // 创建47GB的AMD机器
                 log.warn("（5/9）⌛ 正在创建并初始化AMD机器,大概需要5分钟,请耐心等待");
-                String newAmdSshPwd = "ocihelper2024";
+                String newAmdSshPwd = "Wang-" + IdUtil.fastSimpleUUID().substring(0, 12);
                 SysUserDTO newAmd = SysUserDTO.builder()
                         .ociCfg(SysUserDTO.OciCfg.builder()
                                 .userId(sysUserDTO.getOciCfg().getUserId())

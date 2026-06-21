@@ -292,6 +292,22 @@ check('optional Telegram modules do not block core web startup', () => {
   assert(ociTask.includes('callbackHandlerFactoryProvider.getObject()'), 'Telegram handlers must warm before the bot accepts callbacks');
 });
 
+check('rescue center one-click actions are wired to real endpoints', () => {
+  const view = read('frontend/src/views/RescueCenterView.vue');
+  const controller = read('src/main/java/com/tony/kingdetective/controller/RescueCenterController.java');
+  const service = read('src/main/java/com/tony/kingdetective/service/rescue/RescueExecutionService.java');
+  const ociService = read('src/main/java/com/tony/kingdetective/service/impl/OciServiceImpl.java');
+
+  for (const endpoint of ['/rescue/light-rescue', '/rescue/netboot/preflight', '/rescue/netboot/prepare']) {
+    assert(view.includes(endpoint), `rescue view must call ${endpoint}`);
+  }
+  assert(controller.includes('@PostMapping("/light-rescue")'), 'light rescue endpoint is missing');
+  assert(controller.includes('@PostMapping("/netboot/preflight")'), 'netboot preflight endpoint is missing');
+  assert(controller.includes('@PostMapping("/netboot/prepare")'), 'netboot prepare endpoint is missing');
+  assert(service.includes('efibootmgr --bootnext'), 'netboot execution must set a one-time BootNext entry');
+  assert(ociService.includes('originalBootAttachment.getId()'), 'OCI rescue must detach by boot volume attachment id');
+});
+
 check('remote smoke scripts cover required routes and endpoints', () => {
   const shellSmoke = read('scripts/remote-smoke-test.sh');
   const nodeSmoke = read('scripts/remote-smoke-test.mjs');
