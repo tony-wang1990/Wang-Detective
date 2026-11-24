@@ -1,5 +1,7 @@
 # Wang-Detective
 
+本项目基于 Yohann0617/oci-helper（Apache-2.0）修改，原作者：Yohann0617，链接 https://github.com/Yohann0617/oci-helper；修改内容：包名改名、Vue 前端重构、删 AI 模块、加 SSH/救援/审计等。
+
 Wang-Detective 是面向 Oracle Cloud Infrastructure (OCI) 的 Web 管理面板与 Telegram Bot 运维助手，覆盖 OCI 配置、实例、任务、网络、安全规则、引导卷、Web SSH/SFTP、风险诊断、备份恢复和救援操作。
 
 当前状态：**功能开发基本完成，进入稳定性与真实高危操作验收阶段。**
@@ -22,13 +24,10 @@ bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/
 
 - Web：`http://服务器IP:9527`
 - 健康检查：`http://服务器IP:9527/actuator/health`
-- 默认账号来自 `/app/king-detective/.env`
-
-建议立即修改：
+- 管理员账号来自 `/app/king-detective/.env`，首次启动强制改密
 
 ```env
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=请改为强密码
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_CHAT_ID=
 ```

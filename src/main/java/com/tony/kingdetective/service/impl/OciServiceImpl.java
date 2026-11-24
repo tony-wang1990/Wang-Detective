@@ -69,11 +69,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.tony.kingdetective.config.VirtualThreadConfig.VIRTUAL_EXECUTOR;
@@ -114,6 +116,41 @@ public class OciServiceImpl implements IOciService {
     @Value("${oci-cfg.key-dir-path}")
     private String keyDirPath;
 
+    /**
+     * 私钥文件名白名单：只允许字母、数字、点、下划线、连字符，禁止任何路径分隔符。
+     * 与 CVE-2025-13875 同类路径遍历的修复模式一致。
+     */
+    private static final Pattern SAFE_KEY_FILENAME = Pattern.compile("^[A-Za-z0-9._-]+$");
+
+    /**
+     * 校验上传的私钥文件名并解析为密钥目录内的规范化路径。
+     * 白名单校验 + {@link Path#normalize()} + {@code startsWith(keyDir)} 二次校验，
+     * 任何穿越文件名（{@code ../}、{@code /}、{@code \}、{@code ..} 等）都会被拒绝并记录。
+     *
+     * @return 密钥目录内的规范化绝对路径字符串
+     * @throws OciException 文件名为空、不合法或解析后越过密钥目录时抛出
+     */
+    public static String resolveKeyFilePath(String keyDirPath, String originalFilename) {
+        if (StringUtils.isBlank(keyDirPath)) {
+            throw new OciException(-1, "密钥目录未配置");
+        }
+        if (StringUtils.isBlank(originalFilename)) {
+            throw new OciException(-1, "私钥文件名不能为空");
+        }
+        if (".".equals(originalFilename) || "..".equals(originalFilename)
+                || !SAFE_KEY_FILENAME.matcher(originalFilename).matches()) {
+            log.warn("拒绝非法私钥文件名:[{}]", originalFilename);
+            throw new OciException(-1, "私钥文件名不合法");
+        }
+        Path keyDir = Path.of(keyDirPath).toAbsolutePath().normalize();
+        Path resolved = keyDir.resolve(originalFilename).normalize();
+        if (!resolved.startsWith(keyDir)) {
+            log.warn("拒绝越过密钥目录的私钥文件名:[{}]", originalFilename);
+            throw new OciException(-1, "私钥文件名不合法");
+        }
+        return resolved.toString();
+    }
+
     public final static Map<String, Object> TEMP_MAP = new ConcurrentHashMap<>();
     public final static Map<String, ScheduledFuture<?>> TASK_MAP = new ConcurrentHashMap<>();
     public final static ScheduledThreadPoolExecutor CREATE_INSTANCE_POOL = new ScheduledThreadPoolExecutor(
@@ -149,7 +186,10 @@ public class OciServiceImpl implements IOciService {
             throw new OciException(-1, "当前配置名称已存在");
         }
 
-        String priKeyPath = keyDirPath + File.separator + params.getFile().getOriginalFilename();
+        if (params.getFile() == null) {
+            throw new OciException(-1, "私钥不能为空");
+        }
+        String priKeyPath = resolveKeyFilePath(keyDirPath, params.getFile().getOriginalFilename());
         File priKey = FileUtil.touch(priKeyPath);
         try (InputStream inputStream = params.getFile().getInputStream();
              BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(Files.newOutputStream(priKey.toPath()))) {
