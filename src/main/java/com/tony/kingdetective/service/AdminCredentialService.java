@@ -39,7 +39,8 @@ public class AdminCredentialService {
     @Value("${web.account:admin}")
     private String defaultAccount;
 
-    @Value("${web.password:admin123456}")
+    // 无默认值：未配置时为空，启动校验器会拒绝启动。
+    @Value("${web.password:}")
     private String defaultPassword;
 
     public AdminCredentialService(IOciKvService kvService) {
@@ -54,7 +55,14 @@ public class AdminCredentialService {
         if (!StrUtil.equals(account, getAccount())) {
             return false;
         }
+        // 空口令守卫：口令或已存口令为空时一律不匹配，避免空口令等于空口令直接登录
+        if (StrUtil.isBlank(password)) {
+            return false;
+        }
         String stored = passwordValue();
+        if (StrUtil.isBlank(stored)) {
+            return false;
+        }
         if (isPasswordHash(stored)) {
             return verifyPassword(password, stored);
         }
@@ -77,6 +85,8 @@ public class AdminCredentialService {
                 && JWTUtil.verify(token, secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    // 遗留检测器：仅用于诊断服务警告仍在用旧弱默认口令的老数据库。
+    // 其中的字面量是检测常量，不是默认值——默认值已在 application.yml / @Value 中清空。
     public boolean isUsingDefaultCredential() {
         String storedPassword = passwordValue();
         return StrUtil.equals("admin", getAccount())

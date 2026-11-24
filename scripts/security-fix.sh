@@ -28,7 +28,17 @@ if [ -z "$NEW_TOKEN" ]; then
     exit 1
 fi
 
-# 创建.env文件
+# 创建.env文件（管理员口令无弱默认值：未提供时自动生成随机口令，仅显示一次）
+if [ -z "${ADMIN_PASSWORD:-${WEB_PASSWORD:-}}" ]; then
+    if command -v openssl >/dev/null 2>&1; then
+        ADMIN_PASSWORD="$(openssl rand -hex 16)"
+    else
+        ADMIN_PASSWORD="$(tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32)"
+    fi
+    echo "⚠️  未提供 ADMIN_PASSWORD，已自动生成随机密码（仅显示一次，请妥善保存）: ${ADMIN_PASSWORD}"
+else
+    ADMIN_PASSWORD="${ADMIN_PASSWORD:-${WEB_PASSWORD:-}}"
+fi
 echo ""
 echo "📝 创建 .env 文件..."
 cat > .env <<EOF
@@ -37,7 +47,7 @@ TELEGRAM_BOT_TOKEN=$NEW_TOKEN
 
 # Web Admin Credentials
 ADMIN_USERNAME=${ADMIN_USERNAME:-${WEB_ACCOUNT:-admin}}
-ADMIN_PASSWORD=${ADMIN_PASSWORD:-${WEB_PASSWORD:-admin123456}}
+ADMIN_PASSWORD=${ADMIN_PASSWORD}
 
 EOF
 

@@ -77,4 +77,47 @@ class OciServiceImplKeyFilenameTest {
         assertThatThrownBy(() -> OciServiceImpl.resolveKeyFilePath(KEY_DIR, "key;rm.pem"))
                 .isInstanceOf(OciException.class);
     }
+
+    // ---- uploadCfg() 回归测试：配置文件内 key_file 值的路径遍历防护 ----
+
+    @Test
+    void uploadCfgKeyFileTraversalIsRejected() {
+        // key_file 写成相对穿越路径：旧代码直接拼到密钥目录后即可逃出
+        assertThatThrownBy(() -> OciServiceImpl.resolveKeyFilePath(KEY_DIR, "../../etc/evil.pem"))
+                .isInstanceOf(OciException.class)
+                .hasMessageContaining("私钥文件名不合法");
+        assertThatThrownBy(() -> OciServiceImpl.resolveKeyFilePath(KEY_DIR, "keys/../../etc/evil.pem"))
+                .isInstanceOf(OciException.class);
+        assertThatThrownBy(() -> OciServiceImpl.resolveKeyFilePath(KEY_DIR, "..\\..\\windows\\evil.pem"))
+                .isInstanceOf(OciException.class);
+    }
+
+    @Test
+    void uploadCfgKeyFileAbsolutePathIsRejected() {
+        assertThatThrownBy(() -> OciServiceImpl.resolveKeyFilePath(KEY_DIR, "/etc/passwd"))
+                .isInstanceOf(OciException.class);
+        assertThatThrownBy(() -> OciServiceImpl.resolveKeyFilePath(KEY_DIR, "/home/opc/.oci/oci_api_key.pem"))
+                .isInstanceOf(OciException.class);
+    }
+
+    @Test
+    void uploadCfgKeyFileNormalNameResolvesInsideKeyDir() {
+        String resolved = OciServiceImpl.resolveKeyFilePath(KEY_DIR, "oci_api_key.pem");
+
+        assertThat(Path.of(resolved).startsWith(Path.of(KEY_DIR).toAbsolutePath().normalize())).isTrue();
+        assertThat(resolved).endsWith("oci_api_key.pem");
+    }
+
+    @Test
+    void uploadCfgFilenameSuffixWhitelist() {
+        assertThat(OciServiceImpl.isAllowedCfgFilename("config.ini")).isTrue();
+        assertThat(OciServiceImpl.isAllowedCfgFilename("config.txt")).isTrue();
+        assertThat(OciServiceImpl.isAllowedCfgFilename("CONFIG.INI")).isTrue();
+        // 旧 contains() 检查会放行的绕过形式，现在一律拒绝
+        assertThat(OciServiceImpl.isAllowedCfgFilename("config.ini.exe")).isFalse();
+        assertThat(OciServiceImpl.isAllowedCfgFilename("config.ini/../../x")).isFalse();
+        assertThat(OciServiceImpl.isAllowedCfgFilename("config.pdf")).isFalse();
+        assertThat(OciServiceImpl.isAllowedCfgFilename(null)).isFalse();
+        assertThat(OciServiceImpl.isAllowedCfgFilename("")).isFalse();
+    }
 }

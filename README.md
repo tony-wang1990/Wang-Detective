@@ -28,9 +28,19 @@ bash <(wget -qO- https://raw.githubusercontent.com/tony-wang1990/Wang-Detective/
 
 ```env
 ADMIN_USERNAME=admin
+# 以下两项无默认值、必填：未设置时应用拒绝启动
+ADMIN_PASSWORD=              # 至少 8 位
+OPS_SSH_SECRET_KEY=          # 必须与管理员口令不同，可用 openssl rand -hex 32 生成
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_CHAT_ID=
+# CORS 默认空（仅同源），如需跨域请显式配置可信来源列表
+CORS_ALLOWED_ORIGINS=
 ```
+
+> 安全提示（2026-11-24 起）：`ADMIN_PASSWORD` 与 `OPS_SSH_SECRET_KEY` 不再有默认口令，
+> 一键安装脚本未提供时会自动生成随机值（仅显示一次，请妥善保存）。升级的老部署如仍在用
+> 旧默认口令，启动时会被拒绝，请先在 `.env` 里改成强口令再重启。批量上传的 OCI 配置文件
+> 只接受 `.ini` / `.txt` 后缀，且其中 `key_file` 只允许密钥目录内的裸文件名。
 
 ## 当前完成度
 

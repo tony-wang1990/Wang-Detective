@@ -151,6 +151,20 @@ public class OciServiceImpl implements IOciService {
         return resolved.toString();
     }
 
+    /**
+     * 批量上传配置文件的后缀白名单：只允许 {@code .ini} / {@code .txt} 文本文件。
+     * 旧的 {@code contains(".ini")} / {@code contains(".txt")} 检查会被
+     * {@code config.ini.exe}、{@code config.ini/../../x} 这类文件名绕过，
+     * 这里改为严格的后缀匹配（不区分大小写），空文件名直接拒绝。
+     */
+    public static boolean isAllowedCfgFilename(String originalFilename) {
+        if (StringUtils.isBlank(originalFilename)) {
+            return false;
+        }
+        String lower = originalFilename.toLowerCase(java.util.Locale.ROOT);
+        return lower.endsWith(".ini") || lower.endsWith(".txt");
+    }
+
     public final static Map<String, Object> TEMP_MAP = new ConcurrentHashMap<>();
     public final static Map<String, ScheduledFuture<?>> TASK_MAP = new ConcurrentHashMap<>();
     public final static ScheduledThreadPoolExecutor CREATE_INSTANCE_POOL = new ScheduledThreadPoolExecutor(
@@ -506,7 +520,7 @@ public class OciServiceImpl implements IOciService {
     @Transactional(rollbackFor = Exception.class)
     public void uploadCfg(UploadCfgParams params) {
         params.getFileList().forEach(x -> {
-            if (!x.getOriginalFilename().contains(".ini") && !x.getOriginalFilename().contains(".txt")) {
+            if (!isAllowedCfgFilename(x.getOriginalFilename())) {
                 throw new OciException(-1, "文件必须是.txt或者.ini的文本文件");
             }
         });
@@ -528,7 +542,12 @@ public class OciServiceImpl implements IOciService {
                         throw new OciException(-1, "名称: " + ociUser.getUsername() + " 重复,添加配置失败");
                     }
                     ociUser.setId(IdUtil.randomUUID());
-                    ociUser.setOciKeyPath(keyDirPath + File.separator + ociUser.getOciKeyPath());
+                    // 配置文件里的 key_file 值是外部输入：旧代码直接用密钥目录 +
+                    // 分隔符 + 该值拼接，key_file 写成 ../../.. 即可逃出密钥目录
+                    // （与 addCfg() 的 CVE-2025-13875 同类路径遍历）。
+                    // 复用 resolveKeyFilePath()：白名单 + normalize + startsWith
+                    // 二次校验，只允许密钥目录内的裸文件名。
+                    ociUser.setOciKeyPath(resolveKeyFilePath(keyDirPath, ociUser.getOciKeyPath()));
                     SysUserDTO sysUserDTO = SysUserDTO.builder()
                             .ociCfg(SysUserDTO.OciCfg.builder()
                                     .userId(ociUser.getOciUserId())

@@ -32,10 +32,15 @@ if ([string]::IsNullOrWhiteSpace($WEB_ACCOUNT)) {
     $WEB_ACCOUNT = "admin"
 }
 
-Write-Host "📝 请输入Web密码 (默认: admin123456):"
+Write-Host "📝 请输入Web密码 (留空则自动生成随机密码，至少 8 位):"
 $WEB_PASSWORD = Read-Host
 if ([string]::IsNullOrWhiteSpace($WEB_PASSWORD)) {
-    $WEB_PASSWORD = "admin123456"
+    # 无弱默认值：用 .NET 随机数生成 32 位十六进制口令，仅显示一次
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $bytes = New-Object byte[] 16
+    $rng.GetBytes($bytes)
+    $WEB_PASSWORD = -join ($bytes | ForEach-Object { $_.ToString("x2") })
+    Write-Host "⚠️  未提供密码，已自动生成随机密码（仅显示一次，请妥善保存）: $WEB_PASSWORD" -ForegroundColor Yellow
 }
 
 # 创建.env文件

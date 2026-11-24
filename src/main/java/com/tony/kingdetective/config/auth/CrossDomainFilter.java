@@ -17,7 +17,8 @@ public class CrossDomainFilter implements WebMvcConfigurer {
     @Resource
     private AuthInterceptor authInterceptor;
 
-    @Value("${web.cors.allowed-origins:*}")
+    // CORS 默认空（仅同源）：空条目已被下面的过滤逻辑丢弃
+    @Value("${web.cors.allowed-origins:}")
     private String allowedOrigins;
 
     @Override

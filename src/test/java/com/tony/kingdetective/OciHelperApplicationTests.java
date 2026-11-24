@@ -32,7 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.url=jdbc:sqlite:target/king-detective-test-${random.uuid}.db",
         "king-detective.startup.tasks-enabled=false",
         "king-detective.websocket.server-endpoint-exporter-enabled=false",
-        "oci-cfg.key-dir-path=target/test-keys"
+        "oci-cfg.key-dir-path=target/test-keys",
+        // 启动校验器（StartupCredentialValidator）要求必填口令与密钥：测试用固定测试值
+        "web.password=test-admin-password-123",
+        "ops.ssh.secret-key=test-ssh-secret-key-456"
 })
 class OciHelperApplicationTests {
 
@@ -148,7 +151,7 @@ class OciHelperApplicationTests {
         String oldToken = adminCredentialService.generateToken(Map.of("account", "admin"));
 
         adminCredentialService.updateCredential(
-                "admin123456",
+                "test-admin-password-123",
                 "audit-admin",
                 "audit-password-123",
                 "audit-password-123"
@@ -160,8 +163,8 @@ class OciHelperApplicationTests {
             adminCredentialService.updateCredential(
                     "audit-password-123",
                     "admin",
-                    "admin123456",
-                    "admin123456"
+                    "test-admin-password-123",
+                    "test-admin-password-123"
             );
         }
     }

@@ -22,7 +22,8 @@ public class SecretCryptoService {
     private static final int TAG_BITS = 128;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    @Value("${ops.ssh.secret-key:${web.password}}")
+    // 无默认值、不再回退到管理员口令：未设置时启动校验器拒绝启动
+    @Value("${ops.ssh.secret-key:}")
     private String secretKey;
 
     public String encrypt(String plainText) {
@@ -67,13 +68,16 @@ public class SecretCryptoService {
         } catch (OciException e) {
             throw e;
         } catch (Exception e) {
-            throw new OciException(-1, "Failed to decrypt SSH secret. Check OPS_SSH_SECRET_KEY or web password.");
+            throw new OciException(-1, "Failed to decrypt SSH secret. Check OPS_SSH_SECRET_KEY.");
         }
     }
 
     private SecretKeySpec key() throws Exception {
-        String source = StrUtil.blankToDefault(secretKey, "king-detective-default-ssh-secret");
-        byte[] digest = MessageDigest.getInstance("SHA-256").digest(source.getBytes(StandardCharsets.UTF_8));
+        // 不再有内置备用密钥：密钥未设置是配置错误，必须显式配置
+        if (StrUtil.isBlank(secretKey)) {
+            throw new OciException(-1, "OPS_SSH_SECRET_KEY is not set. Set it in .env and restart.");
+        }
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(secretKey.getBytes(StandardCharsets.UTF_8));
         return new SecretKeySpec(digest, "AES");
     }
 }
